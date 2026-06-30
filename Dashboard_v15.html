@@ -1,0 +1,2729 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<template id="__bundler_thumbnail" data-bg-color="#4E1742">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#4E1742"/>
+    <g transform="translate(420 250)">
+      <rect x="0" y="0" width="80" height="300" rx="6" fill="#F08808"/>
+      <rect x="120" y="80" width="80" height="220" rx="6" fill="#F8C040"/>
+      <rect x="240" y="40" width="80" height="260" rx="6" fill="#98A040"/>
+      <path d="M -10 30 L 90 -20 L 200 50 L 310 -10" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="-10" cy="30" r="9" fill="#fff"/>
+      <circle cx="90" cy="-20" r="9" fill="#fff"/>
+      <circle cx="200" cy="50" r="9" fill="#fff"/>
+      <circle cx="310" cy="-10" r="9" fill="#fff"/>
+    </g>
+    <text x="600" y="640" text-anchor="middle" font-family="Montserrat, sans-serif" font-size="36" font-weight="700" fill="#fff" letter-spacing="6">VSPT · OPERACIONES</text>
+  </svg>
+</template>
+<meta charset="UTF-8">
+<!-- Control de acceso VSPT — solo correos @vspt.com.ar (ver auth.js) -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VSPT OPINONA — San Juan/Graffigna</title>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300..900;1,400..700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* VSPT Propósito — paleta oficial */
+    --vspt-deep-purple:#4E1742;
+    --vspt-wine:#701F52;
+    --vspt-plum:#301030;
+    --vspt-crimson:#D81840;
+    --vspt-magenta:#B61858;
+    --vspt-beige:#E0D0B8;
+    --vspt-beige-soft:#F3F1EB;
+    --vspt-cream:#FAF7F0;
+    --vspt-olive:#98A040;
+    --vspt-orange:#F08808;
+    --vspt-yellow:#F8C040;
+    --vspt-red-deep:#9B1D4F;
+
+    /* Aliases legacy → VSPT (no romper código existente) */
+    --vspt-red:var(--vspt-crimson);
+    --vspt-amber:var(--vspt-yellow);
+    --vspt-purple:var(--vspt-plum);
+
+    /* Dark mode (modo planta / TV) — neutros cálidos tipo Claude/Programas */
+    --bg:#1A1915;
+    --card:#222220;
+    --card2:#2A2A28;
+    --border:rgba(200,168,130,0.14);
+    --text:#F3F1EB;
+    --muted:#c9b8c4;
+    --th-bg:#3a1f33;
+    --tr-hover:rgba(216,24,64,0.06);
+    --td-border:rgba(255,255,255,0.07);
+    --chart-tick:#c9b8c4;
+    --chart-grid:rgba(255,255,255,0.07);
+    --green:var(--vspt-olive);
+    --tab-color:var(--vspt-yellow);
+
+    /* Gradientes signature */
+    --grad-hero:linear-gradient(135deg, var(--vspt-yellow) 0%, var(--vspt-orange) 35%, var(--vspt-crimson) 70%, var(--vspt-deep-purple) 100%);
+    --grad-wine:linear-gradient(90deg, var(--vspt-crimson), var(--vspt-wine), var(--vspt-plum));
+    --grad-bird:linear-gradient(135deg, var(--vspt-crimson), var(--vspt-deep-purple), var(--vspt-crimson));
+  }
+  body.light {
+    --bg:var(--vspt-beige-soft);
+    --card:#FFFFFF;
+    --card2:var(--vspt-cream);
+    --border:rgba(78,23,66,0.14);
+    --text:var(--vspt-plum);
+    --muted:#7a627a;
+    --th-bg:var(--vspt-beige-soft);
+    --tr-hover:rgba(78,23,66,0.05);
+    --td-border:rgba(78,23,66,0.08);
+    --chart-tick:#7a627a;
+    --chart-grid:rgba(78,23,66,0.08);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:'Montserrat',system-ui,sans-serif; font-size:14px; font-feature-settings:'tnum' 1; transition:background .3s,color .3s; }
+
+  .header { position:relative; background:linear-gradient(135deg,var(--vspt-plum) 0%,var(--vspt-deep-purple) 55%,var(--vspt-wine) 100%); border-bottom:3px solid var(--vspt-crimson); padding:14px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; overflow:hidden; min-height:78px; }
+  .header > * { position:relative; z-index:2; }
+  .header-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; opacity:var(--tw-header-img-opacity, 0.55); z-index:1; pointer-events:none; transition:opacity .35s; }
+  .header::after { content:''; position:absolute; inset:0; z-index:1; background:linear-gradient(90deg, rgba(48,16,48,0.55) 0%, rgba(78,23,66,0.30) 50%, rgba(48,16,48,0.55) 100%); pointer-events:none; }
+  body.light .header { background:linear-gradient(135deg,var(--vspt-deep-purple) 0%,var(--vspt-wine) 100%); }
+  body.light .header-bg { opacity:0.85; }
+  body.light .header::after { background:linear-gradient(90deg, rgba(48,16,48,0.10) 0%, rgba(78,23,66,0.00) 40%, rgba(48,16,48,0.10) 100%); }
+  .header-left { display:flex; align-items:center; gap:16px; }
+  .logo { width:48px; height:48px; background:#fff; border-radius:12px; display:flex; align-items:center; justify-content:center; padding:5px; box-shadow:0 6px 18px rgba(0,0,0,0.30); overflow:hidden; }
+  .logo img { width:100%; height:100%; object-fit:contain; display:block; }
+  .header-title { font-size:18px; font-weight:700; letter-spacing:-0.2px; color:#fff; }
+  .header-title span { color:var(--vspt-beige); font-weight:600; }
+  .header-sub { font-size:10px; color:var(--vspt-beige); margin-top:4px; text-transform:uppercase; letter-spacing:0.22em; font-weight:600; }
+  .header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .status-badge { display:flex; align-items:center; gap:7px; background:rgba(152,160,64,0.18); border:1px solid rgba(152,160,64,0.4); color:#c5cf6e; padding:6px 13px; border-radius:20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; }
+  .status-dot { width:7px; height:7px; border-radius:50%; background:var(--vspt-olive); animation:pulse 2s infinite; }
+  .status-badge.amber { background:rgba(248,192,64,0.18); border-color:rgba(248,192,64,0.4); color:var(--vspt-yellow); }
+  .status-badge.amber .status-dot { background:var(--vspt-yellow); }
+  .status-badge.red { background:rgba(216,24,64,0.18); border-color:rgba(216,24,64,0.45); color:#ff7a93; }
+  .status-badge.red .status-dot { background:var(--vspt-crimson); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .btn-icon { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.18); color:#fff; padding:7px 14px; border-radius:20px; cursor:pointer; font-size:11px; font-weight:600; letter-spacing:0.06em; transition:all .2s; font-family:inherit; }
+  .year-toggle { display:inline-flex; background:rgba(0,0,0,0.28); border:1px solid rgba(248,192,64,0.28); border-radius:20px; padding:3px; gap:2px; }
+  .year-btn { background:transparent; border:none; color:rgba(255,255,255,0.7); padding:5px 14px; border-radius:16px; cursor:pointer; font-size:11px; font-weight:700; font-family:inherit; transition:all .2s; letter-spacing:0.06em; }
+  .year-btn:hover { color:#fff; }
+  .year-btn.active { background:var(--vspt-crimson); color:#fff; box-shadow:0 2px 8px rgba(216,24,64,0.4); }
+  .btn-icon:hover { background:var(--vspt-crimson); color:#fff; border-color:var(--vspt-crimson); }
+
+  .tab-nav { background:var(--card); border-bottom:1px solid var(--border); display:flex; overflow-x:auto; padding:0 12px; position:sticky; top:0; z-index:40; }
+  .tab-btn { padding:15px 22px; font-weight:700; color:var(--muted); border-bottom:3px solid transparent; cursor:pointer; text-transform:uppercase; font-size:11px; letter-spacing:0.14em; white-space:nowrap; transition:all .25s; background:transparent; border-top:none; border-left:none; border-right:none; font-family:inherit; }
+  .tab-btn:hover { color:var(--text); background:var(--tr-hover); }
+  .tab-btn.active { color:var(--tab-color,var(--vspt-crimson)); border-bottom-color:var(--tab-color,var(--vspt-crimson)); background:linear-gradient(to top,rgba(216,24,64,0.08),transparent); }
+
+  .main { display:flex; min-height:calc(100vh - 110px); position:relative; }
+  .sidebar { width:260px; min-width:260px; background:var(--card); border-right:1px solid var(--border); overflow-y:auto; overflow-x:visible; padding:18px; flex-shrink:0; transition:margin-left .3s ease; position:relative; }
+  .sidebar.collapsed { margin-left:-260px; }
+  .content { flex:1; overflow-y:auto; padding:20px 24px; min-width:0; }
+  .sidebar-toggle { position:absolute; left:260px; top:14px; transform:translateX(-14px); width:28px; height:28px; border-radius:50%; background:var(--card2); border:1px solid var(--border); color:var(--vspt-amber); cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:900; z-index:50; font-family:inherit; transition:left .3s ease, background .2s, color .2s; box-shadow:0 2px 8px rgba(0,0,0,0.25); }
+  .main.sb-collapsed .sidebar-toggle { left:0; transform:translateX(0); }
+  .sidebar-toggle:hover { background:var(--vspt-amber); color:var(--vspt-purple); }
+
+  .sidebar h3 { font-size:11px; text-transform:uppercase; letter-spacing:0.22em; color:var(--vspt-crimson); margin-bottom:14px; margin-top:4px; font-weight:700; }
+  body.light .sidebar h3 { color:var(--vspt-deep-purple); }
+  .filter-group { margin-bottom:13px; }
+  .filter-label { font-size:10px; color:var(--muted); margin-bottom:5px; display:block; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; }
+  .filter-group select, .filter-group input[type=date], .filter-group input[type=text], .filter-group input[type=number] {
+    width:100%; background:var(--card2); border:1px solid var(--border); color:var(--text);
+    border-radius:7px; padding:8px 10px; font-size:12px; outline:none; font-family:inherit; transition:border-color .2s;
+  }
+  .filter-group input[type=date] { color-scheme: light dark; min-width:0; cursor:pointer; }
+  body.dark .filter-group input[type=date] { color-scheme: dark; }
+  body.light .filter-group input[type=date] { color-scheme: light; }
+  .filter-group input[type=date]::-webkit-calendar-picker-indicator { cursor:pointer; opacity:0.85; filter: var(--date-icon-filter, invert(0.7)); }
+  body.light .filter-group input[type=date]::-webkit-calendar-picker-indicator { filter: none; opacity:0.6; }
+  .filter-group select:focus, .filter-group input:focus { border-color:var(--vspt-amber); }
+  .filter-group select option { background:var(--card); }
+  body.light .filter-group select option { background:#fff; color:var(--text); }
+  .date-row { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .date-row input { width:100%; }
+  /* Multi-select con checkboxes */
+  .ms { position:relative; }
+  .ms-native { display:none; }
+  .ms-btn { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--card2); border:1px solid var(--border); border-radius:7px; padding:8px 10px; color:var(--text); font-family:inherit; font-size:12px; cursor:pointer; text-align:left; transition:border-color .2s; }
+  .ms-btn:hover, .ms.open .ms-btn { border-color:var(--vspt-amber); }
+  .ms-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+  .ms-text.placeholder { color:var(--muted); }
+  .ms-caret { color:var(--muted); font-size:9px; flex-shrink:0; transition:transform .2s; }
+  .ms.open .ms-caret { transform:rotate(180deg); }
+  .ms-panel { display:none; position:absolute; z-index:60; top:calc(100% + 4px); left:0; right:0; max-height:260px; overflow-y:auto; background:var(--card); border:1px solid var(--border); border-radius:8px; box-shadow:0 12px 30px rgba(0,0,0,0.35); padding:6px; }
+  .ms.open .ms-panel { display:block; }
+  .ms-actions { display:flex; gap:6px; padding:2px 2px 6px; border-bottom:1px solid var(--border); margin-bottom:4px; }
+  .ms-act { flex:1; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:4px 6px; border-radius:6px; border:1px solid var(--border); background:var(--card2); color:var(--muted); cursor:pointer; font-family:inherit; }
+  .ms-act:hover { color:var(--text); border-color:var(--vspt-amber); }
+  .ms-opt { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer; font-size:12px; color:var(--text); }
+  .ms-opt:hover { background:var(--card2); }
+  .ms-opt input { accent-color:var(--vspt-amber); cursor:pointer; margin:0; flex-shrink:0; }
+  .ms-opt span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ms.disabled { opacity:0.45; pointer-events:none; }
+  .clear-btn { width:100%; background:linear-gradient(135deg,var(--vspt-deep-purple),var(--vspt-crimson)); border:none; color:#fff; border-radius:8px; padding:11px; font-size:11px; font-weight:700; cursor:pointer; margin-top:10px; transition:opacity .2s; text-transform:uppercase; letter-spacing:0.18em; font-family:inherit; }
+  .clear-btn:hover { opacity:0.88; }
+  .filter-divider { height:1px; background:var(--border); margin:14px 0; }
+
+  .kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:18px; }
+  .kpi-card { background:var(--card); border:1px solid var(--border); border-radius:var(--tw-rad-card,12px); padding:var(--tw-kpi-pad,16px); position:relative; overflow:hidden; transition:transform .2s, box-shadow .2s; box-shadow:var(--tw-card-shadow, none); }
+  .kpi-card:hover { transform:translateY(-2px); }
+  .kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:var(--tw-kpi-top,3px); background:var(--grad-wine); }
+  .kpi-card.amber::before { background:linear-gradient(90deg,var(--vspt-yellow),var(--vspt-orange)); }
+  .kpi-card.wine::before  { background:linear-gradient(90deg,var(--vspt-wine),var(--vspt-deep-purple)); }
+  .kpi-card.olive::before { background:linear-gradient(90deg,var(--vspt-olive),#c5cf6e); }
+  .kpi-card.red::before   { background:linear-gradient(90deg,var(--vspt-crimson),var(--vspt-magenta)); }
+  .kpi-card.orange::before{ background:linear-gradient(90deg,var(--vspt-orange),var(--vspt-yellow)); }
+  .kpi-card.cream::before { background:linear-gradient(90deg,var(--vspt-beige),var(--vspt-yellow)); }
+  .kpi-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.18em; margin-bottom:6px; font-weight:600; }
+  .kpi-value { font-size:var(--tw-kpi-value,30px); font-weight:700; letter-spacing:-0.02em; line-height:1.05; font-variant-numeric:tabular-nums; }
+  .kpi-value.amber { color:var(--vspt-yellow); }
+  .kpi-value.wine { color:#e2a4cf; } body.light .kpi-value.wine { color:var(--vspt-wine); }
+  .kpi-value.olive { color:#c5cf6e; } body.light .kpi-value.olive { color:var(--vspt-olive); }
+  .kpi-value.red { color:var(--vspt-red); }
+  .kpi-value.orange { color:var(--vspt-orange); }
+  .kpi-value.cream { color:#EDE0C4; } body.light .kpi-value.cream { color:#b89b5a; }
+  .kpi-sub { font-size:11px; color:var(--muted); margin-top:6px; }
+
+  .kpi-hero { text-align:center; border:1.5px solid var(--vspt-yellow); background:linear-gradient(135deg,rgba(248,192,64,0.10),rgba(240,136,8,0.04)); padding:var(--tw-hero-pad,26px 18px); }
+  .kpi-hero.below { border-color:var(--vspt-crimson); background:linear-gradient(135deg,rgba(216,24,64,0.10),rgba(78,23,66,0.04)); }
+  .kpi-hero .kpi-value { font-size:var(--tw-hero-value,52px); margin-top:8px; font-weight:800; letter-spacing:-0.03em; }
+  .kpi-hero .kpi-label { font-size:11px; letter-spacing:0.22em; }
+  .kpi-hero .meta { font-size:11px; color:var(--muted); margin-top:12px; font-weight:600; letter-spacing:0.04em; }
+  .kpi-hero .meta strong { color:var(--vspt-yellow); font-weight:700; }
+
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  .charts-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
+  .chart-card { background:var(--card); border:1px solid var(--border); border-top:var(--tw-top-bar,3px) solid var(--tab-color,var(--vspt-crimson)); border-radius:var(--tw-rad-card,14px); padding:var(--tw-card-pad,18px); box-shadow:var(--tw-card-shadow, 0 2px 10px rgba(48,16,48,0.10)); }
+  .chart-card.full { grid-column:1 / -1; }
+  .chart-card.accent { border-top-color:var(--vspt-yellow); }
+  .chart-card.wine   { border-top-color:var(--vspt-wine); }
+  .chart-card.red    { border-top-color:var(--vspt-crimson); }
+  .chart-card.olive  { border-top-color:var(--vspt-olive); }
+
+  /* Bordes superiores unificados con el color de la pestaña activa (Planta/L1/L2/L3) */
+  #tab-planta .kpi-card::before,
+  #tab-l1 .kpi-card::before,
+  #tab-l2 .kpi-card::before,
+  #tab-l3 .kpi-card::before {
+    background: var(--tab-color, var(--vspt-crimson)) !important;
+  }
+  #tab-planta .chart-card,
+  #tab-l1 .chart-card,
+  #tab-l2 .chart-card,
+  #tab-l3 .chart-card {
+    border-top-color: var(--tab-color, var(--vspt-crimson)) !important;
+  }
+  .chart-title { font-size:11px; font-weight:var(--tw-title-weight,700); color:var(--text); text-transform:uppercase; letter-spacing:var(--tw-title-spacing,0.18em); margin-bottom:14px; display:flex; align-items:baseline; gap:10px; }
+  .chart-title .hint { color:var(--muted); font-weight:500; text-transform:none; letter-spacing:0; font-size:10px; }
+  .chart-linea-badge { display:inline-block; padding:1px 7px; border-radius:4px; font-size:9px; font-weight:900; letter-spacing:0.1em; vertical-align:middle; line-height:1.7; flex-shrink:0; }
+  .falla-filter-btn { font-family:inherit; font-size:11px; font-weight:700; letter-spacing:0.08em; padding:5px 12px; border-radius:999px; border:1px solid var(--border); background:var(--card2); color:var(--muted); cursor:pointer; transition:all .15s ease; text-transform:uppercase; }
+  .falla-filter-btn:hover { border-color:var(--vspt-crimson); color:var(--text); }
+  .falla-filter-btn.on { background:var(--vspt-crimson); border-color:var(--vspt-crimson); color:#fff; box-shadow:0 0 0 1px rgba(216,24,64,0.25); }
+  .falla-filter-btn[data-filter="OP"].on { background:#F08808; border-color:#F08808; box-shadow:0 0 0 1px rgba(240,136,8,0.25); }
+
+  /* Selector de granularidad para OPINONA (Diario / Semanal / Mensual) */
+  .opi-view-switch { background:var(--card2); border:1px solid var(--border); border-radius:999px; padding:3px; }
+  .opi-view-btn { font-family:inherit; font-size:11px; font-weight:700; letter-spacing:0.06em; padding:5px 12px; border-radius:999px; border:none; background:transparent; color:var(--muted); cursor:pointer; transition:all .15s ease; }
+  .opi-view-btn:hover { color:var(--text); }
+  .opi-view-btn.on { background:var(--tab-color, var(--vspt-crimson)); color:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.12); }
+
+  .section-title { font-size:12px; font-weight:var(--tw-title-weight,700); color:var(--text); margin:14px 0 14px; padding-bottom:10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; text-transform:uppercase; letter-spacing:var(--tw-title-spacing,0.18em); }
+  .section-title::before { content:''; width:4px; height:18px; background:var(--grad-wine); border-radius:2px; }
+
+  .spinner-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; height:360px; gap:16px; }
+  .spinner { width:46px; height:46px; border:3px solid var(--border); border-top-color:var(--vspt-amber); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .no-data { text-align:center; color:var(--muted); padding:50px; font-size:13px; }
+
+  .table-obj { width:100%; border-collapse:collapse; font-size:13px; }
+  .table-obj th { background:var(--th-bg); color:var(--muted); padding:12px; text-align:center; font-weight:700; text-transform:uppercase; font-size:10px; letter-spacing:0.6px; border-bottom:2px solid var(--border); }
+  .table-obj th:first-child, .table-obj td:first-child { text-align:left; }
+  .table-obj td { padding:14px 12px; border-bottom:1px solid var(--td-border); text-align:center; font-weight:700; }
+  .table-obj tr:hover td { background:var(--tr-hover); }
+  .input-obj { background:var(--card2); border:1px solid var(--vspt-yellow); color:var(--text); border-radius:6px; padding:6px 10px; font-weight:700; font-size:14px; text-align:center; width:80px; outline:none; font-family:inherit; }
+  .admin-btn { background:transparent; border:1px solid var(--vspt-crimson); color:var(--vspt-crimson); padding:7px 14px; border-radius:8px; cursor:pointer; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.18em; font-family:inherit; transition:all .2s; }
+  body.dark .admin-btn { color:#ff7a93; border-color:rgba(216,24,64,0.6); }
+  .admin-btn:hover, .admin-btn.active { background:var(--vspt-crimson); color:#fff; border-color:var(--vspt-crimson); }
+
+  #detail-modal { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.8); backdrop-filter:blur(6px); align-items:center; justify-content:center; }
+  .modal-content { background:var(--card); border:1px solid var(--vspt-amber); border-radius:14px; width:95%; max-width:1200px; max-height:85vh; overflow-y:auto; padding:26px; color:var(--text); }
+  .modal-content table { width:100%; border-collapse:collapse; font-size:12px; }
+  .modal-content th { background:var(--th-bg); color:var(--muted); padding:10px; text-align:left; font-weight:700; text-transform:uppercase; font-size:10px; position:sticky; top:0; }
+  .modal-content td { padding:10px; border-bottom:1px solid var(--td-border); vertical-align:top; }
+  .close-btn { background:transparent; border:none; color:var(--muted); font-size:28px; cursor:pointer; line-height:1; font-family:inherit; }
+  .close-btn:hover { color:var(--vspt-amber); }
+
+  .apexcharts-tooltip { background:var(--card) !important; border:1px solid var(--vspt-amber) !important; color:var(--text) !important; box-shadow:0 10px 30px rgba(0,0,0,0.45) !important; }
+  .apexcharts-tooltip-title { background:var(--card2) !important; border-bottom:1px solid var(--border) !important; font-weight:800 !important; color:var(--text) !important; }
+
+  .collapse-btn { width:100%; background:var(--card); border:1px dashed var(--border); color:var(--text); padding:11px 16px; margin:14px 0 0; border-radius:10px; font-family:inherit; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; transition:all .2s; }
+  .collapse-btn:hover { border-color:var(--tab-color,var(--vspt-amber)); border-style:solid; color:var(--tab-color,var(--vspt-amber)); }
+  .collapse-btn .collapse-arrow { transition:transform .3s; font-size:10px; color:var(--tab-color,var(--vspt-amber)); }
+  .collapse-btn.open .collapse-arrow { transform:rotate(180deg); }
+  .collapsible { margin-top:10px; animation:fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+
+  /* Cinematic backdrop & chart saturation filter */
+  body { position:relative; }
+  body::before { content:''; position:fixed; inset:0; background:var(--tw-backdrop, none); pointer-events:none; z-index:0; transition:background .4s; }
+  .header, .tab-nav, .main { position:relative; z-index:2; }
+  .apexcharts-canvas { filter: saturate(var(--tw-chart-saturation, 100%)); transition: filter .3s; }
+  .kpi-card, .chart-card { transition: border-radius .3s, padding .3s, box-shadow .3s, transform .2s; }
+
+  /* ============================================================ */
+  /* TWEAKS PANEL */
+  /* ============================================================ */
+  #tweaks-host { position:fixed; inset:0; pointer-events:none; z-index:90; display:flex; align-items:flex-end; justify-content:flex-end; padding:24px; }
+  #tweaks-host.open #tweaks-panel { transform:translateY(0); opacity:1; pointer-events:auto; }
+  #tweaks-panel { width:340px; max-width:calc(100vw - 32px); max-height:calc(100vh - 48px); overflow-y:auto; background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:18px; box-shadow:0 24px 60px rgba(48,16,48,0.28), 0 4px 12px rgba(48,16,48,0.10); padding:20px 22px 18px; transform:translateY(20px); opacity:0; transition:transform .3s cubic-bezier(.2,.9,.3,1.1), opacity .25s; backdrop-filter: blur(8px); }
+  body.light #tweaks-panel { background:rgba(255,255,255,0.96); }
+  body.dark #tweaks-panel { background:rgba(34,34,32,0.96); }
+  .tw-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+  .tw-eyebrow { font-size:9px; font-weight:700; color:var(--vspt-crimson); text-transform:uppercase; letter-spacing:0.28em; margin-bottom:4px; }
+  body.dark .tw-eyebrow { color:#ff7a93; }
+  .tw-title { font-size:18px; font-weight:700; letter-spacing:-0.01em; color:var(--text); }
+  .tw-close { background:transparent; border:none; color:var(--muted); font-size:26px; cursor:pointer; line-height:1; padding:0 4px; font-family:inherit; transition:color .2s; }
+  .tw-close:hover { color:var(--vspt-crimson); }
+  .tw-section { margin-bottom:18px; }
+  .tw-section.tw-foot { margin-bottom:0; padding-top:14px; border-top:1px solid var(--border); }
+  .tw-label { font-size:10px; font-weight:700; color:var(--text); text-transform:uppercase; letter-spacing:0.18em; margin-bottom:4px; display:flex; justify-content:space-between; align-items:baseline; }
+  .tw-val { font-size:13px; font-weight:700; color:var(--vspt-crimson); letter-spacing:0; font-variant-numeric:tabular-nums; }
+  body.dark .tw-val { color:#ff7a93; }
+  .tw-hint { font-size:11px; color:var(--muted); margin-bottom:10px; line-height:1.4; }
+  .tw-radio { display:grid; grid-template-columns:1fr; gap:6px; }
+  .tw-chip { background:var(--card2); border:1px solid var(--border); color:var(--text); padding:10px 14px; border-radius:10px; cursor:pointer; text-align:left; font-family:inherit; transition:all .2s; }
+  .tw-chip:hover { border-color:var(--vspt-crimson); }
+  .tw-chip.on { background:linear-gradient(135deg, rgba(216,24,64,0.10), rgba(112,31,82,0.08)); border-color:var(--vspt-crimson); box-shadow:0 0 0 1px rgba(216,24,64,0.25); }
+  .tw-chip-name { font-size:13px; font-weight:700; color:var(--text); margin-bottom:2px; }
+  .tw-chip.on .tw-chip-name { color:var(--vspt-crimson); }
+  body.dark .tw-chip.on .tw-chip-name { color:#ff7a93; }
+  .tw-chip-sub { font-size:10px; color:var(--muted); letter-spacing:0.04em; }
+  .tw-slider { width:100%; -webkit-appearance:none; appearance:none; height:4px; background:linear-gradient(90deg, #c9b8c4, var(--vspt-crimson), var(--vspt-yellow)); border-radius:2px; outline:none; margin:6px 0 4px; }
+  .tw-slider::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid var(--vspt-crimson); cursor:pointer; box-shadow:0 2px 6px rgba(216,24,64,0.45); }
+  .tw-slider::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid var(--vspt-crimson); cursor:pointer; box-shadow:0 2px 6px rgba(216,24,64,0.45); }
+  .tw-slider-track { display:flex; justify-content:space-between; font-size:9px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.12em; margin-top:4px; }
+  .tw-reset { background:transparent; border:1px solid var(--border); color:var(--muted); padding:8px 14px; border-radius:8px; font-family:inherit; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.18em; cursor:pointer; transition:all .2s; }
+  .tw-reset:hover { border-color:var(--vspt-crimson); color:var(--vspt-crimson); }
+
+  @media (max-width:1400px) { .kpi-row { grid-template-columns:repeat(3,1fr); } }
+  @media (max-width:1100px) {
+    .main { flex-direction:column; }
+    .sidebar { width:100%; min-width:0; border-right:none; border-bottom:1px solid var(--border); }
+    .sidebar.collapsed { margin-left:0; display:none; }
+    .kpi-row { grid-template-columns:repeat(2,1fr); }
+    .charts-grid, .charts-grid-3 { grid-template-columns:1fr; }
+  }
+  .filter-locked { opacity:0.45; pointer-events:none; }
+  .filter-locked select, .filter-locked input { cursor:not-allowed; }
+  .kpi-loading-hint { text-align:center; color:var(--muted); font-size:12px; padding:18px; font-style:italic; opacity:0.8; }
+</style>
+</head>
+<body class="light">
+
+<div id="tweaks-host" aria-hidden="true">
+  <div id="tweaks-panel" role="dialog" aria-label="Tweaks"></div>
+</div>
+
+<div id="detail-modal"><div class="modal-content" id="modal-body"></div></div>
+
+<div class="header" style="opacity: 1; gap: 68px; height: 89px; line-height: 1.3">
+  <img class="header-bg" src="assets/header-bg.jpg" alt="" aria-hidden="true">
+  <div class="header-left">
+    <div class="logo"><img src="assets/marca-secundaria.jpg" alt="VSPT"></div>
+    <div>
+      <div class="header-title" style="opacity: 0.96; padding: 3px; margin: -2px; border-width: 0px; border-style: solid; border-radius: 0px; width: 364px; line-height: 0.7; font-size: 22px; letter-spacing: 0.3px">VSPT <span style="color: rgb(216, 24, 64)">Wine Group</span> · OPINONA</div>
+      <div class="header-sub">Planta San Juan / Graffigna — Monitor Operativo</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="year-toggle" id="yearToggle">
+      <button class="year-btn" data-year="2025" onclick="setYear(2025)">2025</button>
+      <button class="year-btn active" data-year="2026" onclick="setYear(2026)">2026</button>
+    </div>
+    <button class="btn-icon" onclick="toggleTheme()"><span id="theme-icon">🌙</span> <span id="theme-text">MODO OSCURO</span></button>
+    <div class="status-badge amber" id="statusBadge"><span class="status-dot"></span><span id="statusMsg">SINCRONIZANDO...</span></div>
+  </div>
+</div>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="planta" onclick="changeTab('planta')">🏭 Planta</button>
+  <button class="tab-btn" data-tab="l1" onclick="changeTab('l1')">📦 Línea 1</button>
+  <button class="tab-btn" data-tab="l2" onclick="changeTab('l2')">📦 Línea 2</button>
+  <button class="tab-btn" data-tab="l3" onclick="changeTab('l3')">📦 Línea 3</button>
+  <button class="tab-btn" data-tab="programas" onclick="changeTab('programas')">🗓️ Programas</button>
+  <button class="tab-btn" data-tab="objetivos" onclick="changeTab('objetivos')">🎯 Objetivos</button>
+  <button class="tab-btn" data-tab="calidad" onclick="changeTab('calidad')">🔬 Calidad</button>
+  <button class="tab-btn" data-tab="personal" onclick="changeTab('personal')">👥 Personal</button>
+</div>
+
+<div class="main">
+  <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Mostrar / ocultar filtros">‹</button>
+  <aside class="sidebar" id="sidebar">
+    <h3>🔍 Filtros</h3>
+
+    <div class="filter-group">
+      <label class="filter-label">Período</label>
+      <select id="f-periodo" onchange="onFilterChangeSafe()"><option value="ALL">Vista Anual (YTD)</option></select>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Fecha desde / hasta</label>
+      <div class="date-row">
+        <input type="date" id="f-desde" onchange="onFilterChange()">
+        <input type="date" id="f-hasta" onchange="onFilterChange()">
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Semana</label>
+      <select id="f-semana" onchange="onFilterChange()"><option value="">Todas</option></select>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Turno</label>
+      <div class="ms" id="ms-f-turno" data-fid="f-turno">
+        <select id="f-turno" class="ms-native" multiple></select>
+        <button type="button" class="ms-btn" onclick="msOpen('f-turno', event)"><span class="ms-text placeholder" id="f-turno-text">Todos</span><span class="ms-caret">▼</span></button>
+        <div class="ms-panel" id="f-turno-panel"></div>
+      </div>
+    </div>
+
+    <div class="filter-divider"></div>
+
+    <div class="filter-group">
+      <label class="filter-label">Clasificación</label>
+      <div class="ms" id="ms-f-clasif" data-fid="f-clasif">
+        <select id="f-clasif" class="ms-native" multiple></select>
+        <button type="button" class="ms-btn" onclick="msOpen('f-clasif', event)"><span class="ms-text placeholder" id="f-clasif-text">Todas</span><span class="ms-caret">▼</span></button>
+        <div class="ms-panel" id="f-clasif-panel"></div>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Sub-Clasificación / Equipo</label>
+      <div class="ms" id="ms-f-subclasif" data-fid="f-subclasif">
+        <select id="f-subclasif" class="ms-native" multiple></select>
+        <button type="button" class="ms-btn" onclick="msOpen('f-subclasif', event)"><span class="ms-text placeholder" id="f-subclasif-text">Todas</span><span class="ms-caret">▼</span></button>
+        <div class="ms-panel" id="f-subclasif-panel"></div>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Origen Falla (MTO / OP)</label>
+      <select id="f-mto" onchange="onFilterChange()">
+        <option value="">Todos</option><option value="MTO">MTO</option><option value="OP">OP</option><option value="INV">INV</option>
+      </select>
+    </div>
+
+    <div class="filter-divider"></div>
+
+    <div class="filter-group">
+      <label class="filter-label">Tipo Etiquetado</label>
+      <div class="ms" id="ms-f-tipoeti" data-fid="f-tipoeti">
+        <select id="f-tipoeti" class="ms-native" multiple></select>
+        <button type="button" class="ms-btn" onclick="msOpen('f-tipoeti', event)"><span class="ms-text placeholder" id="f-tipoeti-text">Todos</span><span class="ms-caret">▼</span></button>
+        <div class="ms-panel" id="f-tipoeti-panel"></div>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Formato</label>
+      <div class="ms" id="ms-f-formato" data-fid="f-formato">
+        <select id="f-formato" class="ms-native" multiple></select>
+        <button type="button" class="ms-btn" onclick="msOpen('f-formato', event)"><span class="ms-text placeholder" id="f-formato-text">Todos</span><span class="ms-caret">▼</span></button>
+        <div class="ms-panel" id="f-formato-panel"></div>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Orden SAP</label>
+      <input type="text" id="f-op" placeholder="Buscar OP..." oninput="onFilterChange()">
+    </div>
+
+    <button class="clear-btn" onclick="clearFilters()">✕ Limpiar Filtros</button>
+  </aside>
+
+  <div class="content">
+    <div class="spinner-wrap" id="loadingSpinner">
+      <div class="spinner"></div>
+      <div style="color:var(--muted);font-size:13px;">Cargando datos desde Google Sheets...</div>
+    </div>
+
+    <div id="tab-planta"    class="tab-panel" style="display:none;"></div>
+    <div id="tab-l1"        class="tab-panel" style="display:none;"></div>
+    <div id="tab-l2"        class="tab-panel" style="display:none;"></div>
+    <div id="tab-l3"        class="tab-panel" style="display:none;"></div>
+    <div id="tab-programas" class="tab-panel" style="display:none;">
+  <iframe id="iframeProgramas" src="about:blank" allow="microphone" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>
+</div>
+    <div id="tab-objetivos" class="tab-panel" style="display:none;"></div>
+    <div id="tab-calidad"   class="tab-panel" style="display:none;">
+      <iframe id="iframeCalidad" src="about:blank" allow="microphone" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>
+    </div>
+    <div id="tab-personal"  class="tab-panel" style="display:none;">
+      <iframe id="iframePersonal" src="about:blank" allow="microphone" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbx8alYmoiwb5-z1nyvXfyCSLfELACGZ4qGGtIoS3j6lF1yS6SmFH0wYRbKfQPrq5P6N/exec";
+const CACHE_KEY = 'vspt_opinona_v6';
+const CACHE_KPI_KEY = 'vspt_kpi_planta_v1';
+let kpiData = [];          // filas de KPI_PLANTA_MENSUAL
+let opinonaCargada = false; // true cuando llega OPINONA cruda
+const MESES_ORDEN_NUM = { 1:'ENERO',2:'FEBRERO',3:'MARZO',4:'ABRIL',5:'MAYO',6:'JUNIO',7:'JULIO',8:'AGOSTO',9:'SEPTIEMBRE',10:'OCTUBRE',11:'NOVIEMBRE',12:'DICIEMBRE' };
+const TARGETS_KEY = 'vspt_targets_v5';
+
+let rawData = [];
+let filteredData = [];
+let planLookup = null;  // null = no cargado; {} = cargado (OP → artículo)
+let charts = {};
+let pendingCharts = {};
+let activeTab = 'planta';
+let activeYear = 2026;
+let isDark = false;
+let isAdmin = false;
+let fallaParetoCache = {};
+let fallaFilterState = {};
+let opiViewState = {}; // tabId -> 'M'|'W'|'D'
+
+// ============================================================
+// TWEAKS PANEL — expressive controls
+// ============================================================
+const VSPT_TWEAKS = /*EDITMODE-BEGIN*/{
+  "mood": "boardroom",
+  "chromaEnergy": 60,
+  "geometry": "soft"
+}/*EDITMODE-END*/;
+let tweaksState = { ...VSPT_TWEAKS };
+let tweaksOpen = false;
+
+function applyTweaks() {
+  const root = document.documentElement;
+  const { mood, chromaEnergy, geometry } = tweaksState;
+
+  // Mood — density, contrast, hero size
+  const moods = {
+    'boardroom':  { padCard:'18px', padSection:'14px 28px', heroValue:'52px', heroPad:'26px 18px', kpiValue:'30px', kpiPad:'16px', titleSpacing:'0.18em', cardShadow:'0 2px 10px rgba(48,16,48,0.10)', backdrop:'none' },
+    'ops-floor':  { padCard:'14px', padSection:'10px 22px', heroValue:'62px', heroPad:'22px 14px', kpiValue:'34px', kpiPad:'14px', titleSpacing:'0.22em', cardShadow:'0 1px 4px rgba(48,16,48,0.06)', backdrop:'none' },
+    'cinematic':  { padCard:'24px', padSection:'18px 32px', heroValue:'68px', heroPad:'34px 22px', kpiValue:'34px', kpiPad:'22px', titleSpacing:'0.28em', cardShadow:'0 14px 40px rgba(48,16,48,0.18), 0 2px 6px rgba(48,16,48,0.08)', backdrop:'radial-gradient(ellipse at top, rgba(216,24,64,0.08), transparent 60%)' }
+  };
+  const m = moods[mood] || moods.boardroom;
+  root.style.setProperty('--tw-card-pad', m.padCard);
+  root.style.setProperty('--tw-section-pad', m.padSection);
+  root.style.setProperty('--tw-hero-value', m.heroValue);
+  root.style.setProperty('--tw-hero-pad', m.heroPad);
+  root.style.setProperty('--tw-kpi-value', m.kpiValue);
+  root.style.setProperty('--tw-kpi-pad', m.kpiPad);
+  root.style.setProperty('--tw-title-spacing', m.titleSpacing);
+  root.style.setProperty('--tw-card-shadow', m.cardShadow);
+  root.style.setProperty('--tw-backdrop', m.backdrop);
+
+  // Chroma Energy 0..100 — saturation + accent vibrancy
+  const t = Math.max(0, Math.min(100, chromaEnergy)) / 100;
+  // 0 = muted (gris-borgoña apagado), 100 = saturado VSPT
+  const sat = (50 + t*60).toFixed(0); // 50% → 110%
+  const accentAlpha = (0.04 + t*0.18).toFixed(3);
+  const headerOpacity = (0.55 + t*0.40).toFixed(2);
+  root.style.setProperty('--tw-chart-saturation', sat + '%');
+  root.style.setProperty('--tw-accent-alpha', accentAlpha);
+  root.style.setProperty('--tw-header-img-opacity', headerOpacity);
+  // crimson principal: del wine apagado al crimson saturado
+  const accentL = (32 + t*8).toFixed(0); // L: 32→40
+  const accentC = (0.05 + t*0.20).toFixed(3); // chroma
+  root.style.setProperty('--tw-accent', `oklch(${accentL}% ${accentC} 12)`);
+
+  // Geometry — radii, borders, type
+  const geos = {
+    'soft':         { radCard:'18px', radInput:'12px', radPill:'24px', borderW:'1px', borderStyle:'solid', topBar:'3px', kpiTop:'4px', titleWeight:'600' },
+    'architectural':{ radCard:'10px', radInput:'7px',  radPill:'8px',  borderW:'1px', borderStyle:'solid', topBar:'2px', kpiTop:'2px', titleWeight:'700' },
+    'editorial':    { radCard:'2px',  radInput:'2px',  radPill:'2px',  borderW:'0',   borderStyle:'solid', topBar:'1px', kpiTop:'1px', titleWeight:'700' }
+  };
+  const g = geos[geometry] || geos.architectural;
+  root.style.setProperty('--tw-rad-card', g.radCard);
+  root.style.setProperty('--tw-rad-input', g.radInput);
+  root.style.setProperty('--tw-rad-pill', g.radPill);
+  root.style.setProperty('--tw-border-w', g.borderW);
+  root.style.setProperty('--tw-top-bar', g.topBar);
+  root.style.setProperty('--tw-kpi-top', g.kpiTop);
+  root.style.setProperty('--tw-title-weight', g.titleWeight);
+
+  // Re-render charts (saturation filter applies live, but data-label colors come from JS)
+  if (typeof render === 'function' && rawData?.length) render();
+}
+
+function setTweak(key, val) {
+  tweaksState[key] = val;
+  applyTweaks();
+  try { window.parent.postMessage({ type:'__edit_mode_set_keys', edits:{ [key]:val } }, '*'); } catch(e){}
+  // refresh panel UI
+  renderTweaksPanel();
+}
+
+function renderTweaksPanel() {
+  const panel = document.getElementById('tweaks-panel');
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="tw-head">
+      <div>
+        <div class="tw-eyebrow">Tweaks</div>
+        <div class="tw-title">Carácter del Tablero</div>
+      </div>
+      <button class="tw-close" onclick="dismissTweaks()" aria-label="Cerrar">&times;</button>
+    </div>
+
+    <div class="tw-section">
+      <div class="tw-label">Mood</div>
+      <div class="tw-hint">Densidad, contraste y peso del tablero</div>
+      <div class="tw-radio">
+        ${['boardroom','ops-floor','cinematic'].map(m => `
+          <button class="tw-chip ${tweaksState.mood===m?'on':''}" onclick="setTweak('mood','${m}')">
+            <div class="tw-chip-name">${m === 'boardroom' ? 'Sala de directorio' : m === 'ops-floor' ? 'Piso de planta' : 'Cinemático'}</div>
+            <div class="tw-chip-sub">${m === 'boardroom' ? 'Equilibrado · neutro' : m === 'ops-floor' ? 'Compacto · KPIs grandes' : 'Aireado · sombras'}</div>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <div class="tw-label">Energía cromática <span class="tw-val">${tweaksState.chromaEnergy}</span></div>
+      <div class="tw-hint">Apagado · sobrio  →  saturado · enérgico</div>
+      <input type="range" class="tw-slider" min="0" max="100" step="5" value="${tweaksState.chromaEnergy}" oninput="setTweak('chromaEnergy', Number(this.value))">
+      <div class="tw-slider-track">
+        <span>Sobrio</span><span>Vibrante</span>
+      </div>
+    </div>
+
+    <div class="tw-section">
+      <div class="tw-label">Geometría</div>
+      <div class="tw-hint">Sistema de formas y radios</div>
+      <div class="tw-radio">
+        ${['soft','architectural','editorial'].map(m => `
+          <button class="tw-chip ${tweaksState.geometry===m?'on':''}" onclick="setTweak('geometry','${m}')">
+            <div class="tw-chip-name">${m === 'soft' ? 'Suave' : m === 'architectural' ? 'Arquitectónica' : 'Editorial'}</div>
+            <div class="tw-chip-sub">${m === 'soft' ? 'Cards rounded · pill' : m === 'architectural' ? 'Esquinas precisas' : 'Plano · sin radios'}</div>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="tw-section tw-foot">
+      <button class="tw-reset" onclick="resetTweaks()">Restablecer</button>
+    </div>
+  `;
+}
+
+function openTweaks() {
+  tweaksOpen = true;
+  document.getElementById('tweaks-host').classList.add('open');
+  renderTweaksPanel();
+}
+function dismissTweaks() {
+  tweaksOpen = false;
+  document.getElementById('tweaks-host').classList.remove('open');
+  try { window.parent.postMessage({ type:'__edit_mode_dismissed' }, '*'); } catch(e){}
+}
+function resetTweaks() {
+  tweaksState = { mood:'boardroom', chromaEnergy:60, geometry:'architectural' };
+  applyTweaks();
+  Object.entries(tweaksState).forEach(([k,v]) => {
+    try { window.parent.postMessage({ type:'__edit_mode_set_keys', edits:{ [k]:v } }, '*'); } catch(e){}
+  });
+  renderTweaksPanel();
+}
+
+window.addEventListener('message', (e) => {
+  if (!e.data || typeof e.data !== 'object') return;
+  if (e.data.type === '__activate_edit_mode') openTweaks();
+  if (e.data.type === '__deactivate_edit_mode') dismissTweaks();
+});
+window.addEventListener('load', () => {
+    applyTweaks();
+    try { window.parent.postMessage({ type:'__edit_mode_available' }, '*'); } catch(e){}
+    // Precargar iframes en background para que la primera vez que el usuario
+    // abra Programas o Calidad ya estén listos
+    setTimeout(() => {
+      const ifP = document.getElementById('iframeProgramas');
+      const ifC = document.getElementById('iframeCalidad');
+      if (ifP && ifP.src === 'about:blank') {
+        ifP.addEventListener('load', () => {
+          try { ifP.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
+        }, { once:true });
+        ifP.src = 'Dashboard_programas.html';
+      }
+      if (ifC && ifC.src === 'about:blank') {
+        ifC.addEventListener('load', () => {
+          try { ifC.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
+        }, { once:true });
+        ifC.src = 'Dashboard_calidad.html';
+      }
+    }, 1500);
+  });
+
+const history2025 = {
+  planta: { meses:[34.2,39.7,36.8,35.0,40.6,38.3,45.3,44.1,47.2,52.3,43.7,36.4], ytd:41.3 },
+  l1:     { meses:[30.1,27.5,17.5,22.8,29.9,33.1,31.2,27.1,26.3,39.0,33.3,32.3], ytd:28.4 },
+  l2:     { meses:[53.7,null,51.2,52.5,52.7,49.8,60.4,49.0,49.5,null,51.7,null], ytd:51.7 },
+  l3:     { meses:[43.2,59.0,45.1,54.1,55.5,48.7,66.0,50.5,62.4,53.8,58.9,67.9], ytd:56.0 }
+};
+
+let targets = { planta:{anual:42}, l1:{anual:32}, l2:{anual:60}, l3:{anual:65} };
+
+const MESES_ORDEN = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+const MESES_ABR   = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+// Paleta VSPT Propósito — orden semántico para paros (no producción)
+const VSPT_PALETTE = ['#D81840','#701F52','#F08808','#F8C040','#98A040','#B61858','#4E1742','#E0D0B8','#301030'];
+// Color específico para "Tiempo de Producción" en el donut (verde-oliva = bueno)
+const COLOR_PRODUCCION = '#98A040';
+// Mapeo de color por categoría (consistente entre vistas)
+const CAT_COLORS = {
+  'Tiempo de Producción': '#98A040',
+  'Fallas de Equipos':    '#D81840',
+  'Paradas Externas':     '#B61858',
+  'Tiempos de Cambio':    '#F08808',
+  'Tiempos Planeados':    '#F8C040',
+  'NoNa':                 '#701F52',
+  'Tiempos de No Uso':    '#4E1742'
+};
+const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808' };
+
+const CATS = {
+  NO_USO:'Tiempos de No Uso', NONA:'NoNa', CAMBIO:'Tiempos de Cambio',
+  PLANEADO:'Tiempos Planeados', EXTERNA:'Paradas Externas',
+  FALLA:'Fallas de Equipos', PRODUCCION:'Tiempo de Producción'
+};
+
+const parseNum = v => { if (v==null||v==='') return 0; const n=parseFloat(String(v).replace(',','.')); return isNaN(n)?0:n; };
+const get = (r, ...keys) => { for (const k of keys) if (r[k]!==undefined && r[k]!==null && r[k]!=='') return r[k]; return undefined; };
+
+function getAnio(r) {
+  const a = get(r, 'anio', 'año', 'AÑO', 'year', 'YEAR');
+  if (a) return Number(a);
+  // fallback: extraer año de la fecha
+  const f = get(r, 'fecha','Fecha','FECHA');
+  if (f) {
+    const d = new Date(f);
+    if (!isNaN(d.getTime())) return d.getFullYear();
+  }
+  return null;
+}
+
+function setYear(y) {
+  activeYear = Number(y);
+  document.querySelectorAll('.year-btn').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.year) === activeYear);
+  });
+  if (opinonaCargada) {
+    setupFilters();
+    onFilterChange();
+  } else {
+    renderKPIsOnly();
+  }
+}
+
+function normalizeClasif(s) {
+  if (!s) return '';
+  const t = String(s).trim().toLowerCase();
+  if (t.startsWith('tiempo de producc'))   return CATS.PRODUCCION;
+  if (t.startsWith('tiempos de no uso'))   return CATS.NO_USO;
+  if (t === 'nona')                        return CATS.NONA;
+  if (t.startsWith('tiempos de cambio'))   return CATS.CAMBIO;
+  if (t.startsWith('tiempos planeados'))   return CATS.PLANEADO;
+  if (t.startsWith('paradas externas'))    return CATS.EXTERNA;
+  if (t.startsWith('fallas de equipos'))   return CATS.FALLA;
+  return String(s).trim();
+}
+
+function normalizeMes(v) {
+  if (!v) return '';
+  const s = String(v).toUpperCase().trim();
+  const m = s.match(/(ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)/);
+  return m ? m[1] : s;
+}
+
+function toDate(v) { if (!v) return null; const d = new Date(v); return isNaN(d)?null:d; }
+
+// Robusta: busca cuál de las columnas contiene la categoría AGRUPADORA
+function getClasif1(r) {
+  const candidates = [
+    r['Clasificación_1'], r['Clasificacion_1'], r['clasificacion_1'],
+    r['Clasificación'],   r['Clasificacion'],   r['clasificacion']
+  ];
+  for (const c of candidates) {
+    const n = normalizeClasif(c);
+    if (Object.values(CATS).includes(n)) return n;
+  }
+  for (const c of candidates) if (c) return normalizeClasif(c);
+  return '';
+}
+
+function getClasif2(r) {
+  const values = [
+    r['Clasificación_2'], r['Clasificacion_2'], r['clasificacion_2'],
+    r['Clasificación_1'], r['Clasificacion_1'], r['clasificacion_1'],
+    r['Clasificación']
+  ];
+  for (const v of values) {
+    if (!v) continue;
+    const n = normalizeClasif(v);
+    if (!Object.values(CATS).includes(n) && String(v).trim() !== '') return String(v).trim();
+  }
+  return '';
+}
+
+const getVarTiempo = r => parseNum(get(r,'Var. Tiempo','var_tiempo','Var_Tiempo','Var.Tiempo'));
+const getPerdidas  = r => parseNum(get(r,'Perdidas de Velocidad','Pérdidas de Velocidad','perdidas_velocidad','Perdidas_de_Velocidad'));
+const getVarPct    = r => parseNum(get(r,'Var. %','Var.%','var_pct','Var_%','var_%','Var%'));
+const getCajas     = r => parseNum(get(r,'Cantidad cajas Producidas','Cantidad_cajas_Producidas','cajas'));
+const getPNI       = r => parseNum(get(r,'Pt. No conforme','Pt_No_conforme','pt_no_conforme','PNI'));
+const getC9L       = r => parseNum(get(r,'C9L','c9l'));
+const getTipoEti   = r => String(get(r,'Tipo Etiquetado','Tipo_Etiquetado','tipo_etiquetado')||'').toUpperCase().trim();
+const getLinea     = r => String(get(r,'linea','Linea','LINEA')||'').toUpperCase().trim();
+const getMTO       = r => String(get(r,'MTO/OP','mto/op','MTO_OP','mto_op')||'').toUpperCase().trim().replace(':','');
+const getFecha     = r => toDate(get(r,'Fecha','fecha'));
+const getPTA       = r => String(get(r,'Cambio Formato PT A','Cambio_Formato_PT_A','cambio_formato_pt_a')||'').trim();
+const getPTB       = r => String(get(r,'Cambio Formato PT B','Cambio_Formato_PT_B','cambio_formato_pt_b')||'').trim();
+
+window.addEventListener('load', init);
+
+async function init() {
+  document.documentElement.style.setProperty('--tab-color', THEME_COLOR[activeTab] || '#F9C13F');
+  const st = localStorage.getItem(TARGETS_KEY);
+  if (st) targets = JSON.parse(st);
+  const sbState = localStorage.getItem('vspt_sidebar_collapsed');
+  if (sbState === '1') { document.getElementById('sidebar').classList.add('collapsed'); document.querySelector('.main').classList.add('sb-collapsed'); document.getElementById('sidebarToggle').innerText = '›'; }
+
+  // === FASE 1: KPI hoja (rápido) ===
+  setFiltrosBloqueados(true);
+
+  const kpiCached = localStorage.getItem(CACHE_KPI_KEY);
+  if (kpiCached) {
+    try {
+      kpiData = JSON.parse(kpiCached);
+      showContent();
+      renderKPIsOnly();
+      setStatus('amber', `CACHE KPI · CARGANDO DETALLE...`);
+    } catch(e) {}
+  }
+
+  try {
+    const resK = await fetch(API_URL + '?tabla=kpi_planta_mensual');
+    const jK = await resK.json();
+    if (jK.status === 'success' && Array.isArray(jK.kpi_planta_mensual)) {
+      kpiData = jK.kpi_planta_mensual;
+      trySet(CACHE_KPI_KEY, JSON.stringify(kpiData));
+      showContent();
+      renderKPIsOnly();
+      setStatus('amber', `KPI · CARGANDO DETALLE... (${kpiData.length} filas)`);
+    }
+  } catch (err) {
+    console.warn('[KPI] error fetch:', err);
+  }
+
+  // === FASE 2: OPINONA cruda (lento, en background) ===
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    try {
+      rawData = JSON.parse(cached);
+      opinonaCargada = true;
+      showContent();
+      setupFilters(); setFiltrosBloqueados(false); onFilterChange();
+      setStatus('amber', `CACHE · ACTUALIZANDO... (${rawData.length} filas)`);
+    } catch(e) {}
+  }
+
+  try {
+    const res = await fetch(API_URL + '?tabla=opinona');
+    const j = await res.json();
+    if (j.status === 'success' && Array.isArray(j.opinona)) {
+      rawData = j.opinona;
+      opinonaCargada = true;
+      trySet(CACHE_KEY, JSON.stringify(rawData));
+      showContent();
+      setupFilters(); setFiltrosBloqueados(false); onFilterChange();
+      const conTurno = rawData.filter(r => get(r,'turno_plan')).length;
+      setStatus('green', `VINCULADO · ${rawData.length} REGISTROS · ${conTurno} con turno`);
+    } else { throw new Error(j.msg || 'respuesta inválida'); }
+  } catch (err) {
+    console.error(err);
+    if (rawData.length) { showContent(); setStatus('amber', 'CACHE · SIN CONEXIÓN'); }
+    else if (kpiData.length) { showContent(); setStatus('amber', 'KPI · SIN DETALLE'); }
+    else { setStatus('red','ERROR API'); showError(err.message); }
+  }
+}
+
+function trySet(key, val) {
+  try { localStorage.setItem(key, val); }
+  catch(e) { console.warn('[cache] no se pudo guardar', key, '-', e.name); }
+}
+
+function getTurnoFromPlan(r) {
+  return normalizeTurno(get(r,'turno_plan','Turno_plan','TurnoPlan'));
+}
+
+function normalizeTurno(v) {
+  const s = String(v||'').toUpperCase().trim();
+  if (s.includes('MAÑ') || s.includes('MAN')) return 'MAÑANA';
+  if (s.includes('TARD')) return 'TARDE';
+  if (s.includes('NOCH')) return 'NOCHE';
+  return s || 'S/D';
+}
+
+function showContent() { document.getElementById('loadingSpinner').style.display = 'none'; document.getElementById('tab-'+activeTab).style.display = 'block'; }
+function showError(msg) { document.getElementById('loadingSpinner').innerHTML = `<div style="color:var(--red);text-align:center;"><div style="font-size:44px;">⚠️</div><div style="margin-top:12px;font-weight:700;">Error conectando con API</div><div style="color:var(--muted);margin-top:6px;font-size:12px;">${msg}</div></div>`; }
+function setStatus(kind, msg) { const b = document.getElementById('statusBadge'); b.className = 'status-badge ' + (kind==='green'?'':kind); document.getElementById('statusMsg').innerText = msg; }
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  sb.classList.toggle('collapsed');
+  const collapsed = sb.classList.contains('collapsed');
+  document.querySelector('.main').classList.toggle('sb-collapsed', collapsed);
+  document.getElementById('sidebarToggle').innerText = collapsed ? '›' : '‹';
+  localStorage.setItem('vspt_sidebar_collapsed', collapsed ? '1' : '0');
+  setTimeout(() => render(), 320);
+}
+
+// ─── MULTI-SELECT (checkboxes) ───────────────────────────────────────────────
+const MS_IDS = ['f-turno','f-clasif','f-subclasif','f-tipoeti','f-formato'];
+const MS_PLACEHOLDER = { 'f-turno':'Todos','f-clasif':'Todas','f-subclasif':'Todas','f-tipoeti':'Todos','f-formato':'Todos' };
+
+function msSelected(id) {
+  const sel = document.getElementById(id);
+  if (!sel) return [];
+  return Array.from(sel.selectedOptions).map(o => o.value).filter(v => v !== '');
+}
+
+function msPopulate(id, values) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const prev = new Set(msSelected(id));
+  sel.innerHTML = values.map(v => `<option value="${String(v).replace(/"/g,'&quot;')}"${prev.has(String(v))?' selected':''}>${v}</option>`).join('');
+  msBuildPanel(id, values);
+  msSyncUI(id);
+}
+
+function msBuildPanel(id, values) {
+  const panel = document.getElementById(id + '-panel');
+  if (!panel) return;
+  const opts = values.map(v => {
+    const esc = String(v).replace(/"/g,'&quot;');
+    return `<label class="ms-opt"><input type="checkbox" value="${esc}" onchange="msToggleVal('${id}', this.value, this.checked)"><span title="${esc}">${v}</span></label>`;
+  }).join('');
+  panel.innerHTML =
+    `<div class="ms-actions">
+       <button type="button" class="ms-act" onclick="msSetAll('${id}', true)">Todos</button>
+       <button type="button" class="ms-act" onclick="msSetAll('${id}', false)">Ninguno</button>
+     </div>` + (opts || '<div style="padding:8px;color:var(--muted);font-size:11px;">Sin opciones</div>');
+}
+
+function msToggleVal(id, val, checked) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  for (const o of sel.options) { if (o.value === val) o.selected = checked; }
+  msSyncUI(id);
+  onFilterChange();
+}
+
+function msSetAll(id, selectAll) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  for (const o of sel.options) o.selected = selectAll;
+  msSyncUI(id);
+  onFilterChange();
+}
+
+// Refresca botón + checkboxes desde el estado del <select> oculto (fuente de verdad)
+function msSyncUI(id) {
+  const sel = document.getElementById(id);
+  const txt = document.getElementById(id + '-text');
+  const panel = document.getElementById(id + '-panel');
+  if (!sel || !txt) return;
+  const selected = msSelected(id);
+  if (!selected.length) {
+    txt.textContent = MS_PLACEHOLDER[id] || 'Todos';
+    txt.classList.add('placeholder');
+  } else if (selected.length === 1) {
+    txt.textContent = selected[0];
+    txt.classList.remove('placeholder');
+  } else if (selected.length === sel.options.length) {
+    txt.textContent = 'Todos (' + selected.length + ')';
+    txt.classList.remove('placeholder');
+  } else {
+    txt.textContent = selected.length + ' seleccionados';
+    txt.classList.remove('placeholder');
+  }
+  if (panel) {
+    const set = new Set(selected);
+    panel.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = set.has(cb.value); });
+  }
+}
+
+function msSyncAll() { MS_IDS.forEach(msSyncUI); }
+
+function msOpen(id, ev) {
+  if (ev) ev.stopPropagation();
+  const wrap = document.getElementById('ms-' + id);
+  if (!wrap) return;
+  const willOpen = !wrap.classList.contains('open');
+  document.querySelectorAll('.ms.open').forEach(w => w.classList.remove('open'));
+  if (willOpen) wrap.classList.add('open');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ms')) document.querySelectorAll('.ms.open').forEach(w => w.classList.remove('open'));
+});
+
+function setupFilters() {
+  const dataYear = rawData.filter(r => {
+    const a = getAnio(r);
+    return a === null || a === activeYear;
+  });
+
+  const meses = [...new Set(dataYear.map(r => normalizeMes(get(r,'mes','Mes','MES'))))].filter(Boolean);
+  meses.sort((a,b)=> MESES_ORDEN.indexOf(a) - MESES_ORDEN.indexOf(b));
+  document.getElementById('f-periodo').innerHTML = '<option value="ALL">Vista Anual (YTD)</option>' + meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+
+  const semanas = [...new Set(dataYear.map(r => get(r,'Semana','semana')).filter(v=>v!=null && v!==''))].sort((a,b)=>Number(a)-Number(b));
+  document.getElementById('f-semana').innerHTML = '<option value="">Todas</option>' + semanas.map(s=>`<option value="${s}">Semana ${s}</option>`).join('');
+
+  const turnos = [...new Set(dataYear.map(r => String(get(r,'Turno','Turno ','turno')||'').trim()).filter(Boolean))].sort();
+  msPopulate('f-turno', turnos);
+
+  const clasifs = [...new Set(dataYear.map(r => getClasif1(r)).filter(Boolean))].sort();
+  msPopulate('f-clasif', clasifs);
+
+  const subs = [...new Set(dataYear.map(r => getClasif2(r)).filter(Boolean))].sort();
+  msPopulate('f-subclasif', subs);
+
+  const tipos = [...new Set(dataYear.map(r => getTipoEti(r)).filter(Boolean))].sort();
+  msPopulate('f-tipoeti', tipos);
+
+  const formatos = [...new Set(dataYear.map(r => get(r,'Formato_1','Formato','FORMATO','formato')).filter(Boolean))].sort();
+  msPopulate('f-formato', formatos);
+}
+
+function clearFilters() {
+  ['f-periodo','f-semana','f-mto'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = (id==='f-periodo'?'ALL':'');
+  });
+  MS_IDS.forEach(id => { const el = document.getElementById(id); if (el) { for (const o of el.options) o.selected = false; } msSyncUI(id); });
+  document.getElementById('f-desde').value = '';
+  document.getElementById('f-hasta').value = '';
+  document.getElementById('f-op').value = '';
+  onFilterChange();
+}
+
+function applyFilters(baseData) {
+  const fPer = document.getElementById('f-periodo').value;
+  const fDes = document.getElementById('f-desde').value;
+  const fHas = document.getElementById('f-hasta').value;
+  const fSem = document.getElementById('f-semana').value;
+  const fTur = msSelected('f-turno');
+  const fCla = msSelected('f-clasif');
+  const fSub = msSelected('f-subclasif');
+  const fMto = document.getElementById('f-mto').value;
+  const fTE  = msSelected('f-tipoeti');
+  const fFor = msSelected('f-formato');
+  const fOp  = document.getElementById('f-op').value.trim().toLowerCase();
+
+  return baseData.filter(r => {
+    // Filtro de año (siempre primero — separa 2025 de 2026)
+    const a = getAnio(r);
+    if (a !== null && a !== activeYear) return false;
+    if (fPer !== 'ALL' && normalizeMes(get(r,'mes','Mes','MES')) !== fPer) return false;
+    if (fDes || fHas) {
+      const d = getFecha(r);
+      if (!d) return false;
+      if (fDes && d < new Date(fDes+'T00:00:00')) return false;
+      if (fHas && d > new Date(fHas+'T23:59:59')) return false;
+    }
+    if (fSem && String(get(r,'Semana','semana')) !== String(fSem)) return false;
+    if (fTur.length && !fTur.includes(String(get(r,'Turno','Turno ','turno')||'').trim())) return false;
+    if (fCla.length && !fCla.includes(getClasif1(r))) return false;
+    if (fSub.length && !fSub.includes(getClasif2(r))) return false;
+    if (fMto && !getMTO(r).includes(fMto)) return false;
+    if (fTE.length && !fTE.includes(getTipoEti(r))) return false;
+    if (fFor.length && !fFor.includes(get(r,'Formato_1','Formato','FORMATO','formato'))) return false;
+    if (fOp) {
+      const op = String(get(r,'Id. Producción','Id. Produccion','id_produccion','OP','op')||'').toLowerCase();
+      if (!op.includes(fOp)) return false;
+    }
+    return true;
+  });
+}
+
+function onFilterChange() { msSyncAll(); filteredData = applyFilters(rawData); render(); }
+
+// Suma filas de KPI_PLANTA_MENSUAL filtradas por tabId + año + (opcional) mes.
+// Devuelve un objeto con la misma forma que procesarMetricas, solo campos de KPI cards.
+function metricasDesdeKPI(kpiRows, tabId, anio, mesNombre) {
+  const filtradas = kpiRows.filter(r => {
+    if (Number(r.anio) !== Number(anio)) return false;
+    if (tabId !== 'planta' && String(r.linea).toUpperCase() !== tabId.toUpperCase()) return false;
+    if (mesNombre && mesNombre !== 'ALL') {
+      const nm = MESES_ORDEN_NUM[Number(r.mes)];
+      if (nm !== mesNombre) return false;
+    }
+    return true;
+  });
+
+  const acc = {
+    tot:0, t_no_uso:0, t_nona:0, t_cambio:0, t_planeado:0, t_externa:0, t_falla:0, t_produccion:0,
+    perdidas_vel:0, cajas:0, semielaborado:0, n_lotes:0, pni:0, c9l:0,
+    fallas_mto:0, fallas_op:0, fallas_inv:0
+  };
+  filtradas.forEach(r => {
+    Object.keys(acc).forEach(k => { acc[k] += Number(r[k]) || 0; });
+  });
+
+  const tConPersonal = acc.tot - acc.t_no_uso;
+  const tEfectivo    = tConPersonal - acc.t_nona;
+  const tProdDisp    = tEfectivo - acc.t_cambio - acc.t_planeado;
+  const tActualProd  = tProdDisp - acc.t_externa;
+  const tOperacion   = tActualProd - acc.t_falla;
+  const tTeorico     = tOperacion - acc.perdidas_vel;
+  const opi = tEfectivo > 0 ? (tTeorico / tEfectivo) * 100 : 0;
+  const lotePromedio = acc.n_lotes ? acc.cajas / acc.n_lotes : 0;
+  // PNI convertido a cajas de 9L con la relación C9L/cajas agregada (fallback cuando se lee del KPI ya sumado).
+  const pniC9L = acc.cajas > 0 ? acc.pni * (acc.c9l / acc.cajas) : acc.pni;
+  const pctPNI = acc.c9l > 0 ? (pniC9L / acc.c9l) * 100 : 0;
+  const hlTotal = acc.c9l * (window.HL_FACTOR ?? 0.09);
+
+  return {
+    opi, tConPersonal, tEfectivo, tProdDisp, tActualProd, tOperacion, tTeorico,
+    perdidasVel: acc.perdidas_vel,
+    tiempoPorClasif: {
+      [CATS.NO_USO]: acc.t_no_uso, [CATS.NONA]: acc.t_nona, [CATS.CAMBIO]: acc.t_cambio,
+      [CATS.PLANEADO]: acc.t_planeado, [CATS.EXTERNA]: acc.t_externa, [CATS.FALLA]: acc.t_falla,
+      [CATS.PRODUCCION]: acc.t_produccion
+    },
+    cajas: acc.cajas, semielaborado: acc.semielaborado, pni: pniC9L, pctPNI, lotePromedio,
+    c9lTotal: acc.c9l, hlTotal,
+    fallasOrg: { MTO: acc.fallas_mto, OP: acc.fallas_op, INV: acc.fallas_inv }
+  };
+}
+
+function procesarMetricas(data) {
+  const tPor = { [CATS.NO_USO]:0, [CATS.NONA]:0, [CATS.CAMBIO]:0, [CATS.PLANEADO]:0, [CATS.EXTERNA]:0, [CATS.FALLA]:0, [CATS.PRODUCCION]:0 };
+  let tot = 0, perdidasVel = 0;
+  let cajas = 0, semielaborado = 0, pni = 0, c9lTotal = 0;
+  const paros = {};
+  const fallasOrg = { MTO:0, OP:0, INV:0 };
+  const fallasEqMTO = {};
+  const fallasEqOP  = {};
+  const paradasExtEq = {};
+  const lineas = { L1:0, L2:0, L3:0 };
+  const cajasList = [];
+  const hlPorFecha = {};
+  const hlPorFechaTurno = {}; // { fecha: { MAÑANA, TARDE, NOCHE, 'S/D' } }
+  const hlPorFechaTipo = {};  // { fecha: { LLENADO, VESTIDO, ... } }
+  const hlPorTipo = {};
+  const fallasPorSemana = {}; // { semana: horas }
+  const lotesPorSemana = {}; // { semana: { suma, count } }
+
+  data.forEach(r => {
+    const v = getVarTiempo(r);
+    const pv = getPerdidas(r);
+    const cls = getClasif1(r);
+    const linea = getLinea(r);
+    const te = getTipoEti(r);
+    const isSemielab = te === 'LLENADO'; // solo "LLENADO" puro (no "LLENADO+VESTIDO")
+    const cajasFila = getCajas(r);
+    const c9l = getC9L(r);
+
+    tot += v;
+    if (tPor[cls] !== undefined) tPor[cls] += v;
+    perdidasVel += pv;
+
+    if (cajasFila > 0) {
+      if (isSemielab) semielaborado += cajasFila;
+      else {
+        cajas += cajasFila;
+        cajasList.push(cajasFila);
+        const sem = Number(get(r,'Semana','semana'));
+        if (sem >= 1 && sem <= 53) {
+          if (!lotesPorSemana[sem]) lotesPorSemana[sem] = { suma:0, count:0 };
+          lotesPorSemana[sem].suma += cajasFila;
+          lotesPorSemana[sem].count++;
+        }
+      }
+    }
+
+    // PNI convertido fila a fila a cajas de 9L (escala por la relación C9L/cajas de ese renglón).
+    const pniFila = getPNI(r);
+    if (pniFila > 0) {
+      pni += cajasFila > 0 ? pniFila * (c9l / cajasFila) : pniFila;
+    }
+
+    if (c9l > 0) {
+      c9lTotal += c9l;
+      // Desglose por tipo etiquetado para HL (Vestido / Llenado / Llenado+Vestido / otros)
+      let tipoHL = 'OTROS';
+      if (te === 'LLENADO') tipoHL = 'LLENADO';
+      else if (te === 'VESTIDO') tipoHL = 'VESTIDO';
+      else if (te.includes('LLENADO') && te.includes('VESTIDO')) tipoHL = 'LLENADO+VESTIDO';
+      else if (te) tipoHL = te;
+
+      const hl = c9l * (window.HL_FACTOR ?? 0.09);
+      const f = getFecha(r);
+      if (f) {
+        const key = f.toISOString().slice(0,10);
+        hlPorFecha[key] = (hlPorFecha[key]||0) + hl;
+        const t = getTurnoFromPlan(r);
+        if (!hlPorFechaTurno[key]) hlPorFechaTurno[key] = {};
+        hlPorFechaTurno[key][t] = (hlPorFechaTurno[key][t]||0) + hl;
+        if (!hlPorFechaTipo[key]) hlPorFechaTipo[key] = {};
+        hlPorFechaTipo[key][tipoHL] = (hlPorFechaTipo[key][tipoHL]||0) + hl;
+      }
+      hlPorTipo[tipoHL] = (hlPorTipo[tipoHL]||0) + hl;
+    }
+
+    if (cls === CATS.FALLA) {
+      const sem = Number(get(r,'Semana','semana'));
+      if (sem >= 1 && sem <= 53) fallasPorSemana[sem] = (fallasPorSemana[sem]||0) + v;
+    }
+
+    if (lineas[linea] !== undefined && cls !== CATS.NO_USO) lineas[linea] += v;
+
+    if (cls && cls !== CATS.NO_USO) {
+      paros[cls] = (paros[cls]||0) + v;
+    }
+
+    if (cls === CATS.FALLA) {
+      const eq = getClasif2(r) || 'Sin clasificar';
+      const mto = getMTO(r);
+      if (mto.includes('MTO')) { fallasOrg.MTO += v; fallasEqMTO[eq] = (fallasEqMTO[eq]||0) + v; }
+      else if (mto.includes('INV')) { fallasOrg.INV += v; }
+      else { fallasOrg.OP += v; fallasEqOP[eq] = (fallasEqOP[eq]||0) + v; }
+    }
+    if (cls === CATS.EXTERNA) {
+      const eq = getClasif2(r) || 'Sin clasificar';
+      paradasExtEq[eq] = (paradasExtEq[eq]||0) + v;
+    }
+  });
+
+  const tConPersonal = tot - tPor[CATS.NO_USO];
+  const tEfectivo    = tConPersonal - tPor[CATS.NONA];
+  const tProdDisp    = tEfectivo - tPor[CATS.CAMBIO] - tPor[CATS.PLANEADO];
+  const tActualProd  = tProdDisp - tPor[CATS.EXTERNA];
+  const tOperacion   = tActualProd - tPor[CATS.FALLA];
+  const tTeorico     = tOperacion - perdidasVel;
+  const opi = tEfectivo > 0 ? (tTeorico / tEfectivo) * 100 : 0;
+
+  const lotePromedio = cajasList.length ? cajas / cajasList.length : 0;
+  const pctPNI = c9lTotal > 0 ? (pni / c9lTotal) * 100 : 0;
+  const hlTotal = c9lTotal * (window.HL_FACTOR ?? 0.09);
+
+  return {
+    tot, tConPersonal, tEfectivo, tProdDisp, tActualProd, tOperacion, tTeorico, perdidasVel,
+    tiempoPorClasif: tPor, opi,
+    cajas, semielaborado, pni, pctPNI, lotePromedio, cajasList, lotesPorSemana,
+    c9lTotal, hlTotal, hlPorFecha, hlPorFechaTurno, hlPorFechaTipo, hlPorTipo, fallasPorSemana,
+    paros, fallasOrg, fallasEqMTO, fallasEqOP, paradasExtEq, lineas
+  };
+}
+
+function changeTab(id) {
+  activeTab = id;
+  document.documentElement.style.setProperty('--tab-color', THEME_COLOR[id] || '#F9C13F');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === id);
+    if (b.dataset.tab === id) b.style.setProperty('--tab-color', THEME_COLOR[id] || 'var(--vspt-amber)');
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  document.getElementById('tab-'+id).style.display = 'block';
+  
+  const EMBED = {
+    calidad:   { iframeId:'iframeCalidad',   src:'Dashboard_calidad.html' },
+    programas: { iframeId:'iframeProgramas', src:'Dashboard_programas.html' },
+    personal:  { iframeId:'iframePersonal',  src:'Dashboard_personal.html' }
+  };
+  if (EMBED[id]) {
+  const iframeId = EMBED[id].iframeId;
+  const src = EMBED[id].src;
+  const iframe = document.getElementById(iframeId);
+  if (iframe && iframe.src === 'about:blank') {
+    iframe.addEventListener('load', () => {
+      try { iframe.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
+    }, { once:true });
+    iframe.src = src;
+  } else {
+    try { iframe.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
+  }
+  document.getElementById('sidebar').style.display = 'none';
+  document.getElementById('sidebarToggle').style.display = 'none';
+} else {
+  document.getElementById('sidebar').style.display = '';
+  document.getElementById('sidebarToggle').style.display = '';
+}
+  render();
+}
+
+function render() {
+  if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal') return;
+  if (!rawData.length) return;
+  if (activeTab === 'planta')    renderTab('planta', filteredData);
+  else if (activeTab === 'l1')   renderTab('l1', filteredData.filter(r => getLinea(r) === 'L1'));
+  else if (activeTab === 'l2')   renderTab('l2', filteredData.filter(r => getLinea(r) === 'L2'));
+  else if (activeTab === 'l3')   renderTab('l3', filteredData.filter(r => getLinea(r) === 'L3'));
+  else if (activeTab === 'objetivos') renderObjetivos();
+}
+
+// Render solo KPIs cards + gráfico OPINONA Mensual, leyendo de la hoja KPI_PLANTA_MENSUAL.
+// Se usa cuando todavía no llegó OPINONA cruda.
+function renderKPIsOnly() {
+  if (!kpiData.length) return;
+  ['planta','l1','l2','l3'].forEach(tabId => {
+    renderTabKPIsOnly(tabId);
+  });
+}
+
+// Si está en fase KPI, el cambio de período debe redibujar KPIs; si ya hay datos crudos, recalcula todo.
+function onFilterChangeSafe() {
+  if (opinonaCargada) onFilterChange();
+  else renderKPIsOnly();
+}
+
+function renderTabKPIsOnly(tabId) {
+  const container = document.getElementById('tab-'+tabId);
+  if (!container) return;
+
+  const fPer = document.getElementById('f-periodo')?.value || 'ALL';
+  const m = metricasDesdeKPI(kpiData, tabId, activeYear, fPer);
+  const target = targets[tabId]?.anual ?? 40;
+  const isPlanta = tabId === 'planta';
+  const lineId = tabId.toUpperCase();
+  const themeColor = THEME_COLOR[tabId];
+  const tabBadge = `<span class="chart-linea-badge" style="background:${themeColor}28;color:${themeColor};border:1px solid ${themeColor}60;">${isPlanta ? 'PLANTA' : lineId}</span>`;
+  const kpiGlobalClass = m.opi >= target ? 'olive' : 'red';
+  const heroCls = m.opi >= target ? '' : 'below';
+
+  container.innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi-card kpi-hero ${heroCls}" style="grid-column:span 2;">
+        <div class="kpi-label">OPINONA ${isPlanta ? 'PLANTA' : lineId}</div>
+        <div class="kpi-value ${kpiGlobalClass}">${m.opi.toFixed(1)}%</div>
+        <div class="meta">META: <strong>${target}%</strong> · Δ ${(m.opi - target >= 0 ? '+' : '')}${(m.opi - target).toFixed(1)} pp</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">T. Efectivo / T. Teórico</div>
+        <div class="kpi-value amber">${m.tEfectivo.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
+        <div class="kpi-sub">Teórico: ${m.tTeorico.toFixed(1)} h</div>
+      </div>
+      <div class="kpi-card olive">
+        <div class="kpi-label">Cajas Producidas</div>
+        <div class="kpi-value olive">${m.cajas.toLocaleString('es-AR')}</div>
+        <div class="kpi-sub">Lote prom: ${Math.round(m.lotePromedio).toLocaleString('es-AR')}</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Prod. No Conforme</div>
+        <div class="kpi-value red">${Math.round(m.pni).toLocaleString('es-AR')} <span style="font-size:14px;opacity:.6">C9L</span></div>
+        <div class="kpi-sub">${m.pctPNI.toFixed(2)}% del total C9L</div>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card cream">
+        <div class="kpi-label">Semielaborado Envasado</div>
+        <div class="kpi-value cream">${m.semielaborado.toLocaleString('es-AR')} <span style="font-size:14px;opacity:.6">bot</span></div>
+        <div class="kpi-sub">Tipo Etiquetado = LLENADO</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">Volumen Envasado</div>
+        <div class="kpi-value orange">${m.hlTotal.toFixed(1)} <span style="font-size:14px;opacity:.6">HL</span></div>
+        <div class="kpi-sub">C9L total: ${m.c9lTotal.toLocaleString('es-AR')}</div>
+      </div>
+      <div class="kpi-card wine">
+        <div class="kpi-label">T. con Personal</div>
+        <div class="kpi-value wine">${m.tConPersonal.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
+        <div class="kpi-sub">No Uso: ${m.tiempoPorClasif[CATS.NO_USO].toFixed(1)} h</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Fallas MTO</div>
+        <div class="kpi-value red">${m.fallasOrg.MTO.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
+        <div class="kpi-sub">OP: ${m.fallasOrg.OP.toFixed(1)} h · INV: ${m.fallasOrg.INV.toFixed(1)} h</div>
+      </div>
+      <div class="kpi-card amber" onclick="openModalPerdidasVel()" style="cursor:pointer;" title="Ver detalle de pérdidas de velocidad">
+        <div class="kpi-label">Pérdidas de Velocidad ↗</div>
+        <div class="kpi-value amber">${m.perdidasVel.toFixed(2)} <span style="font-size:14px;opacity:.6">h</span></div>
+        <div class="kpi-sub">Var. % &lt; 70% · toca para ver detalle</div>
+      </div>
+    </div>
+
+    <div class="section-title">Evolución Anual — 2025 vs 2026</div>
+    <div class="chart-card full" style="margin-bottom:14px;">
+      <div class="chart-title">${tabBadge} OPINONA Mensual <span class="hint">meta: ${target}%</span></div>
+      <div id="chart-${tabId}-evo" style="height:320px;"></div>
+    </div>
+
+    <div class="kpi-loading-hint">⏳ Cargando datos detallados (charts, tabla de control, filtros avanzados)...</div>
+  `;
+
+  drawEvolutivoDesdeKPI(`chart-${tabId}-evo`, tabId, target, themeColor);
+}
+
+function drawEvolutivoDesdeKPI(id, tabId, target, themeColor) {
+  const lineByYear = { 2025: new Array(12).fill(null), 2026: new Array(12).fill(null) };
+  const ytdByYear  = { 2025: null, 2026: null };
+
+  [2025, 2026].forEach(yr => {
+    for (let mes = 1; mes <= 12; mes++) {
+      const m = metricasDesdeKPI(kpiData, tabId, yr, MESES_ORDEN_NUM[mes]);
+      if (m.tEfectivo > 0) {
+        const v = Number(m.opi.toFixed(1));
+        lineByYear[yr][mes-1] = v > 0 ? v : null;
+      }
+    }
+    const mY = metricasDesdeKPI(kpiData, tabId, yr, 'ALL');
+    if (mY.tEfectivo > 0) {
+      const v = Number(mY.opi.toFixed(1));
+      ytdByYear[yr] = v > 0 ? v : null;
+    }
+  });
+
+  if (lineByYear[2025].every(v => v === null)) {
+    const h25 = history2025[tabId];
+    if (h25) {
+      lineByYear[2025] = [...h25.meses];
+      ytdByYear[2025]  = h25.ytd;
+    }
+  }
+
+  const line2025 = [...lineByYear[2025], null];
+  const line2026 = [...lineByYear[2026], null];
+  const bar2025  = [...new Array(12).fill(null), ytdByYear[2025]];
+  const bar2026  = [...new Array(12).fill(null), ytdByYear[2026]];
+  const barMeta  = new Array(13).fill(null);
+  barMeta[12] = target;
+
+  drawChart(id, {
+    series: [
+      { name:'2025',   type:'line',   data: line2025 },
+      { name:'2026',   type:'line',   data: line2026 },
+      { name:'YTD 25', type:'column', data: bar2025 },
+      { name:'YTD 26', type:'column', data: bar2026 },
+      { name:'Meta',   type:'column', data: barMeta }
+    ],
+    chart: { type:'line', height:320, toolbar:{show:false}, fontFamily:'Montserrat', foreColor:getTextColor() },
+    colors: ['#a89aa8', themeColor, '#a89aa8', themeColor, '#98A040'],
+    stroke: { width:[2,3,0,0,0], curve:'smooth' },
+    markers: { size:[4,5,0,0,0] },
+    plotOptions: { bar:{ columnWidth:'55%', borderRadius:3, dataLabels:{ position:'top' } } },
+    xaxis: { categories:[...MESES_ABR,'YTD'], labels:{style:{fontSize:'11px',colors:getTextColor()}} },
+    yaxis: { labels:{formatter: v => v ? v.toFixed(0)+'%' : '', style:{colors:getTextColor()}} },
+    grid: { borderColor:getGridColor(), strokeDashArray:4, padding:{left:10,right:20,top:10} },
+    annotations: { yaxis:[{ y:target, borderColor:themeColor, strokeDashArray:6, borderWidth:2, label:{ position:'left', offsetX:80, offsetY:-2, text:'Meta '+target+'%', style:{color:'#fff',background:themeColor,fontSize:'10px',fontWeight:700} } }] },
+    dataLabels: { enabled:true, formatter: v => v ? v.toFixed(1)+'%' : '', style:{fontSize:'10px',fontWeight:700}, background:{enabled:true, borderRadius:3, padding:3, borderWidth:1} },
+    legend: { position:'top', horizontalAlign:'right', fontSize:'11px', labels:{colors:getTextColor()} },
+    tooltip: { theme: isDark?'dark':'light', y:{ formatter: v => v!=null ? v+'%' : '—' } }
+  });
+}
+
+function setFiltrosBloqueados(bloq) {
+  const ids = ['f-desde','f-hasta','f-semana','f-turno','f-clasif','f-subclasif','f-mto','f-tipoeti','f-formato','f-op'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = bloq;
+    const ms = document.getElementById('ms-' + id);
+    if (ms) { ms.classList.toggle('disabled', bloq); if (bloq) ms.classList.remove('open'); }
+    const wrap = el.closest('.filter') || el.parentElement;
+    if (wrap) wrap.classList.toggle('filter-locked', bloq);
+  });
+}
+
+function renderTab(tabId, data) {
+  const container = document.getElementById('tab-'+tabId);
+  if (!data.length) { container.innerHTML = '<div class="no-data">Sin datos para los filtros seleccionados</div>'; return; }
+
+  const m = procesarMetricas(data);
+  const target = targets[tabId]?.anual ?? 40;
+  const isPlanta = tabId === 'planta';
+  const lineId = tabId.toUpperCase();
+  const themeColor = THEME_COLOR[tabId];
+  const tabBadge = `<span class="chart-linea-badge" style="background:${themeColor}28;color:${themeColor};border:1px solid ${themeColor}60;">${isPlanta ? 'PLANTA' : lineId}</span>`;
+  const kpiGlobalClass = m.opi >= target ? 'olive' : 'red';
+  const heroCls = m.opi >= target ? '' : 'below';
+
+  container.innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi-card kpi-hero ${heroCls}" style="grid-column:span 2;">
+        <div class="kpi-label">OPINONA ${isPlanta ? 'PLANTA' : lineId}</div>
+        <div class="kpi-value ${kpiGlobalClass}">${m.opi.toFixed(1)}%</div>
+        <div class="meta">META: <strong>${target}%</strong> · Δ ${(m.opi - target >= 0 ? '+' : '')}${(m.opi - target).toFixed(1)} pp</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">T. Efectivo / T. Teórico</div>
+        <div class="kpi-value amber">${m.tEfectivo.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
+        <div class="kpi-sub">Teórico: ${m.tTeorico.toFixed(1)} h</div>
+      </div>
+      <div class="kpi-card olive">
+        <div class="kpi-label">Cajas Producidas</div>
+        <div class="kpi-value olive">${m.cajas.toLocaleString('es-AR')}</div>
+        <div class="kpi-sub">Lote prom: ${Math.round(m.lotePromedio).toLocaleString('es-AR')}</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Prod. No Conforme</div>
+        <div class="kpi-value red">${Math.round(m.pni).toLocaleString('es-AR')} <span style="font-size:14px;opacity:.6">C9L</span></div>
+        <div class="kpi-sub">${m.pctPNI.toFixed(2)}% del total C9L</div>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card cream">
+        <div class="kpi-label">Semielaborado Envasado</div>
+        <div class="kpi-value cream">${m.semielaborado.toLocaleString('es-AR')} <span style="font-size:14px;opacity:.6">bot</span></div>
+        <div class="kpi-sub">Tipo Etiquetado = LLENADO</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">Volumen Envasado</div>
+        <div class="kpi-value orange">${m.hlTotal.toFixed(1)} <span style="font-size:14px;opacity:.6">HL</span></div>
+        <div class="kpi-sub">C9L total: ${m.c9lTotal.toLocaleString('es-AR')}</div>
+      </div>
+      <div class="kpi-card wine">
+        <div class="kpi-label">T. con Personal</div>
+        <div class="kpi-value wine">${m.tConPersonal.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
+        <div class="kpi-sub">No Uso: ${m.tiempoPorClasif[CATS.NO_USO].toFixed(1)} h</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Fallas MTO</div>
+        <div class="kpi-value red">${m.fallasOrg.MTO.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
+        <div class="kpi-sub">OP: ${m.fallasOrg.OP.toFixed(1)} h · INV: ${m.fallasOrg.INV.toFixed(1)} h</div>
+      </div>
+      <div class="kpi-card amber" onclick="openModalPerdidasVel()" style="cursor:pointer;" title="Ver detalle de pérdidas de velocidad">
+        <div class="kpi-label">Pérdidas de Velocidad ↗</div>
+        <div class="kpi-value amber">${m.perdidasVel.toFixed(2)} <span style="font-size:14px;opacity:.6">h</span></div>
+        <div class="kpi-sub">Var. % &lt; 70% · toca para ver detalle</div>
+      </div>
+    </div>
+
+    <div class="section-title">Evolución Anual — 2025 vs 2026</div>
+    <div class="chart-card full" style="margin-bottom:14px;">
+      <div class="chart-title" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span>${tabBadge} OPINONA <span class="hint">meta: ${target}%</span></span>
+        <span style="display:inline-flex;gap:6px;margin-left:auto;" class="opi-view-switch" data-tab="${tabId}">
+          <button type="button" class="opi-view-btn ${(opiViewState[tabId]||'M')==='D'?'on':''}" data-view="D" onclick="setOpiView('${tabId}','D')">Diario</button>
+          <button type="button" class="opi-view-btn ${(opiViewState[tabId]||'M')==='W'?'on':''}" data-view="W" onclick="setOpiView('${tabId}','W')">Semanal</button>
+          <button type="button" class="opi-view-btn ${(opiViewState[tabId]||'M')==='M'?'on':''}" data-view="M" onclick="setOpiView('${tabId}','M')">Mensual</button>
+        </span>
+      </div>
+      <div id="chart-${tabId}-evo" style="height:320px;"></div>
+    </div>
+
+    <div class="section-title">Volumen Envasado</div>
+    <div class="chart-card full" style="margin-bottom:14px;">
+      <div class="chart-title">${tabBadge} Hectolitros por Fecha <span class="hint">HL = C9L × 9 / 100 · suma de Vestido + Llenado + Llenado+Vestido</span></div>
+      <div id="chart-${tabId}-hl" style="height:260px;"></div>
+    </div>
+
+    <div class="section-title">Composición de Tiempos</div>
+    <div class="${isPlanta ? 'charts-grid-3' : 'charts-grid'}">
+      ${isPlanta ? `
+      <div class="chart-card">
+        <div class="chart-title">${tabBadge} Carga de Trabajo por Línea (h) <span class="hint">click para ir a la línea</span></div>
+        <div id="chart-${tabId}-lineas" style="height:300px;cursor:pointer;"></div>
+      </div>` : ''}
+      <div class="chart-card">
+        <div class="chart-title">${tabBadge} Distribución de Tiempos (h) <span class="hint">Producción + paros · excluye No Uso · click para ver detalle</span></div>
+        <div id="chart-${tabId}-donut" style="height:340px;cursor:pointer;"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">${tabBadge} Paradas Externas por Equipo <span class="hint">click para detalle</span></div>
+        <div id="chart-${tabId}-paradas" style="height:300px;cursor:pointer;"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Análisis de Fallas</div>
+    <div class="chart-card full">
+      <div class="chart-title" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span>${tabBadge} Pareto Fallas de Equipos <span class="hint">Top 80% · click para detalle</span></span>
+        <span style="display:inline-flex;gap:6px;margin-left:auto;">
+          <button type="button" class="falla-filter-btn on" data-tab="${tabId}" data-filter="MTO" onclick="toggleFallaFilter('${tabId}','MTO',this)">MTO</button>
+          <button type="button" class="falla-filter-btn on" data-tab="${tabId}" data-filter="OP"  onclick="toggleFallaFilter('${tabId}','OP',this)">OP</button>
+        </span>
+      </div>
+      <div id="chart-${tabId}-mto" style="height:320px;cursor:pointer;"></div>
+    </div>
+    <button class="collapse-btn" onclick="toggleCollapse('collapse-${tabId}-fallasem', this)" aria-expanded="false">
+      <span class="collapse-label">Evolución de Fallas de Equipos por Semana</span>
+      <span class="collapse-arrow">▼</span>
+    </button>
+    <div class="collapsible" id="collapse-${tabId}-fallasem" style="display:none;">
+      <div class="chart-card full">
+        <div class="chart-title">${tabBadge} Tiempo de Fallas de Equipos por Semana <span class="hint">con línea de tendencia</span></div>
+        <div id="chart-${tabId}-fallasem" style="height:300px;"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Lotes de Producción</div>
+    <div class="chart-card full">
+      <div class="chart-title">${tabBadge} Histograma de Tamaño de Lote <span class="hint">bins fijos de 150 cajas</span></div>
+      <div id="chart-${tabId}-hist" style="height:260px;"></div>
+    </div>
+    <button class="collapse-btn" onclick="toggleCollapse('collapse-${tabId}-lotesem', this)" aria-expanded="false">
+      <span class="collapse-label">Evolución del Tamaño de Lote Promedio por Semana</span>
+      <span class="collapse-arrow">▼</span>
+    </button>
+    <div class="collapsible" id="collapse-${tabId}-lotesem" style="display:none;">
+      <div class="chart-card full">
+        <div class="chart-title">${tabBadge} Lote Promedio por Semana <span class="hint">con línea de tendencia</span></div>
+        <div id="chart-${tabId}-lotesem" style="height:300px;"></div>
+      </div>
+    </div>
+  `;
+
+  drawEvolutivo(`chart-${tabId}-evo`, tabId, target, themeColor);
+  drawHL(`chart-${tabId}-hl`, m.hlPorFechaTipo, themeColor);
+
+  if (isPlanta) {
+    drawChart(`chart-${tabId}-lineas`, {
+      series: [{ name:'Horas', data: Object.values(m.lineas).map(v => Number(v.toFixed(1))) }],
+      chart: { type:'bar', height:300, toolbar:{show:false}, foreColor:getTextColor(),
+        events: { dataPointSelection: (e,c,cfg) => { const t=['l1','l2','l3']; changeTab(t[cfg.dataPointIndex]); } }
+      },
+      xaxis: { categories:['Línea 1','Línea 2','Línea 3'], labels:{style:{fontSize:'11px'}} },
+      colors: ['#8b5cf6','#0ea5e9','#EC752D'],
+      plotOptions: { bar:{ borderRadius:6, columnWidth:'45%', dataLabels:{position:'top'}, distributed:true } },
+      legend: { show:false },
+      dataLabels: { enabled:true, formatter:v=>v+'h', offsetY:-22, style:{fontSize:'11px',colors:[getTextColor()]} },
+      grid: { borderColor:getGridColor(), strokeDashArray:4 }
+    });
+  }
+
+  drawDonut(`chart-${tabId}-donut`, m.paros);
+
+  const paradasArr = Object.entries(m.paradasExtEq).filter(([,v])=>v>0).map(([k,v])=>({x:k, y:Number(v.toFixed(2))}));
+  if (paradasArr.length) {
+    drawChart(`chart-${tabId}-paradas`, {
+      series: [{ data: paradasArr }],
+      chart: { type:'treemap', height:300, toolbar:{show:false}, fontFamily:'Montserrat',
+        events: { dataPointSelection: (e,c,cfg) => openModal(isPlanta?null:lineId, cfg.w.config.series[cfg.seriesIndex].data[cfg.dataPointIndex].x, CATS.EXTERNA) }
+      },
+      colors: [themeColor],
+      plotOptions:{ treemap:{ enableShades:true, shadeIntensity:0.5 } },
+      dataLabels:{ enabled:true, style:{fontSize:'11px', fontWeight:700} },
+      tooltip: { y:{ formatter: v => v.toFixed(2)+' h' } }
+    });
+  } else {
+    const el = document.getElementById(`chart-${tabId}-paradas`); if (el) el.innerHTML = `<div class="no-data">Sin paradas externas</div>`;
+  }
+
+  fallaParetoCache[tabId] = { fallasEqMTO: m.fallasEqMTO, fallasEqOP: m.fallasEqOP, isPlanta, lineId };
+  if (!fallaFilterState[tabId]) fallaFilterState[tabId] = { MTO:true, OP:true };
+  drawFallaPareto(tabId);
+
+  drawHistograma(`chart-${tabId}-hist`, m.cajasList, themeColor);
+
+  // Colapsables: dibujar solo si están visibles (o se dibujan al abrir)
+  pendingCharts[`chart-${tabId}-fallasem`] = () => drawFallaSemana(`chart-${tabId}-fallasem`, m.fallasPorSemana, '#D81840');
+  pendingCharts[`chart-${tabId}-lotesem`]  = () => drawLoteSemana(`chart-${tabId}-lotesem`, m.lotesPorSemana, themeColor);
+
+  if (document.getElementById(`collapse-${tabId}-fallasem`)?.style.display === 'block') pendingCharts[`chart-${tabId}-fallasem`]();
+  if (document.getElementById(`collapse-${tabId}-lotesem`)?.style.display === 'block')  pendingCharts[`chart-${tabId}-lotesem`]();
+}
+
+function getTextColor() { return isDark ? '#c9b8c4' : '#7a627a'; }
+function getGridColor() { return isDark ? 'rgba(255,255,255,0.06)' : 'rgba(78,23,66,0.08)'; }
+
+function drawDonut(id, parosObj) {
+  const el = document.querySelector('#'+id);
+  // Ordenar: Producción primero, luego paros por magnitud
+  const entries = Object.entries(parosObj).filter(([,v])=>v>0)
+    .sort(([ka,va],[kb,vb]) => {
+      if (ka === CATS.PRODUCCION) return -1;
+      if (kb === CATS.PRODUCCION) return 1;
+      return vb - va;
+    });
+  if (!entries.length) { if (el) el.innerHTML = '<div class="no-data">Sin datos en el período</div>'; return; }
+
+  const total = entries.reduce((a,[,v])=>a+v, 0);
+  const prodHrs = parosObj[CATS.PRODUCCION] || 0;
+  const pctProd = total > 0 ? (prodHrs/total)*100 : 0;
+  const colors = entries.map(([k]) => CAT_COLORS[k] || '#B61858');
+
+  drawChart(id, {
+    series: entries.map(([,v]) => Number(v.toFixed(2))),
+    labels: entries.map(([k]) => k),
+    chart: { type:'donut', height:340, foreColor:getTextColor(), fontFamily:'Montserrat',
+      events: { dataPointSelection: (e, c, cfg) => {
+        const label = cfg.w.config.labels[cfg.dataPointIndex];
+        const tabId = id.split('-')[1];
+        const lineId = tabId === 'planta' ? null : tabId.toUpperCase();
+        openModalClasif(lineId, label);
+      }}
+    },
+    colors,
+    stroke: { width:2, colors:[isDark?'#2a1626':'#FFFFFF'] },
+    legend: { position:'bottom', fontSize:'11px', fontWeight:600, itemMargin:{horizontal:6,vertical:3}, labels:{colors:getTextColor()}, markers:{width:10,height:10,radius:3} },
+    dataLabels: {
+      enabled:true,
+      formatter: (v) => v >= 4 ? v.toFixed(1)+'%' : '',
+      style:{ fontSize:'11px', fontWeight:700, fontFamily:'Montserrat', colors:['#fff'] },
+      dropShadow:{ enabled:true, blur:2, opacity:0.45 }
+    },
+    tooltip: {
+      theme: isDark?'dark':'light',
+      y:{ formatter: v => v.toFixed(2) + ' h  ('+(total>0?(v/total*100).toFixed(1):'0')+'%)' }
+    },
+    plotOptions: { pie:{
+      expandOnClick:true,
+      donut:{
+        size:'68%',
+        labels:{
+          show:true,
+          name: { fontSize:'11px', fontWeight:600, color:getTextColor(), offsetY:-6 },
+          value: { color: getTextColor(), fontSize:'22px', fontWeight:700, fontFamily:'Montserrat', offsetY:4, formatter: v => parseFloat(v).toFixed(1) + ' h' },
+          total: { show:true, label:'Producción', color:'#98A040',
+            fontSize:'11px', fontWeight:700,
+            formatter: () => pctProd.toFixed(1) + '%  ·  ' + prodHrs.toFixed(1) + ' h' }
+        }
+      }
+    } },
+    responsive: [{ breakpoint:480, options:{ legend:{position:'bottom'} } }]
+  });
+}
+
+function drawWaterfall(id, m) {
+  const steps = [
+    ['TOT',              m.tot, '#4E1742'],
+    ['− No Uso',         -m.tiempoPorClasif[CATS.NO_USO], '#D81840'],
+    ['T. c/Personal',    m.tConPersonal, '#E0D0B8'],
+    ['− NoNa',           -m.tiempoPorClasif[CATS.NONA], '#D81840'],
+    ['T. Efectivo',      m.tEfectivo, '#F8C040'],
+    ['− Cambios',        -m.tiempoPorClasif[CATS.CAMBIO], '#D81840'],
+    ['− Planeados',      -m.tiempoPorClasif[CATS.PLANEADO], '#D81840'],
+    ['− Ext',            -m.tiempoPorClasif[CATS.EXTERNA], '#D81840'],
+    ['− Fallas',         -m.tiempoPorClasif[CATS.FALLA], '#D81840'],
+    ['− Pérd.Vel',       -m.perdidasVel, '#D81840'],
+    ['T. Teórico',       m.tTeorico, '#F08808']
+  ];
+  drawChart(id, {
+    series: [{ data: steps.map(s => Number(Math.abs(s[1]).toFixed(1))) }],
+    chart: { type:'bar', height:300, toolbar:{show:false}, foreColor:getTextColor() },
+    xaxis: { categories: steps.map(s => s[0]), labels:{ style:{fontSize:'9px'}, rotate:-35, rotateAlways:true } },
+    colors: steps.map(s => s[2]),
+    plotOptions: { bar:{ borderRadius:4, columnWidth:'60%', distributed:true } },
+    legend: { show:false },
+    dataLabels: { enabled:true, formatter:v=>v+'h', style:{fontSize:'9px',colors:[getTextColor()]}, offsetY:-18 },
+    grid: { borderColor:getGridColor(), strokeDashArray:4 }
+  });
+}
+
+function setOpiView(tabId, view) {
+  opiViewState[tabId] = view;
+  // Actualizar estado visual de botones sin re-renderizar todo el tab
+  const sw = document.querySelector(`.opi-view-switch[data-tab="${tabId}"]`);
+  if (sw) sw.querySelectorAll('.opi-view-btn').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+  const target = targets[tabId]?.anual ?? 40;
+  const themeColor = THEME_COLOR[tabId];
+  drawEvolutivo(`chart-${tabId}-evo`, tabId, target, themeColor);
+}
+
+// Aplica los filtros del usuario (período, fecha, semana, turno, etc.) a un año específico.
+// Útil para chart de OPINONA que compara dos años respetando los demás filtros.
+function applyFiltersForYear(year) {
+  const saved = activeYear;
+  activeYear = year;
+  const d = applyFilters(rawData);
+  activeYear = saved;
+  return d;
+}
+
+function drawEvolutivo(id, tabId, target, themeColor) {
+  const view = opiViewState[tabId] || 'M';
+  const isLinea = tabId !== 'planta';
+  const lineaKey = tabId.toUpperCase();
+  const filterByLinea = r => !isLinea || getLinea(r) === lineaKey;
+
+  // ============================
+  // Vista DIARIA o SEMANAL (un solo año, respeta filtros del usuario)
+  // ============================
+  if (view === 'D' || view === 'W') {
+    const data = filteredData.filter(filterByLinea);
+
+    if (!data.length) {
+      const el = document.querySelector('#'+id);
+      if (el) el.innerHTML = '<div class="no-data">Sin datos para los filtros seleccionados</div>';
+      return;
+    }
+
+    const buckets = {};
+    const sortKeys = [];
+
+    if (view === 'D') {
+      data.forEach(r => {
+        const d = getFecha(r);
+        if (!d) return;
+        const key = d.toISOString().slice(0,10);
+        if (!buckets[key]) { buckets[key] = []; sortKeys.push(key); }
+        buckets[key].push(r);
+      });
+    } else {
+      data.forEach(r => {
+        const w = Number(get(r,'Semana','semana'));
+        if (!(w >= 1 && w <= 53)) return;
+        const key = String(w);
+        if (!buckets[key]) { buckets[key] = []; sortKeys.push(key); }
+        buckets[key].push(r);
+      });
+    }
+
+    const keys = view === 'D'
+      ? [...new Set(sortKeys)].sort()
+      : [...new Set(sortKeys)].sort((a,b) => Number(a) - Number(b));
+
+    const points = keys.map(k => {
+      const m = procesarMetricas(buckets[k]);
+      return Number(m.opi.toFixed(1));
+    });
+
+    const seriesData = view === 'D'
+      ? keys.map((k,i) => ({ x: new Date(k).getTime(), y: points[i] }))
+      : points;
+
+    drawChart(id, {
+      series: [{ name: view==='D' ? 'OPI Diario' : 'OPI Semanal', type:'line', data: seriesData }],
+      chart: { type:'line', height:320, toolbar:{show:false}, fontFamily:'Montserrat', foreColor:getTextColor() },
+      colors: [themeColor],
+      stroke: { width:3, curve:'smooth' },
+      markers: { size:4 },
+      xaxis: view === 'D'
+        ? { type:'datetime', labels:{ style:{fontSize:'11px',colors:getTextColor()}, datetimeFormatter:{year:'yyyy', month:"MMM 'yy", day:'dd MMM'} } }
+        : { categories: keys.map(w => 'S'+w), labels:{ style:{fontSize:'11px',colors:getTextColor()} }, title:{ text:'Semana', style:{fontSize:'10px',color:getTextColor()} } },
+      yaxis: { labels:{formatter: v => v ? v.toFixed(0)+'%' : '', style:{colors:getTextColor()}} },
+      grid: { borderColor:getGridColor(), strokeDashArray:4, padding:{left:10,right:20,top:10} },
+      annotations: { yaxis:[{ y:target, borderColor:themeColor, strokeDashArray:6, borderWidth:2, label:{ position:'left', offsetX:80, offsetY:-2, text:'Meta '+target+'%', style:{color:'#fff',background:themeColor,fontSize:'10px',fontWeight:700} } }] },
+      dataLabels: { enabled:true, formatter: v => v ? v.toFixed(1)+'%' : '', style:{fontSize:'10px',fontWeight:700}, background:{enabled:true, borderRadius:3, padding:3, borderWidth:1} },
+      legend: { show:false },
+      tooltip: {
+        theme: isDark?'dark':'light',
+        x: view === 'D' ? { format:'dd MMM yyyy' } : { formatter: (val, opts) => 'Semana '+keys[opts.dataPointIndex] },
+        y: { formatter: v => v!=null ? v+'%' : '—' }
+      }
+    });
+    return;
+  }
+
+  // ============================
+  // Vista MENSUAL (default): comparativa 2025 vs 2026 + YTD, respetando filtros NO-año
+  // ============================
+  const lineByYear = { 2025: new Array(12).fill(null), 2026: new Array(12).fill(null) };
+  const ytdByYear  = { 2025: null, 2026: null };
+
+  [2025, 2026].forEach(yr => {
+    const dataYr = applyFiltersForYear(yr).filter(filterByLinea);
+    MESES_ORDEN.forEach((mes, idx) => {
+      const rows = dataYr.filter(r => normalizeMes(get(r,'mes','Mes','MES')) === mes);
+      if (rows.length) {
+        const mm = procesarMetricas(rows);
+        const v = Number(mm.opi.toFixed(1));
+        lineByYear[yr][idx] = v > 0 ? v : null;
+      }
+    });
+    if (dataYr.length) {
+      const mY = procesarMetricas(dataYr);
+      const v = Number(mY.opi.toFixed(1));
+      ytdByYear[yr] = v > 0 ? v : null;
+    }
+  });
+
+  // Fallback histórico hardcoded para 2025 si no hay datos en rawData
+  // (solo cuando no se aplicaron filtros que dejarían 2025 intencionalmente vacío)
+  if (lineByYear[2025].every(v => v === null)) {
+    const h25 = history2025[tabId];
+    if (h25) {
+      lineByYear[2025] = [...h25.meses];
+      ytdByYear[2025]  = h25.ytd;
+    }
+  }
+
+  const line2025 = [...lineByYear[2025], null];
+  const line2026 = [...lineByYear[2026], null];
+  const bar2025  = [...new Array(12).fill(null), ytdByYear[2025]];
+  const bar2026  = [...new Array(12).fill(null), ytdByYear[2026]];
+  const barMeta  = new Array(13).fill(null);
+  barMeta[12] = target;
+
+  drawChart(id, {
+    series: [
+      { name:'2025',   type:'line',   data: line2025 },
+      { name:'2026',   type:'line',   data: line2026 },
+      { name:'YTD 25', type:'column', data: bar2025 },
+      { name:'YTD 26', type:'column', data: bar2026 },
+      { name:'Meta',   type:'column', data: barMeta }
+    ],
+    chart: { type:'line', height:320, toolbar:{show:false}, fontFamily:'Montserrat', foreColor:getTextColor() },
+    colors: ['#a89aa8', themeColor, '#a89aa8', themeColor, '#98A040'],
+    stroke: { width:[2,3,0,0,0], curve:'smooth' },
+    markers: { size:[4,5,0,0,0] },
+    plotOptions: { bar:{ columnWidth:'55%', borderRadius:3, dataLabels:{ position:'top' } } },
+    xaxis: { categories:[...MESES_ABR,'YTD'], labels:{style:{fontSize:'11px',colors:getTextColor()}} },
+    yaxis: { labels:{formatter: v => v ? v.toFixed(0)+'%' : '', style:{colors:getTextColor()}} },
+    grid: { borderColor:getGridColor(), strokeDashArray:4, padding:{left:10,right:20,top:10} },
+    annotations: { yaxis:[{ y:target, borderColor:themeColor, strokeDashArray:6, borderWidth:2, label:{ position:'left', offsetX:80, offsetY:-2, text:'Meta '+target+'%', style:{color:'#fff',background:themeColor,fontSize:'10px',fontWeight:700} } }] },
+    dataLabels: { enabled:true, formatter: v => v ? v.toFixed(1)+'%' : '', style:{fontSize:'10px',fontWeight:700}, background:{enabled:true, borderRadius:3, padding:3, borderWidth:1} },
+    legend: { position:'top', horizontalAlign:'right', fontSize:'11px', labels:{colors:getTextColor()} },
+    tooltip: { theme: isDark?'dark':'light', y:{ formatter: v => v!=null ? v+'%' : '—' } }
+  });
+}
+
+function drawHL(id, hlPorFechaTipo, color) {
+  const el = document.querySelector('#'+id);
+  const keys = Object.keys(hlPorFechaTipo).sort();
+  if (!keys.length) { if (el) el.innerHTML = '<div class="no-data">Sin volumen envasado en el período</div>'; return; }
+
+  // Recolectar todos los tipos presentes y ordenarlos por volumen total descendente
+  const tipoTotales = {};
+  keys.forEach(k => Object.entries(hlPorFechaTipo[k]).forEach(([t,v]) => { tipoTotales[t] = (tipoTotales[t]||0) + v; }));
+  const tipos = Object.entries(tipoTotales).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([t])=>t);
+
+  // Paleta consistente VSPT — mismo color para mismo tipo siempre
+  const tipoColorMap = {
+    'VESTIDO': '#701F52',
+    'LLENADO': '#F08808',
+    'LLENADO+VESTIDO': '#F8C040',
+    'LLENADO + VESTIDO': '#F8C040',
+    'OTROS': '#a89aa8',
+    '': '#a89aa8'
+  };
+  const fallback = ['#D81840','#98A040','#4E1742','#B61858','#E0D0B8'];
+  let fbIdx = 0;
+  const colorFor = t => tipoColorMap[t] || tipoColorMap[String(t).toUpperCase()] || fallback[fbIdx++ % fallback.length];
+
+  const series = tipos.map(t => ({
+    name: t || 'Sin tipo',
+    data: keys.map(k => ({ x: k, y: Number((hlPorFechaTipo[k][t]||0).toFixed(1)) }))
+  }));
+
+  // Total por fecha para anotación opcional
+  const totalDiario = keys.map(k => Object.values(hlPorFechaTipo[k]).reduce((a,b)=>a+b,0));
+  const sumTotal = totalDiario.reduce((a,b)=>a+b,0);
+
+  drawChart(id, {
+    series,
+    chart: { type:'bar', height:280, stacked:true, toolbar:{show:false}, foreColor:getTextColor(), fontFamily:'Montserrat' },
+    colors: tipos.map(colorFor),
+    plotOptions: { bar:{ borderRadius:3, columnWidth:'65%' } },
+    stroke: { width:0 },
+    xaxis: { type:'datetime', labels:{ style:{fontSize:'11px'}, datetimeFormatter:{year:'yyyy', month:"MMM 'yy", day:'dd MMM'} } },
+    yaxis: { labels:{ formatter: v => v.toFixed(0)+' HL' } },
+    grid: { borderColor:getGridColor(), strokeDashArray:4 },
+    dataLabels: { enabled:false },
+    legend: { position:'top', horizontalAlign:'right', fontSize:'11px', fontWeight:600, markers:{width:12,height:12} },
+    tooltip: {
+      theme:isDark?'dark':'light',
+      shared:true, intersect:false,
+      x:{ format:'dd/MM/yyyy' },
+      y:{ formatter: v => v.toFixed(1)+' HL' },
+      custom: ({series:s, dataPointIndex, w}) => {
+        const date = w.globals.labels[dataPointIndex];
+        const d = new Date(date);
+        const fStr = isNaN(d) ? date : d.toLocaleDateString('es-AR');
+        let total = 0;
+        let rows = '';
+        w.config.series.forEach((ser, i) => {
+          const v = ser.data[dataPointIndex]?.y || 0;
+          if (v > 0) {
+            total += v;
+            rows += `<div style="display:flex;justify-content:space-between;gap:14px;padding:3px 0;">
+              <span style="display:flex;align-items:center;gap:7px;"><span style="width:9px;height:9px;border-radius:2px;background:${w.config.colors[i]};"></span>${ser.name}</span>
+              <strong style="font-variant-numeric:tabular-nums;">${v.toFixed(1)} HL</strong>
+            </div>`;
+          }
+        });
+        return `<div style="padding:10px 14px;font-size:11px;font-family:Montserrat,sans-serif;">
+          <div style="font-weight:700;color:#D81840;text-transform:uppercase;letter-spacing:0.12em;font-size:10px;margin-bottom:6px;">${fStr}</div>
+          ${rows}
+          <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(127,127,127,0.25);display:flex;justify-content:space-between;font-weight:800;">
+            <span>TOTAL</span><span style="font-variant-numeric:tabular-nums;">${total.toFixed(1)} HL</span>
+          </div>
+        </div>`;
+      }
+    }
+  });
+
+  // Anotación de total acumulado en el título del card
+  const card = el?.closest('.chart-card');
+  const titleEl = card?.querySelector('.chart-title');
+  if (titleEl) {
+    const existing = titleEl.querySelector('.hl-total-tag');
+    if (existing) existing.remove();
+    const tag = document.createElement('span');
+    tag.className = 'hl-total-tag';
+    tag.style.cssText = 'margin-left:auto;background:rgba(216,24,64,0.10);color:var(--vspt-crimson);padding:3px 10px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:0.12em;';
+    tag.textContent = `Total: ${sumTotal.toFixed(1)} HL`;
+    titleEl.appendChild(tag);
+  }
+}
+
+function drawHistograma(id, cajasList, color) {
+  const BIN = 150;
+  const el = document.querySelector('#'+id);
+  if (!cajasList.length) { if (el) el.innerHTML = '<div class="no-data">Sin lotes en el período</div>'; return; }
+  const max = Math.max(...cajasList);
+  const nBins = Math.ceil((max+1) / BIN);
+  const data = new Array(nBins).fill(0);
+  const cats = [];
+  for (let i=0; i<nBins; i++) cats.push(`${i*BIN}-${(i+1)*BIN}`);
+  cajasList.forEach(c => { const idx = Math.min(Math.floor(c / BIN), nBins - 1); data[idx]++; });
+  drawChart(id, {
+    series: [{ name:'Frecuencia', data }],
+    chart: { type:'bar', height:260, toolbar:{show:false}, foreColor:getTextColor() },
+    xaxis: { categories: cats, labels:{style:{fontSize:'10px'}, rotate:-25, rotateAlways:true} },
+    colors: [color],
+    plotOptions: { bar:{ borderRadius:4, columnWidth:'70%', dataLabels:{position:'top'} } },
+    dataLabels: { enabled:true, offsetY:-18, style:{fontSize:'10px',colors:[getTextColor()]} },
+    grid: { borderColor:getGridColor(), strokeDashArray:4 }
+  });
+}
+
+function toggleCollapse(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isOpen = el.style.display === 'block';
+  el.style.display = isOpen ? 'none' : 'block';
+  btn.setAttribute('aria-expanded', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+  if (!isOpen) {
+    // Dibujar charts pendientes dentro del colapsable
+    el.querySelectorAll('[id^="chart-"]').forEach(div => {
+      const fn = pendingCharts[div.id];
+      if (fn) fn();
+    });
+  }
+}
+
+function drawFallaSemana(id, fallasPorSemana, color) {
+  const el = document.querySelector('#'+id);
+  const semanas = Object.keys(fallasPorSemana).map(Number).sort((a,b)=>a-b);
+  if (semanas.length < 2) { if (el) el.innerHTML = '<div class="no-data">Se necesitan al menos 2 semanas con datos</div>'; return; }
+
+  const puntos = semanas.map(s => ({ x: s, y: fallasPorSemana[s] }));
+
+  const n = puntos.length;
+  let sx=0, sy=0, sxy=0, sxx=0;
+  puntos.forEach(p => { sx+=p.x; sy+=p.y; sxy+=p.x*p.y; sxx+=p.x*p.x; });
+  const denom = n*sxx - sx*sx;
+  const slope = denom !== 0 ? (n*sxy - sx*sy) / denom : 0;
+  const intercept = (sy - slope*sx) / n;
+  const meanY = sy/n;
+  let ssTot=0, ssRes=0;
+  puntos.forEach(p => { const yHat = slope*p.x + intercept; ssTot += (p.y-meanY)**2; ssRes += (p.y-yHat)**2; });
+  const r2 = ssTot>0 ? 1 - ssRes/ssTot : 0;
+
+  const xMin = semanas[0], xMax = semanas[semanas.length-1];
+  const tendencia = [
+    { x: xMin, y: Math.max(0, slope*xMin + intercept) },
+    { x: xMax, y: Math.max(0, slope*xMax + intercept) }
+  ];
+  // Tendencia al alza en fallas = MALO (rojo); a la baja = BUENO (oliva)
+  const trendColor = slope <= 0 ? '#9AA423' : '#D81840';
+  const trendLabel = `Tendencia (${slope>=0?'+':''}${slope.toFixed(2)} h/sem · R²=${r2.toFixed(2)})`;
+
+  drawChart(id, {
+    series: [
+      { name:'Horas de falla', type:'column', data: puntos.map(p => ({ x:p.x, y:Number(p.y.toFixed(2)) })) },
+      { name:trendLabel, type:'line', data: tendencia.map(p => ({ x:p.x, y:Number(p.y.toFixed(2)) })) }
+    ],
+    chart: { type:'line', height:300, toolbar:{show:false}, foreColor:getTextColor() },
+    stroke: { width:[0,2], dashArray:[0,6] },
+    colors: [color, trendColor],
+    plotOptions: { bar:{ borderRadius:3, columnWidth:'55%' } },
+    xaxis: {
+      type:'numeric', min:1, max:52, tickAmount:13,
+      title:{ text:'Número de Semana', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
+      labels:{ style:{fontSize:'10px'}, formatter:v=>'S'+Math.round(v) }
+    },
+    yaxis: {
+      title:{ text:'Horas de falla', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
+      labels:{ formatter:v=>v.toFixed(1)+' h' }
+    },
+    tooltip: {
+      shared:true, intersect:false,
+      x: { formatter:v => 'Semana '+Math.round(v) },
+      y: { formatter:v => v.toFixed(2)+' h' }
+    },
+    legend: { position:'top', horizontalAlign:'right', fontSize:'11px', fontWeight:600, markers:{width:10,height:10} },
+    grid: { borderColor:getGridColor(), strokeDashArray:4 }
+  });
+}
+
+function drawLoteSemana(id, lotesPorSemana, color) {
+  const el = document.querySelector('#'+id);
+  const semanas = Object.keys(lotesPorSemana).map(Number).sort((a,b)=>a-b);
+  if (semanas.length < 2) { if (el) el.innerHTML = '<div class="no-data">Se necesitan al menos 2 semanas con datos</div>'; return; }
+
+  // Promedio por semana
+  const puntos = semanas.map(s => ({ x: s, y: lotesPorSemana[s].suma / lotesPorSemana[s].count }));
+
+  // Regresión lineal: y = a·x + b
+  const n = puntos.length;
+  let sx=0, sy=0, sxy=0, sxx=0;
+  puntos.forEach(p => { sx+=p.x; sy+=p.y; sxy+=p.x*p.y; sxx+=p.x*p.x; });
+  const denom = n*sxx - sx*sx;
+  const slope = denom !== 0 ? (n*sxy - sx*sy) / denom : 0;
+  const intercept = (sy - slope*sx) / n;
+
+  // r² para info
+  const meanY = sy/n;
+  let ssTot=0, ssRes=0;
+  puntos.forEach(p => { const yHat = slope*p.x + intercept; ssTot += (p.y-meanY)**2; ssRes += (p.y-yHat)**2; });
+  const r2 = ssTot>0 ? 1 - ssRes/ssTot : 0;
+
+  const xMin = semanas[0], xMax = semanas[semanas.length-1];
+  const tendencia = [
+    { x: xMin, y: slope*xMin + intercept },
+    { x: xMax, y: slope*xMax + intercept }
+  ];
+
+  const trendColor = slope >= 0 ? '#9AA423' : '#D81840';
+  const trendLabel = `Tendencia (${slope>=0?'+':''}${slope.toFixed(1)} cajas/sem · R²=${r2.toFixed(2)})`;
+
+  drawChart(id, {
+    series: [
+      { name:'Lote promedio', type:'line', data: puntos.map(p => ({ x:p.x, y:Math.round(p.y) })) },
+      { name:trendLabel, type:'line', data: tendencia.map(p => ({ x:p.x, y:Math.round(p.y) })) }
+    ],
+    chart: { type:'line', height:300, toolbar:{show:false}, foreColor:getTextColor(), animations:{enabled:true} },
+    stroke: { curve:['straight','straight'], width:[3,2], dashArray:[0,6] },
+    markers: { size:[5,0], strokeWidth:0, hover:{size:7} },
+    colors: [color, trendColor],
+    xaxis: {
+      type:'numeric', min:1, max:52, tickAmount:13,
+      title:{ text:'Número de Semana', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
+      labels:{ style:{fontSize:'10px'}, formatter:v=>'S'+Math.round(v) }
+    },
+    yaxis: {
+      title:{ text:'Cajas / lote', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
+      labels:{ style:{fontSize:'10px'}, formatter:v=>Math.round(v).toLocaleString('es-AR') }
+    },
+    tooltip: {
+      shared:false, intersect:true,
+      x: { formatter:v => 'Semana '+Math.round(v) },
+      y: { formatter:v => Math.round(v).toLocaleString('es-AR')+' cajas' }
+    },
+    legend: { position:'top', horizontalAlign:'right', fontSize:'11px', fontWeight:600, markers:{width:10,height:10} },
+    grid: { borderColor:getGridColor(), strokeDashArray:4 }
+  });
+}
+
+function drawChart(id, opts) {
+  if (charts[id]) { try { charts[id].destroy(); } catch(e){} }
+  const el = document.querySelector('#' + id);
+  if (!el) return;
+  charts[id] = new ApexCharts(el, opts);
+  charts[id].render();
+}
+
+  
+
+function renderObjetivos() {
+  const container = document.getElementById('tab-objetivos');
+  const lineas = [
+    { id:'planta', nombre:'🏭 Planta San Juan' },
+    { id:'l1', nombre:'📦 Línea 1' },
+    { id:'l2', nombre:'📦 Línea 2' },
+    { id:'l3', nombre:'📦 Línea 3' }
+  ];
+  const fPer = document.getElementById('f-periodo').value;
+  const labelPeriodo = fPer === 'ALL' ? 'YTD' : fPer;
+
+  let html = `
+    <div class="section-title" style="justify-content:space-between;">
+      <span style="display:flex;align-items:center;gap:10px;"><span style="width:4px;height:16px;background:linear-gradient(180deg,var(--vspt-amber),var(--vspt-orange));border-radius:2px;"></span>Tabla de Control OPINONA — ${labelPeriodo}</span>
+      <button class="admin-btn ${isAdmin?'active':''}" onclick="toggleAdmin()">${isAdmin?'🔓 EDICIÓN':'🔒 SOLO LECTURA'}</button>
+    </div>
+    <div class="chart-card accent full">
+      <table class="table-obj">
+        <thead><tr><th>Instalación</th><th>Meta Anual (%)</th><th>OPINONA Real (${labelPeriodo})</th><th>Δ (pp)</th><th>Desvío %</th></tr></thead>
+        <tbody>`;
+  lineas.forEach(l => {
+    const target = targets[l.id].anual;
+    const data = l.id === 'planta' ? filteredData : filteredData.filter(r => getLinea(r) === l.id.toUpperCase());
+    const m = procesarMetricas(data);
+    const real = m.opi;
+    const varPp = real - target;
+    const rel = target > 0 ? ((real - target)/target)*100 : 0;
+    const ok = real >= target;
+    const sign = ok ? '+' : '';
+    const cls = ok ? 'olive' : 'red';
+    const tdMeta = isAdmin
+      ? `<input type="number" step="0.1" class="input-obj" value="${target}" onchange="saveTarget('${l.id}', this.value)">`
+      : `<span style="font-size:16px;">${target}%</span>`;
+    const tdReal = real > 0 ? `<span class="kpi-value ${cls}" style="font-size:20px;">${real.toFixed(1)}%</span>` : `<span style="color:var(--muted);font-style:italic;">S/D</span>`;
+    html += `<tr>
+      <td style="font-weight:800;text-transform:uppercase;font-size:13px;">${l.nombre}</td>
+      <td>${tdMeta}</td>
+      <td>${tdReal}</td>
+      <td><span style="color:var(--${ok?'vspt-olive':'vspt-red'});font-weight:800;">${real>0?sign+varPp.toFixed(1):'—'}</span></td>
+      <td><span style="color:var(--${ok?'vspt-olive':'vspt-red'});font-weight:800;">${real>0?sign+rel.toFixed(1)+'%':'—'}</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
+}
+
+function toggleAdmin() {
+  if (isAdmin) { isAdmin = false; renderObjetivos(); return; }
+  const p = prompt('🔐 Contraseña:');
+  if (p === 'admin') { isAdmin = true; renderObjetivos(); } else if (p !== null) alert('Contraseña incorrecta');
+}
+
+function saveTarget(id, val) {
+  const n = parseFloat(val); if (isNaN(n)) return;
+  targets[id].anual = n;
+  localStorage.setItem(TARGETS_KEY, JSON.stringify(targets));
+  renderObjetivos(); render();
+}
+
+function toggleFallaFilter(tabId, filter, btn) {
+  const st = fallaFilterState[tabId] || (fallaFilterState[tabId] = { MTO:true, OP:true });
+  // No permitir desactivar ambos a la vez
+  if (st[filter] && !st[filter === 'MTO' ? 'OP' : 'MTO']) return;
+  st[filter] = !st[filter];
+  if (btn) btn.classList.toggle('on', st[filter]);
+  drawFallaPareto(tabId);
+}
+
+function drawFallaPareto(tabId) {
+  const cache = fallaParetoCache[tabId]; if (!cache) return;
+  const st = fallaFilterState[tabId] || { MTO:true, OP:true };
+  const { fallasEqMTO, fallasEqOP, isPlanta, lineId } = cache;
+  // Combinar segun filtro activo
+  const combined = {};
+  if (st.MTO) for (const [k,v] of Object.entries(fallasEqMTO)) combined[k] = (combined[k]||0) + v;
+  if (st.OP)  for (const [k,v] of Object.entries(fallasEqOP))  combined[k] = (combined[k]||0) + v;
+
+  const sorted = Object.entries(combined).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const tot = sorted.reduce((a,[,v])=>a+v,0);
+  const limit = tot * 0.8; let cs=0; const pareto=[];
+  for (const it of sorted) { pareto.push(it); cs += it[1]; if (cs >= limit) break; }
+
+  const el = document.getElementById(`chart-${tabId}-mto`);
+  if (!el) return;
+
+  if (!pareto.length) {
+    const lbl = st.MTO && st.OP ? 'Sin fallas' : `Sin fallas ${st.MTO?'MTO':'OP'}`;
+    el.innerHTML = `<div class="no-data">${lbl}</div>`;
+    return;
+  }
+
+  const cats = pareto.map(([k])=>k);
+  const series = [];
+  const colors = [];
+  if (st.MTO) { series.push({ name:'MTO', data: cats.map(k => Number(((fallasEqMTO[k]||0)).toFixed(2))) }); colors.push('#D81840'); }
+  if (st.OP)  { series.push({ name:'OP',  data: cats.map(k => Number(((fallasEqOP[k] ||0)).toFixed(2))) }); colors.push('#F08808'); }
+  const mtoFlag = st.MTO ? (st.OP ? 'BOTH' : 'MTO') : 'OP';
+
+  drawChart(`chart-${tabId}-mto`, {
+    series,
+    chart: { type:'bar', stacked:true, height:320, toolbar:{show:false}, foreColor:getTextColor(),
+      events: { dataPointSelection: (e,c,cfg) => openModal(isPlanta?null:lineId, cfg.w.config.xaxis.categories[cfg.dataPointIndex], CATS.FALLA, mtoFlag) }
+    },
+    xaxis: { categories: cats, labels:{style:{fontSize:'10px'}, rotate:-25, rotateAlways:true} },
+    colors,
+    plotOptions: { bar:{ borderRadius:4, columnWidth:'50%' } },
+    dataLabels: { enabled:true, formatter:v=>v?v+'h':'', style:{fontSize:'10px',colors:['#fff'], fontWeight:700} },
+    legend: { show: series.length>1, position:'top', horizontalAlign:'right', fontSize:'11px', markers:{ width:10, height:10, radius:2 } },
+    tooltip: { y:{ formatter: v => v.toFixed(2)+' h' } },
+    grid: { borderColor:getGridColor(), strokeDashArray:4 }
+  });
+}
+
+function openModal(lineId, subcat, clasif, mtoFlag) {
+  const rows = filteredData.filter(r => {
+    if (getClasif1(r) !== clasif) return false;
+    if (getClasif2(r) !== subcat) return false;
+    if (lineId && getLinea(r) !== lineId) return false;
+    if (clasif === CATS.FALLA) {
+      const m = getMTO(r);
+      const isMTO = m.includes('MTO');
+      const isINV = m.includes('INV');
+      const isOP  = !isMTO && !isINV;
+      if (mtoFlag === 'MTO' && !isMTO) return false;
+      if (mtoFlag === 'OP'  && !isOP)  return false;
+      if (mtoFlag === 'BOTH' && !(isMTO || isOP)) return false;
+      if (!mtoFlag && !isMTO) return false; // backwards-compatible default
+    }
+    return true;
+  });
+  const totalH = rows.reduce((a,r)=>a+getVarTiempo(r),0);
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:var(--vspt-amber);text-transform:uppercase;">${subcat}</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;">${clasif}${lineId?' · '+lineId:''} ${clasif===CATS.FALLA?'· '+(mtoFlag==='OP'?'solo OP':mtoFlag==='BOTH'?'MTO + OP':'solo MTO'):''}</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">Total: ${totalH.toFixed(2)} h · ${rows.length} registros</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div><div style="overflow:auto;max-height:62vh;"><table><thead><tr>
+    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Horas</th><th>OP SAP</th><th>MTO/OP</th><th style="width:45%;">Observaciones</th>
+  </tr></thead><tbody>`;
+  rows.sort((a,b) => getVarTiempo(b) - getVarTiempo(a));
+  rows.forEach(r => {
+    const f = getFecha(r);
+    const fs = f ? f.toLocaleDateString('es-AR') : '—';
+    html += `<tr>
+      <td>${fs}</td>
+      <td><strong>${getLinea(r)||'—'}</strong></td>
+      <td>${get(r,'Turno','Turno ','turno')||'—'}</td>
+      <td style="font-weight:700;color:var(--vspt-amber);">${getVarTiempo(r).toFixed(2)} h</td>
+      <td>${get(r,'Id. Producción','Id. Produccion','id_produccion')||'—'}</td>
+      <td>${getMTO(r)||'—'}</td>
+      <td style="font-style:italic;opacity:.8;white-space:normal;">${get(r,'Observaciones','observaciones')||'—'}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+async function cargarPlanLookup() {
+  if (planLookup !== null) return; // ya cargado o en caché
+  planLookup = {};
+  try {
+    const res = await fetch(API_URL + '?tabla=plan');
+    const j = await res.json();
+    const rows = j.plan || j.data || [];
+    rows.forEach(r => {
+      const op      = String(get(r,'ORDEN SAP','Orden SAP','orden_sap','OP','Id. Producción','Id. Produccion','id_produccion')||'').trim();
+      const art     = String(get(r,'ARTICULO','Articulo','articulo')||'').trim();
+      const litros  = parseNum(get(r,'FINAL LITROS','Final Litros','final_litros','LITROS','Litros','litros'));
+      const botellas= parseNum(get(r,'FINAL BOTELLAS','Final Botellas','final_botellas','BOTELLAS','Botellas','botellas'));
+      if (op) planLookup[op] = { articulo: art || '—', litros, botellas };
+    });
+  } catch(e) {
+    console.warn('[Plan lookup] error al cargar hoja plan:', e);
+  }
+}
+
+async function openModalPerdidasVel() {
+  // Mostrar modal de carga mientras trae el plan
+  document.getElementById('modal-body').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;min-height:120px;gap:12px;color:var(--muted);">
+      <span style="font-size:22px;">⏳</span>
+      <span style="font-size:14px;">Cargando artículos del plan…</span>
+    </div>`;
+  document.getElementById('detail-modal').style.display = 'flex';
+
+  await cargarPlanLookup();
+
+  const rows = filteredData.filter(r => getPerdidas(r) > 0 && getVarPct(r) < 0.70);
+  rows.sort((a, b) => getPerdidas(b) - getPerdidas(a));
+  const totalPerd = rows.reduce((acc, r) => acc + getPerdidas(r), 0);
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:var(--vspt-amber);text-transform:uppercase;">⚡ Pérdidas de Velocidad</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;">Órdenes con Var. % &lt; 70% · ordenadas de mayor a menor pérdida</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">Total: ${totalPerd.toFixed(2)} h · ${rows.length} registros</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div><div style="overflow:auto;max-height:62vh;"><table><thead><tr>
+    <th>Fecha</th><th>Línea</th><th>Turno</th><th>OP</th><th style="width:22%;">Artículo</th><th>Pérd. Vel (h)</th><th>Var. %</th><th style="width:25%;">Observaciones</th>
+  </tr></thead><tbody>`;
+
+  if (rows.length === 0) {
+    html += `<tr><td colspan="8" style="text-align:center;padding:24px;opacity:.6;">Sin registros con Var. % &lt; 70% en el período seleccionado</td></tr>`;
+  } else {
+    rows.forEach(r => {
+      const f  = getFecha(r);
+      const fs = f ? f.toLocaleDateString('es-AR') : '—';
+      const vp = getVarPct(r) * 100;   // DB en decimal → convertir a %
+      const vpColor = vp < 50 ? 'var(--vspt-crimson)' : 'var(--vspt-amber)';
+      const op = String(get(r,'Id. Producción','Id. Produccion','id_produccion','OP','op')||'').trim();
+      const articulo = planLookup?.[op]?.articulo || '—';
+      html += `<tr>
+        <td>${fs}</td>
+        <td><strong>${getLinea(r)||'—'}</strong></td>
+        <td>${get(r,'Turno','Turno ','turno')||'—'}</td>
+        <td style="font-family:monospace;font-size:11px;">${op||'—'}</td>
+        <td style="white-space:normal;">${articulo}</td>
+        <td style="font-weight:700;color:var(--vspt-amber);">${getPerdidas(r).toFixed(2)} h</td>
+        <td style="font-weight:700;color:${vpColor};">${vp.toFixed(1)}%</td>
+        <td style="font-style:italic;opacity:.8;white-space:normal;">${get(r,'Observaciones','observaciones')||'—'}</td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('modal-body').innerHTML = html;
+}
+
+async function openModalProduccion(lineId) {
+  // Mostrar modal de carga mientras trae el plan
+  document.getElementById('modal-body').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;min-height:120px;gap:12px;color:var(--muted);">
+      <span style="font-size:22px;">⏳</span>
+      <span style="font-size:14px;">Cargando artículos del plan…</span>
+    </div>`;
+  document.getElementById('detail-modal').style.display = 'flex';
+
+  await cargarPlanLookup();
+
+  const rows = filteredData.filter(r => {
+    if (getClasif1(r) !== CATS.PRODUCCION) return false;
+    if (lineId && getLinea(r) !== lineId) return false;
+    return true;
+  });
+  rows.sort((a, b) => getVarTiempo(b) - getVarTiempo(a));
+  const totalH   = rows.reduce((a, r) => a + getVarTiempo(r), 0);
+  const totalCaj = rows.reduce((a, r) => a + getCajas(r), 0);
+  const catColor = CAT_COLORS[CATS.PRODUCCION] || '#98A040';
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:${catColor};text-transform:uppercase;">Tiempo de Producción</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;">${lineId || 'Planta'} · todos los registros del período · ordenados de mayor a menor horas</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">${totalH.toFixed(2)} h · ${totalCaj.toLocaleString('es-AR')} cajas · ${rows.length} órdenes</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div>
+  <div style="overflow:auto;max-height:62vh;">
+  <table style="font-size:11px;"><thead><tr>
+    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Horas</th>
+    <th>OP</th><th style="width:18%;">Artículo</th>
+    <th>Tipo Etiq.</th><th>Formato</th>
+    <th>Cajas</th><th>C9L</th><th>Litros</th><th>Botellas</th>
+  </tr></thead><tbody>`;
+
+  if (rows.length === 0) {
+    html += `<tr><td colspan="12" style="text-align:center;padding:24px;opacity:.6;">Sin registros en el período seleccionado</td></tr>`;
+  } else {
+    rows.forEach(r => {
+      const f   = getFecha(r);
+      const fs  = f ? f.toLocaleDateString('es-AR') : '—';
+      const op  = String(get(r,'Id. Producción','Id. Produccion','id_produccion','OP','op')||'').trim();
+      const pln = planLookup?.[op];
+      const articulo  = pln?.articulo  || '—';
+      const litrosPln = pln?.litros    || 0;
+      const botPln    = pln?.botellas  || 0;
+      const cajas = getCajas(r);
+      const c9l   = getC9L(r);
+      // Litros: del plan si existe, sino C9L × 9
+      const litros   = litrosPln > 0 ? litrosPln : (c9l > 0 ? c9l * 9 : 0);
+      const botellas = botPln;
+      const fmt = (n) => n > 0 ? Math.round(n).toLocaleString('es-AR') : '—';
+      html += `<tr>
+        <td>${fs}</td>
+        <td><strong>${getLinea(r)||'—'}</strong></td>
+        <td>${get(r,'Turno','Turno ','turno')||'—'}</td>
+        <td style="font-weight:700;color:${catColor};">${getVarTiempo(r).toFixed(2)} h</td>
+        <td style="font-family:monospace;font-size:10px;">${op||'—'}</td>
+        <td style="white-space:normal;">${articulo}</td>
+        <td>${getTipoEti(r)||'—'}</td>
+        <td>${get(r,'Formato_1','FORMATO_1','Formato','formato')||'—'}</td>
+        <td style="text-align:right;">${fmt(cajas)}</td>
+        <td style="text-align:right;">${fmt(c9l)}</td>
+        <td style="text-align:right;">${fmt(litros)}</td>
+        <td style="text-align:right;">${fmt(botellas)}</td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('modal-body').innerHTML = html;
+}
+
+// Parsea "articulo | formato" → {art, fmt}; maneja "S/D..." sin pipe
+function parsePT(v) {
+  const s = String(v || '').trim();
+  if (!s) return { art: '—', fmt: '' };
+  const i = s.indexOf('|');
+  if (i < 0) return { art: s, fmt: '' };
+  return { art: s.slice(0, i).trim() || '—', fmt: s.slice(i + 1).trim() };
+}
+
+let _cambiosState = { rows: [], lineId: null, tipo: '__ALL__' };
+
+function setCambiosTipo(t) { _cambiosState.tipo = t; renderCambios(); }
+
+function openModalCambios(lineId) {
+  const rows = filteredData.filter(r => {
+    if (getClasif1(r) !== CATS.CAMBIO) return false;
+    if (lineId && getLinea(r) !== lineId) return false;
+    return true;
+  });
+  rows.sort((a, b) => getVarTiempo(b) - getVarTiempo(a));
+  _cambiosState = { rows, lineId, tipo: '__ALL__' };
+  renderCambios();
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+function renderCambios() {
+  const catColor = CAT_COLORS[CATS.CAMBIO] || '#F08808';
+  const { rows: allRows, lineId, tipo } = _cambiosState;
+
+  // Tipos disponibles (Clasificación_2) con su conteo, ordenados por frecuencia
+  const tipoCount = {};
+  allRows.forEach(r => { const t = getClasif2(r) || 'Sin tipo'; tipoCount[t] = (tipoCount[t] || 0) + 1; });
+  const tipos = Object.keys(tipoCount).sort((a, b) => tipoCount[b] - tipoCount[a]);
+
+  const rows = tipo === '__ALL__' ? allRows : allRows.filter(r => (getClasif2(r) || 'Sin tipo') === tipo);
+
+  const totalH = rows.reduce((a, r) => a + getVarTiempo(r), 0);
+  const prom   = rows.length ? totalH / rows.length : 0;
+  const maxH   = rows.length ? getVarTiempo(rows[0]) : 0;
+
+  // Chips de filtro
+  const chipBtn = (label, val, count, active) => `
+    <button onclick="setCambiosTipo('${String(val).replace(/'/g, "\\'")}')"
+      style="cursor:pointer;border:1px solid ${active ? catColor : 'var(--muted)'}55;
+      background:${active ? catColor + '22' : 'transparent'};
+      color:${active ? catColor : 'var(--muted)'};font-weight:${active ? 800 : 600};
+      border-radius:999px;padding:5px 12px;font-size:11px;white-space:nowrap;transition:all .15s;">
+      ${label}${count != null ? ` <span style="opacity:.7;">(${count})</span>` : ''}
+    </button>`;
+  const filterChips = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+    <span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-right:2px;">Tipo:</span>
+    ${chipBtn('Todos', '__ALL__', allRows.length, tipo === '__ALL__')}
+    ${tipos.map(t => chipBtn(t, t, tipoCount[t], tipo === t)).join('')}
+  </div>`;
+
+  const stat = (label, val, sub) => `
+    <div style="flex:1;min-width:130px;background:var(--card-bg,rgba(255,255,255,.03));border:1px solid ${catColor}33;border-radius:12px;padding:14px 16px;">
+      <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800;">${label}</div>
+      <div style="font-size:22px;font-weight:900;color:${catColor};margin-top:4px;line-height:1;">${val}</div>
+      ${sub ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;">${sub}</div>` : ''}
+    </div>`;
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:${catColor};text-transform:uppercase;">Tiempos de Cambio</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;">${lineId || 'Planta'} · ${tipo === '__ALL__' ? 'todos los tipos' : tipo} · ordenados de mayor a menor duración</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div>
+  ${filterChips}
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+    ${stat('Tiempo promedio de cambio', prom.toFixed(2) + ' h', (prom * 60).toFixed(0) + ' min por cambio')}
+    ${stat('Cantidad de cambios', rows.length.toLocaleString('es-AR'), 'registros en el período')}
+    ${stat('Tiempo total', totalH.toFixed(2) + ' h', 'acumulado en cambios')}
+    ${stat('Cambio más largo', maxH.toFixed(2) + ' h', (maxH * 60).toFixed(0) + ' min')}
+  </div>
+  <div style="overflow:auto;max-height:54vh;"><table style="font-size:11px;"><thead><tr>
+    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Duración</th><th>Tipo</th>
+    <th style="width:42%;">Sale → Entra</th>
+  </tr></thead><tbody>`;
+
+  if (rows.length === 0) {
+    html += `<tr><td colspan="6" style="text-align:center;padding:24px;opacity:.6;">Sin cambios en el período seleccionado</td></tr>`;
+  } else {
+    rows.forEach(r => {
+      const f  = getFecha(r);
+      const fs = f ? f.toLocaleDateString('es-AR') : '—';
+      const h  = getVarTiempo(r);
+      const a  = parsePT(getPTA(r));
+      const b  = parsePT(getPTB(r));
+      const chip = (p, color) => `
+        <span style="display:inline-block;max-width:46%;vertical-align:middle;">
+          <span style="font-weight:700;color:${color};">${p.art}</span>
+          ${p.fmt ? `<span style="display:block;font-size:9px;color:var(--muted);">${p.fmt}</span>` : ''}
+        </span>`;
+      html += `<tr>
+        <td>${fs}</td>
+        <td><strong>${getLinea(r)||'—'}</strong></td>
+        <td>${get(r,'Turno','Turno ','turno')||'—'}</td>
+        <td style="font-weight:700;color:${catColor};">${h.toFixed(2)} h</td>
+        <td style="font-size:10px;">${getClasif2(r)||'—'}</td>
+        <td style="white-space:normal;">
+          ${chip(a, 'var(--text)')}
+          <span style="color:${catColor};font-weight:900;margin:0 6px;">→</span>
+          ${chip(b, catColor)}
+        </td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+function openModalClasif(lineId, clasif) {
+  if (clasif === CATS.PRODUCCION) { openModalProduccion(lineId); return; }
+  if (clasif === CATS.CAMBIO)     { openModalCambios(lineId); return; }
+  const isFalla = clasif === CATS.FALLA;
+  const rows = filteredData.filter(r => {
+    if (getClasif1(r) !== clasif) return false;
+    if (lineId && getLinea(r) !== lineId) return false;
+    return true;
+  });
+  rows.sort((a, b) => getVarTiempo(b) - getVarTiempo(a));
+  const totalH = rows.reduce((a, r) => a + getVarTiempo(r), 0);
+  const catColor = CAT_COLORS[clasif] || 'var(--vspt-amber)';
+  const subcatLabel = isFalla ? 'Equipo' : clasif === CATS.EXTERNA ? 'Causa' : 'Descripción';
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:${catColor};text-transform:uppercase;">${clasif}</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;">${lineId ? lineId : 'Planta'} · todos los registros del período</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">Total: ${totalH.toFixed(2)} h · ${rows.length} registros</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div><div style="overflow:auto;max-height:62vh;"><table><thead><tr>
+    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Horas</th><th>${subcatLabel}</th>
+    ${isFalla ? '<th>MTO/OP</th>' : ''}
+    <th style="width:38%;">Observaciones</th>
+  </tr></thead><tbody>`;
+
+  if (rows.length === 0) {
+    html += `<tr><td colspan="${isFalla ? 7 : 6}" style="text-align:center;padding:24px;opacity:.6;">Sin registros en el período seleccionado</td></tr>`;
+  } else {
+    rows.forEach(r => {
+      const f  = getFecha(r);
+      const fs = f ? f.toLocaleDateString('es-AR') : '—';
+      const h  = getVarTiempo(r);
+      html += `<tr>
+        <td>${fs}</td>
+        <td><strong>${getLinea(r)||'—'}</strong></td>
+        <td>${get(r,'Turno','Turno ','turno')||'—'}</td>
+        <td style="font-weight:700;color:${catColor};">${h.toFixed(2)} h</td>
+        <td>${getClasif2(r)||'—'}</td>
+        ${isFalla ? `<td>${getMTO(r)||'—'}</td>` : ''}
+        <td style="font-style:italic;opacity:.8;white-space:normal;">${get(r,'Observaciones','observaciones')||'—'}</td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+window.addEventListener('click', e => { if (e.target === document.getElementById('detail-modal')) document.getElementById('detail-modal').style.display = 'none'; });
+
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.classList.toggle('light', !isDark);
+  document.getElementById('theme-icon').innerText = isDark ? '☀️' : '🌙';
+  document.getElementById('theme-text').innerText = isDark ? 'MODO CLARO' : 'MODO OSCURO';
+  broadcastTheme();
+  render();
+}
+
+function broadcastTheme() {
+  ['iframeProgramas','iframeCalidad','iframePersonal'].forEach(id => {
+    const f = document.getElementById(id);
+    if (f && f.contentWindow && f.src && f.src !== 'about:blank') {
+      try { f.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
+    }
+  });
+}
+</script>
+
+<script>
+/* ===== Asistente v15 (filtros + pestañas + voz + Gemini) ===== */
+(function(){
+  const COLORS={amarillo:'#F8C040',verde:'#98A040',rojo:'#D81840',azul:'#3b82f6',naranja:'#F08808',violeta:'#701F52',celeste:'#5DC7D1'};
+  const MESES={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
+  const _n=s=>String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  function st(t,e){const el=document.getElementById('asistV-st');if(el){el.textContent=t||'';el.style.color=e?'#D81840':'var(--muted,#999)';}}
+  function _anio(){ const e=document.getElementById('f-anio'); const y=e&&parseInt(e.value,10); return (y&&y>2000)?y:new Date().getFullYear(); }
+  function _iso(y,m,d){ return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+  function buscarFechas(t){
+    const out=[],seen={}; let m;
+    let rng=t.match(/(\d{1,2})\s+al\s+(\d{1,2})\s*(?:de\s+)?([a-z]{3,12})(?:\s+(?:de\s+)?(\d{4}))?/);
+    if(rng){const mo=MESES[rng[3]];if(mo){let y=rng[4]?+rng[4]:_anio();[+rng[1],+rng[2]].forEach((d,k)=>{if(d>=1&&d<=31){const i=_iso(y,mo,d);if(!seen[i]){seen[i]=1;out.push({x:k,i});}}});}}
+    let re=/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/g;
+    while((m=re.exec(t))){const d=+m[1],mo=+m[2];let y=m[3]?+m[3]:_anio();if(y<100)y+=2000;if(d>=1&&d<=31&&mo>=1&&mo<=12){const i=_iso(y,mo,d);if(!seen[i]){seen[i]=1;out.push({x:m.index,i});}}}
+    re=/\b(\d{1,2})\s*(?:de\s+)?([a-z]{3,12})(?:\s+(?:de\s+)?(\d{4}))?\b/g;
+    while((m=re.exec(t))){const mo=MESES[m[2]];if(!mo)continue;const d=+m[1];let y=m[3]?+m[3]:_anio();if(d>=1&&d<=31){const i=_iso(y,mo,d);if(!seen[i]){seen[i]=1;out.push({x:m.index,i});}}}
+    return out.sort((a,b)=>a.x-b.x).map(o=>o.i);
+  }
+  function parse(txt){
+    const t=_n(txt); if(!t) return null;
+    if(/(limpi|borr|reset).*(filtro)|^limpiar filtros|^limpiar$/.test(t)) return {a:'clear'};
+    if(/(programa)/.test(t)) return {a:'tab',v:'programas'};
+    if(/(calidad|desvi)/.test(t)) return {a:'tab',v:'calidad'};
+    if(/objetivo/.test(t)) return {a:'tab',v:'objetivos'};
+    if(/\bplanta\b/.test(t) && /(mostr|ver|ir|pesta|abri|anda)/.test(t)) return {a:'tab',v:'planta'};
+    if(/(linea\s*1|\bl1\b)/.test(t)) return {a:'tab',v:'l1'};
+    if(/(linea\s*2|\bl2\b)/.test(t)) return {a:'tab',v:'l2'};
+    if(/(linea\s*3|\bl3\b)/.test(t)) return {a:'tab',v:'l3'};
+    const f={}; let m;
+    m=t.match(/sem(?:ana)?\s*0*(\d{1,2})/); if(m) f['f-semana']=String(+m[1]);
+    m=t.match(/turno\s*(tm|tt|tn)/); if(!m && /turno/.test(t)){const x=t.match(/\b(tm|tt|tn)\b/); if(x)m=x;} if(m&&m[1]) f['f-turno']=m[1].toUpperCase();
+    m=t.match(/\bop\s*0*(\d{3,})/); if(m) f['f-op']=m[1];
+    for(const k in MESES){ if(new RegExp('\\b'+k+'\\b').test(t)){ f['f-periodo']=k.toUpperCase(); break; } }
+    if(/anual|ytd|todo el an|todos los mes/.test(t)) f['f-periodo']='ALL';
+    const fs=buscarFechas(t); if(fs.length){ f['f-desde']=fs[0]; f['f-hasta']=fs[1]||fs[0]; }
+    ['f-clasif','f-subclasif','f-tipoeti','f-formato','f-mto'].forEach(id=>{
+      const sel=document.getElementById(id); if(!sel) return;
+      for(const o of sel.options){ const ov=_n(o.value); if(ov && ov.length>2 && t.includes(ov)){ f[id]=o.value; break; } }
+    });
+    return Object.keys(f).length ? {a:'filtros',f} : null;
+  }
+  function apply(act){
+    if(!act){ st('No entendí el comando.', true); return; }
+    if(act.a==='clear'||act.accion==='limpiarFiltros'){ if(typeof clearFilters==='function')clearFilters(); st('✓ Filtros restablecidos'); return; }
+    if(act.a==='tab'){ if(typeof changeTab==='function'){ changeTab(act.v); st('✓ Pestaña: '+act.v.toUpperCase()); } return; }
+    let f=act.f || act.filtros || null;
+    if(!f && act.accion==='fechas'){ f={'f-desde':act.desde,'f-hasta':act.hasta||act.desde}; }
+    if(f && typeof f==='object'){
+      const partes=[];
+      for(const id in f){ const el=document.getElementById(id); if(el && f[id]!=null && f[id]!==''){
+        if(typeof MS_IDS!=='undefined' && MS_IDS.includes(id)){ for(const o of el.options) o.selected = (o.value===String(f[id])); }
+        else { el.value=String(f[id]); }
+        partes.push(id.replace('f-','')+'='+f[id]);
+      } }
+      if(typeof onFilterChange==='function') onFilterChange();
+      st(partes.length?('✓ '+partes.join(' · ')):'No reconocí el filtro', !partes.length);
+      return;
+    }
+    st('Ese comando no aplica en esta vista (acá solo filtros y pestañas).', true);
+  }
+  const CTX='Página OPINONA (Dashboard general). Filtros disponibles (id → control): '+
+    'f-periodo (mes en MAYÚSCULA o ALL), f-semana (número), f-turno (TM/TT/TN), '+
+    'f-clasif, f-subclasif, f-tipoeti, f-formato, f-mto, f-op (texto), f-desde, f-hasta (AAAA-MM-DD). '+
+    'Para filtros usá {"accion":"setfiltros","filtros":{"<id>":"<valor>"}}. '+
+    'Para fechas {"accion":"fechas","desde":"AAAA-MM-DD","hasta":"AAAA-MM-DD"}. '+
+    'No hay resaltado de filas en esta vista.';
+  let _rec=null;
+  function voz(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ st('Tu navegador no soporta voz (usá Chrome/Edge).', true); return; }
+    const b=document.getElementById('asistV-mic');
+    if(_rec){ try{_rec.stop();}catch(e){} _rec=null; if(b)b.textContent='🎤'; return; }
+    const r=new SR(); _rec=r; r.lang='es-AR'; r.interimResults=false; r.maxAlternatives=1;
+    r.onstart=()=>{ if(b)b.textContent='🔴'; st('Escuchando…'); };
+    r.onerror=e=>st(e.error==='not-allowed'?'Permiso de micrófono denegado.':'Error de voz: '+e.error,true);
+    r.onend=()=>{ if(b)b.textContent='🎤'; _rec=null; };
+    r.onresult=e=>{ const tx=e.results[0][0].transcript.trim(); const i=document.getElementById('asistV-in'); if(i)i.value=tx; st('🗣 "'+tx+'"'); ejec(); };
+    try{ r.start(); }catch(e){ st('No pude iniciar el micrófono.',true); _rec=null; if(b)b.textContent='🎤'; }
+  }
+  async function ejec(){
+    const i=document.getElementById('asistV-in'); const tx=((i&&i.value)||'').trim(); if(!tx) return;
+    st('Procesando…');
+    const loc=parse(tx); if(loc){ apply(loc); return; }
+    try{
+      st('Consultando IA…');
+      const res=await fetch(API_URL,{method:'POST',body:JSON.stringify({accion:'asistente',texto:tx,contexto:CTX})});
+      const raw=await res.text(); let j;
+      try{ j=JSON.parse(raw); }catch(_){ throw new Error('Respuesta no-JSON (HTTP '+res.status+')'); }
+      if(j.status!=='success'||!j.act) throw new Error(j.msg||'sin respuesta');
+      apply(j.act);
+    }catch(e){ console.error(e); st('IA: '+(e.message||e), true); }
+  }
+  function montar(){
+    const sb=document.getElementById('sidebar'); if(!sb || document.getElementById('asistV-in')) return;
+    const box=document.createElement('div');
+    box.style.cssText='margin:6px 0 14px;padding:10px;border:1px solid var(--border,#3334);border-radius:8px;background:var(--card2,rgba(0,0,0,.15))';
+    box.innerHTML='<div style="font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--muted,#999);margin-bottom:6px">🤖 ASISTENTE</div>'+
+      '<input id="asistV-in" type="text" placeholder=\'ej: "filtrá semana 18 y turno TM" · "ir a calidad"\' style="width:100%;background:var(--card,#222);border:1px solid var(--border,#3334);color:var(--text,#eee);border-radius:6px;padding:7px 9px;font-size:12px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\')window.__asistVexec()">'+
+      '<div style="display:flex;gap:6px;margin-top:6px"><button id="asistV-mic" title="Dictar" style="flex:0 0 auto;background:transparent;border:1px solid var(--border,#3334);color:var(--text,#eee);border-radius:6px;padding:5px 9px;cursor:pointer">🎤</button>'+
+      '<button id="asistV-go" style="flex:1;background:linear-gradient(135deg,#4E1742,#D81840);border:none;color:#fff;border-radius:6px;padding:5px;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.1em">Ejecutar</button></div>'+
+      '<div id="asistV-st" style="font-size:10px;color:var(--muted,#999);margin-top:6px;min-height:12px"></div>';
+    const h=sb.querySelector('h3'); if(h&&h.nextSibling) sb.insertBefore(box,h.nextSibling); else sb.appendChild(box);
+    document.getElementById('asistV-go').onclick=ejec;
+    document.getElementById('asistV-mic').onclick=voz;
+    window.__asistVexec=ejec;
+  }
+  if(document.readyState!=='loading') montar(); else document.addEventListener('DOMContentLoaded',montar);
+  // Reintento por si el sidebar se arma tarde
+  let _try=0; const _iv=setInterval(()=>{ if(document.getElementById('asistV-in')||_try++>20){clearInterval(_iv);} else montar(); },500);
+})();
+</script>
+</body>
+</html>
+
+<style id="__om-edit-overrides">
+#tab-l2 >div:nth-child(4) { border-color: rgb(8, 219, 240) !important }
+#tab-l2 >div:nth-child(4) { border-color: rgb(104, 225, 237) !important }
+</style>

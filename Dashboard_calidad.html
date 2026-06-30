@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!-- Control de acceso VSPT — solo correos @vspt.com.ar (ver auth.js) -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Calidad — Bodega</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* VSPT (alias usados por Chart.js y por el código existente) */
+    --vspt-yellow:#F8C040;
+    --vspt-amber:#F8C040;
+    --vspt-orange:#F08808;
+    --vspt-crimson:#D81840;
+    --vspt-wine:#701F52;
+    --vspt-plum:#4E1742;
+    --vspt-deep-purple:#321032;
+    --vspt-olive:#98A040;
+    --vspt-cream:#F5EBD3;
+    --vspt-beige:#E0D0B8;
+    --vspt-beige-soft:#FAF5E8;
+
+    /* Aliases legacy para no romper el código existente */
+    --vspt-red:var(--vspt-crimson);
+    --vspt-purple:var(--vspt-plum);
+    --accent1:var(--vspt-wine);
+    --accent2:var(--vspt-amber);
+    --green:var(--vspt-olive);
+    --amber:var(--vspt-amber);
+    --red:var(--vspt-crimson);
+    --blue:var(--vspt-wine);
+    --teal:var(--vspt-olive);
+    --pink:var(--vspt-orange);
+    --orange:var(--vspt-orange);
+
+    /* Dark mode — Claude.ai (marrones cálidos estratificados) */
+    --bg:#1A1915;
+    --card:#222220;
+    --card2:#2A2A28;
+    --border:rgba(200,168,130,0.14);
+    --text:#F2EDE4;
+    --muted:#B8A898;
+    --th-bg:#2A2A28;
+    --tr-hover:rgba(212,112,90,0.06);
+    --td-border:rgba(255,255,255,0.05);
+    --chart-tick:#B8A898;
+    --chart-grid:rgba(255,255,255,0.06);
+    --radar-grid:rgba(255,255,255,0.10);
+    --radar-angle:rgba(255,255,255,0.10);
+  }
+  body.light {
+    --bg:var(--vspt-beige-soft);
+    --card:#FFFFFF;
+    --card2:var(--vspt-cream);
+    --border:rgba(78,23,66,0.14);
+    --text:var(--vspt-plum);
+    --muted:#7a627a;
+    --th-bg:var(--vspt-beige-soft);
+    --tr-hover:rgba(78,23,66,0.05);
+    --td-border:rgba(78,23,66,0.08);
+    --chart-tick:#7a627a;
+    --chart-grid:rgba(78,23,66,0.08);
+    --radar-grid:rgba(78,23,66,0.12);
+    --radar-angle:rgba(78,23,66,0.12);
+  }
+  body.light .header { background: linear-gradient(135deg, var(--vspt-plum) 0%, var(--vspt-wine) 100%); }
+  body.light .filter-group select option { background: #ffffff; color: var(--vspt-plum); }
+  body.light .kpi-card::before { background: linear-gradient(90deg, var(--accent1), var(--accent2)); }
+  body.light .section-title span { background: linear-gradient(90deg, var(--accent1), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .theme-btn { background: var(--card2); border: 1px solid var(--border); color: var(--text); padding: 6px 13px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s; white-space: nowrap; }
+  .theme-btn:hover { background: var(--accent1); color: #fff; border-color: var(--accent1); }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Montserrat', system-ui, sans-serif; font-size: 14px; transition:background .3s,color .3s; }
+  a { color: var(--accent1); }
+
+  /* HEADER — compacto, NO sticky (igual que Dashboard_programas) */
+  .header { background: linear-gradient(135deg, var(--vspt-plum) 0%, var(--vspt-deep-purple) 55%, var(--vspt-wine) 100%); border-bottom: 3px solid var(--vspt-orange); padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo { width: 38px; height: 38px; background: linear-gradient(135deg, var(--accent1), var(--accent2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .header-title { color: #fff; font-weight: 700; font-size: 16px; letter-spacing: -0.2px; }
+  .header-sub { font-size: 9px; color: var(--vspt-beige); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.22em; font-weight: 600; }
+  .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .status-badge { display: flex; align-items: center; gap: 6px; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: var(--green); padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .last-update { font-size: 11px; color: var(--muted); }
+
+  /* LAYOUT — sin sidebar, igual que Dashboard_programas */
+  .main { display: block; }
+  .content { padding: 18px 22px; }
+
+  /* FILTROS — barra horizontal, NO sticky (scrollea con la página) */
+  .filter-bar { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 22px; display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .fg { display: flex; flex-direction: column; gap: 4px; }
+  .fg label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700; }
+  .fg select, .fg input { background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 7px 10px; font-size: 12px; outline: none; font-family: inherit; min-width: 130px; }
+  .fg select:focus, .fg input:focus { border-color: var(--vspt-amber); }
+  .fg input[type=date] { color-scheme: light; }
+  body:not(.light) .fg input[type=date] { color-scheme: dark; }
+  .fg input[type=date]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.85; filter: var(--date-icon-filter, invert(0.7)); }
+  body.light .fg input[type=date]::-webkit-calendar-picker-indicator { filter: none; opacity: 0.6; }
+  .fg .date-pair { display: flex; gap: 6px; }
+  .fg .date-pair input { min-width: 130px; }
+  .btn-clear { background: linear-gradient(135deg, var(--vspt-deep-purple), var(--vspt-crimson)); border: none; color: #fff; border-radius: 7px; padding: 8px 16px; font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.18em; font-family: inherit; }
+  .btn-clear:hover { opacity: 0.88; }
+
+  /* SPINNER */
+  .spinner-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; gap: 16px; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent1); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; padding: 16px 20px; border-radius: 10px; font-size: 13px; }
+
+  /* KPIs — estilo Dashboard_programas */
+  .kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
+  .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden; transition: transform 0.2s; }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--vspt-crimson), var(--vspt-wine), var(--vspt-plum)); }
+  .kpi-card.amber::before  { background: linear-gradient(90deg, var(--vspt-yellow), var(--vspt-orange)); }
+  .kpi-card.olive::before  { background: linear-gradient(90deg, var(--vspt-olive), #6e7a2a); }
+  .kpi-card.orange::before { background: linear-gradient(90deg, var(--vspt-orange), var(--vspt-crimson)); }
+  .kpi-card.crimson::before{ background: linear-gradient(90deg, var(--vspt-crimson), var(--vspt-magenta, #B61858)); }
+  .kpi-card.cnc::before    { background: linear-gradient(90deg, #16a34a, #65a30d); }
+  .kpi-icon { display: none; }
+  .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+  .kpi-value { font-size: 34px; font-weight: 800; letter-spacing: -1px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text); }
+  .kpi-card.amber  .kpi-value { color: var(--vspt-amber); }
+  .kpi-card.olive  .kpi-value { color: var(--vspt-olive); }
+  .kpi-card.orange .kpi-value { color: var(--vspt-orange); }
+  .kpi-card.crimson .kpi-value { color: var(--vspt-crimson); }
+  .kpi-card.cnc .kpi-value { color: #16a34a; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .kpi-badge-red { display: inline-flex; align-items: center; gap: 4px; background: rgba(216,24,64,0.15); border: 1px solid rgba(216,24,64,0.4); color: var(--vspt-crimson); padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; margin-top: 6px; animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* GRID GRAFICOS */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .charts-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-top: 3px solid var(--vspt-orange); border-radius: 12px; padding: 16px; }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-card.amber { border-top-color: var(--vspt-amber); }
+  .chart-card.olive { border-top-color: var(--vspt-olive); }
+  .chart-card.crimson { border-top-color: var(--vspt-crimson); }
+  .chart-card.wine { border-top-color: var(--vspt-wine); }
+  .chart-title { font-size: 11px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.16em; margin-bottom: 12px; }
+
+  /* TABLA */
+  .table-wrap { overflow-x: auto; }
+  .search-bar { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; }
+  .search-bar input { flex: 1; background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 7px 12px; font-size: 12px; outline: none; }
+  .search-bar input:focus { border-color: var(--accent1); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: var(--th-bg); color: var(--muted); padding: 9px 10px; text-align: left; cursor: pointer; white-space: nowrap; border-bottom: 1px solid var(--border); font-weight: 600; user-select: none; }
+  th:hover { color: var(--text); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--td-border); white-space: nowrap; }
+  tr:hover td { background: var(--tr-hover); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .badge-green { background: rgba(34,197,94,0.15); color: #86efac; }
+  .badge-amber { background: rgba(245,158,11,0.15); color: #fcd34d; }
+  .badge-red { background: rgba(239,68,68,0.15); color: #fca5a5; }
+  .pagination { display: flex; gap: 6px; align-items: center; margin-top: 12px; justify-content: flex-end; flex-wrap: wrap; }
+  .page-btn { background: var(--card2); border: 1px solid var(--border); color: var(--text); padding: 5px 11px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: background 0.15s; }
+  .page-btn:hover, .page-btn.active { background: var(--accent1); border-color: var(--accent1); }
+  .page-info { font-size: 11px; color: var(--muted); }
+  .no-data { text-align: center; color: var(--muted); padding: 40px; font-size: 13px; }
+
+  /* INSIGHTS */
+  .insights-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .insight-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; gap: 10px; align-items: flex-start; }
+  .insight-icon { font-size: 20px; flex-shrink: 0; }
+  .insight-text { font-size: 12px; line-height: 1.5; color: var(--muted); }
+  .insight-text strong { color: var(--text); }
+  .insight-card.green { border-left: 3px solid var(--green); }
+  .insight-card.amber { border-left: 3px solid var(--amber); }
+  .insight-card.red { border-left: 3px solid var(--red); }
+  .insight-card.blue { border-left: 3px solid var(--blue); }
+
+  /* HEATMAP */
+  .heatmap-container { overflow-x: auto; }
+  .heatmap-table { width: auto; border-collapse: separate; border-spacing: 3px; font-size: 11px; margin: 0; }
+  .heatmap-table th { padding: 5px 8px; color: var(--muted); font-weight: 600; background: transparent; border-bottom: none; text-transform: none; letter-spacing: 0; font-size: 11px; position: static; text-align: center; }
+  .heatmap-table tbody th { text-align: right; padding-right: 12px; white-space: nowrap; color: var(--text); font-weight: 700; }
+  .heatmap-table td { width: 56px; min-width: 56px; height: 34px; text-align: center; border-radius: 4px; font-weight: 700; cursor: default; transition: opacity 0.2s; border-bottom: none; padding: 0; white-space: nowrap; }
+  .heatmap-table td:hover { opacity: 0.8; }
+  .heatmap-table tr:hover td { background: inherit; }
+
+  /* SECTION TITLES */
+  /* MODAL CNC */
+  .cnc-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
+  .cnc-modal-overlay.open { display: flex; }
+  .cnc-modal { background: var(--card); border: 1px solid var(--border); border-radius: 14px; max-width: 720px; width: 100%; max-height: 86vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+  .cnc-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+  .cnc-modal-title { font-size: 16px; font-weight: 800; color: var(--text); }
+  .cnc-modal-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .cnc-modal-close { background: transparent; border: none; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; padding: 4px; }
+  .cnc-modal-close:hover { color: var(--vspt-crimson); }
+  .cnc-modal-body { padding: 18px 20px; overflow-y: auto; }
+  .cnc-stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .cnc-stat { background: var(--bg, rgba(0,0,0,0.15)); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .cnc-stat .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .cnc-stat .val { font-size: 17px; font-weight: 800; color: var(--text); margin-top: 4px; }
+  .cnc-stat.green .val { color: #16a34a; }
+  .cnc-repro { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+  .cnc-repro-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .cnc-repro-task { font-weight: 700; font-size: 13px; color: var(--text); }
+  .cnc-repro-total { font-weight: 800; font-size: 14px; color: #16a34a; white-space: nowrap; }
+  .cnc-repro-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 16px; font-size: 12px; color: var(--muted); }
+  .cnc-repro-grid b { color: var(--text); font-weight: 600; }
+  @media (max-width: 640px) { .cnc-stat-row { grid-template-columns: repeat(2, 1fr); } .cnc-repro-grid { grid-template-columns: 1fr; } }
+  .section-title { font-size: 12px; font-weight: 700; color: var(--text); margin: 14px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: 0.18em; }
+  .section-title::before { content: ''; width: 4px; height: 16px; background: linear-gradient(180deg, var(--vspt-amber), var(--vspt-orange)); border-radius: 2px; }
+  .section-title span { background: linear-gradient(90deg, var(--accent1), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+  @media (max-width: 1200px) {
+    .kpi-row { grid-template-columns: repeat(3, 1fr); }
+    .charts-grid { grid-template-columns: 1fr; }
+    .charts-grid-3 { grid-template-columns: 1fr; }
+    .insights-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .insights-grid { grid-template-columns: 1fr; }
+    .filter-bar { padding: 10px 14px; }
+    .content { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">🍷</div>
+    <div>
+      <div class="header-title">Dashboard de Calidad — Producción</div>
+      <div class="header-sub">Desvíos de Calidad · Análisis Ejecutivo</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="last-update" id="lastUpdate">Cargando datos...</div>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" style="display:none">☀ Modo claro</button>
+    <div class="status-badge" id="statusBadge">
+      <div class="status-dot"></div>
+      <span id="statusText">Conectando...</span>
+    </div>
+  </div>
+</div>
+
+<!-- FILTROS — barra horizontal -->
+<div class="filter-bar">
+  <div class="fg">
+    <label>Fecha desde / hasta</label>
+    <div class="date-pair">
+      <input type="date" id="f-desde">
+      <input type="date" id="f-hasta">
+    </div>
+  </div>
+  <div class="fg">
+    <label>Estado</label>
+    <select id="f-estado">
+      <option value="">Todos</option>
+      <option value="Cerrado">Cerrado</option>
+      <option value="Pendiente">Pendiente</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label>Mes</label>
+    <select id="f-mes"><option value="">Todos</option></select>
+  </div>
+  <div class="fg">
+    <label>Producto / SKU</label>
+    <select id="f-producto"><option value="">Todos</option></select>
+  </div>
+  <div class="fg">
+    <label>Grupo del Defecto</label>
+    <select id="f-grupo"><option value="">Todos</option></select>
+  </div>
+  <div class="fg">
+    <label>Clasificación del Defecto</label>
+    <select id="f-clasificacion"><option value="">Todos</option></select>
+  </div>
+  <div class="fg">
+    <label>Responsable / Solicita</label>
+    <select id="f-responsable"><option value="">Todos</option></select>
+  </div>
+  <div class="fg">
+    <label>Afecta Inocuidad</label>
+    <select id="f-inocuidad">
+      <option value="">Todos</option>
+      <option value="Si">Sí</option>
+      <option value="No">No</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label>Disposición Final</label>
+    <select id="f-disposicion"><option value="">Todos</option></select>
+  </div>
+  <div class="fg">
+    <label>&nbsp;</label>
+    <button class="btn-clear" onclick="clearFilters()">✕ Limpiar</button>
+  </div>
+</div>
+
+<div style="background:var(--card);border-bottom:1px solid var(--border);padding:8px 22px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.14em">🤖 Asistente</span>
+  <input id="asistC-in" type="text" placeholder='ej: "marcá en rojo los de Brasil" · "filtrá estado pendiente" · "limpiar"'
+    style="flex:1;min-width:240px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:inherit"
+    onkeydown="if(event.key==='Enter')window.__asistCexec()">
+  <button id="asistC-mic" title="Dictar por voz" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 11px;cursor:pointer">🎤</button>
+  <button id="asistC-go" class="btn-clear">Ejecutar</button>
+  <span id="asistC-st" style="font-size:11px;color:var(--muted)"></span>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- CONTENT -->
+  <div class="content" id="mainContent">
+    <div class="spinner-wrap" id="loadingSpinner">
+      <div class="spinner"></div>
+      <div style="color:var(--muted);font-size:13px;">Cargando datos desde Google Sheets...</div>
+    </div>
+    <div id="dashContent" style="display:none;">
+
+      <!-- KPIs -->
+      <div class="section-title"><span>KPIs Ejecutivos</span></div>
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Desvíos</div>
+          <div class="kpi-value" id="kpi-total">—</div>
+          <div class="kpi-sub" id="kpi-total-sub"></div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Pendientes</div>
+          <div class="kpi-value" id="kpi-pendientes">—</div>
+          <div id="kpi-pend-badge"></div>
+        </div>
+        <div class="kpi-card olive">
+          <div class="kpi-label">Cerrados</div>
+          <div class="kpi-value" id="kpi-cerrados">—</div>
+          <div class="kpi-sub" id="kpi-cerrados-sub"></div>
+        </div>
+        <div class="kpi-card orange">
+          <div class="kpi-label">Botellas Afectadas</div>
+          <div class="kpi-value" id="kpi-botellas">—</div>
+          <div class="kpi-sub" id="kpi-botellas-sub"></div>
+        </div>
+        <div class="kpi-card crimson">
+          <div class="kpi-label">Lead Time Promedio</div>
+          <div class="kpi-value" id="kpi-leadtime">—</div>
+          <div class="kpi-sub">días promedio</div>
+        </div>
+        <div class="kpi-card cnc">
+          <div class="kpi-label">Costo de No Calidad</div>
+          <div class="kpi-value" id="kpi-cnc">—</div>
+          <div class="kpi-sub" id="kpi-cnc-sub"></div>
+        </div>
+      </div>
+
+      <!-- INSIGHTS -->
+      <div class="section-title"><span>Inteligencia Automática</span></div>
+      <div class="insights-grid" id="insightsGrid"></div>
+
+      <!-- GRAFICOS FILA 1 -->
+      <div class="section-title"><span>Análisis por Producto y Defecto</span></div>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">Top 10 Productos con más Desvíos</div>
+          <div style="position:relative;height:320px;"><canvas id="ch-top-productos" role="img" aria-label="Barras horizontales top 10 productos"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Distribución por Grupo del Defecto</div>
+          <div id="legend-grupo" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;font-size:11px;color:var(--muted);"></div>
+          <div style="position:relative;height:280px;"><canvas id="ch-grupo" role="img" aria-label="Dona distribución por grupo del defecto"></canvas></div>
+        </div>
+      </div>
+
+      <!-- GRAFICOS FILA 2 -->
+      <div class="section-title"><span>Evolución y Responsables</span></div>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">Desvíos por Mes — Por Estado</div>
+          <div style="position:relative;height:280px;"><canvas id="ch-barras-mes" role="img" aria-label="Barras apiladas desvíos por mes y estado"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Cantidad de Desvíos por Responsable</div>
+          <div id="ch-lt-resp-wrap" style="position:relative;"><canvas id="ch-lt-resp" role="img" aria-label="Cantidad de desvíos por responsable"></canvas></div>
+        </div>
+      </div>
+
+      <!-- GRAFICOS FILA 3 -->
+      <div class="section-title"><span>Disposición, Inocuidad y Perfil</span></div>
+      <div class="charts-grid-3">
+        <div class="chart-card">
+          <div class="chart-title">Botellas por Disposición Final</div>
+          <div style="position:relative;height:260px;"><canvas id="ch-disposicion" role="img" aria-label="Botellas por disposición final"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Inocuidad: Afecta vs No Afecta</div>
+          <div style="position:relative;height:260px;"><canvas id="ch-inocuidad" role="img" aria-label="Inocuidad sí vs no"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Perfil de Desvíos por Responsable (Radar)</div>
+          <div style="position:relative;height:260px;"><canvas id="ch-radar" role="img" aria-label="Radar perfil desvíos por responsable"></canvas></div>
+        </div>
+      </div>
+
+      <!-- COSTOS DE NO CALIDAD (CNC) -->
+      <div class="section-title"><span>Costos de No Calidad</span></div>
+      <div class="charts-grid-3">
+        <div class="chart-card">
+          <div class="chart-title">Composición del Costo</div>
+          <div id="legend-cnc-comp" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;font-size:11px;color:var(--muted);"></div>
+          <div style="position:relative;height:260px;"><canvas id="ch-cnc-comp" role="img" aria-label="Composición del costo de no calidad"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Costo de No Calidad por Mes</div>
+          <div style="position:relative;height:260px;"><canvas id="ch-cnc-mes" role="img" aria-label="Costo de no calidad por mes"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Top Desvíos por Costo</div>
+          <div style="position:relative;height:260px;"><canvas id="ch-cnc-top" role="img" aria-label="Top desvíos por costo de no calidad"></canvas></div>
+        </div>
+      </div>
+
+      <!-- TABLA -->
+      <div class="section-title"><span>Detalle de Desvíos</span></div>
+      <div class="chart-card" style="margin-bottom:20px;">
+        <div class="search-bar">
+          <input type="text" id="tableSearch" placeholder="Buscar en la tabla..." oninput="renderTable(1)">
+          <span id="tableCount" style="font-size:11px;color:var(--muted);white-space:nowrap;"></span>
+        </div>
+        <div class="table-wrap">
+          <table id="mainTable">
+            <thead>
+              <tr>
+                <th onclick="sortTable('|')">N° ↕</th>
+                <th onclick="sortTable('FECHA')">Fecha ↕</th>
+                <th onclick="sortTable('PRODUCTO')">Producto ↕</th>
+                <th onclick="sortTable('Motivo de Desvio')">Defecto ↕</th>
+                <th onclick="sortTable('Botellas')">Botellas ↕</th>
+                <th onclick="sortTable('Estado')">Estado ↕</th>
+                <th onclick="sortTable('Lead Time (días)')">Lead Time ↕</th>
+                <th onclick="sortTable('Solicita')">Responsable ↕</th>
+                <th onclick="sortTable('Grupo del Defecto')">Grupo ↕</th>
+                <th onclick="sortTable('Afecta la Inocuidad')">Inocuidad ↕</th>
+                <th>Costo CNC</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+
+      <!-- FOOTER -->
+      <div style="text-align:center;font-size:11px;color:var(--muted);padding:16px 0 24px;border-top:1px solid var(--border);">
+        Fuente: Google Sheets — CALIDAD &nbsp;|&nbsp; Última actualización: <span id="footerTs">—</span>
+      </div>
+
+    </div><!-- /dashContent -->
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- MODAL CNC -->
+<div id="cncModal" class="cnc-modal-overlay" onclick="if(event.target===this)closeCncModal()">
+  <div class="cnc-modal">
+    <div class="cnc-modal-head">
+      <div>
+        <div class="cnc-modal-title" id="cncModalTitle">Costo de No Calidad</div>
+        <div class="cnc-modal-sub" id="cncModalSub"></div>
+      </div>
+      <button class="cnc-modal-close" onclick="closeCncModal()">✕</button>
+    </div>
+    <div class="cnc-modal-body" id="cncModalBody"></div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIGURACIÓN ───────────────────────────────────────────────────────────
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx8alYmoiwb5-z1nyvXfyCSLfELACGZ4qGGtIoS3j6lF1yS6SmFH0wYRbKfQPrq5P6N/exec';
+
+// Paleta fija por categoría
+const PALETTE = ['#F9C13F','#EC752D','#E51C3C','#571C4A','#9AA423','#321435','#EDE0C4','#8b5cf6','#0ea5e9','#b89b5a','#c05ea8','#c8d139'];
+
+// Meses en orden cronológico con sus variantes posibles
+const MES_MAP = {
+  '1':'Enero','01':'Enero','enero':'Enero','jan':'Enero',
+  '2':'Febrero','02':'Febrero','febrero':'Febrero','feb':'Febrero',
+  '3':'Marzo','03':'Marzo','marzo':'Marzo','mar':'Marzo',
+  '4':'Abril','04':'Abril','abril':'Abril','apr':'Abril',
+  '5':'Mayo','05':'Mayo','mayo':'Mayo','may':'Mayo',
+  '6':'Junio','06':'Junio','junio':'Junio','jun':'Junio',
+  '7':'Julio','07':'Julio','julio':'Julio','jul':'Julio',
+  '8':'Agosto','08':'Agosto','agosto':'Agosto','aug':'Agosto',
+  '9':'Septiembre','09':'Septiembre','septiembre':'Septiembre','sep':'Septiembre','sept':'Septiembre',
+  '10':'Octubre','octubre':'Octubre','oct':'Octubre',
+  '11':'Noviembre','noviembre':'Noviembre','nov':'Noviembre',
+  '12':'Diciembre','diciembre':'Diciembre','dic':'Diciembre','dec':'Diciembre'
+};
+const MES_ORDEN = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function normalizarMes(raw) {
+  if(!raw) return '';
+  const s = String(raw).trim();
+
+  // Detectar formato ISO timestamp: 2026-01-01T03:00:00.000z o 2026-01-01
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-\d{2}/);
+  if(isoMatch) {
+    const numMes = String(parseInt(isoMatch[2], 10)); // "01" → "1"
+    return MES_MAP[numMes] || s;
+  }
+
+  // Detectar formato numérico puro como "1", "01", "12"
+  const soloNum = s.match(/^(\d{1,2})$/);
+  if(soloNum) {
+    const numMes = String(parseInt(soloNum[1], 10));
+    return MES_MAP[numMes] || s;
+  }
+
+  // Texto: "enero", "Enero", "jan", etc.
+  const lower = s.toLowerCase();
+  return MES_MAP[lower] || (s.charAt(0).toUpperCase() + s.slice(1));
+}
+
+function normalizarResponsable(raw) {
+  const s = String(raw||'').trim();
+  // Corregir typo conocido
+  if(s.toLowerCase() === 'viginia') return 'Virginia';
+  return s;
+}
+
+function isFilaValida(r) {
+  const num = String(r['|']||'').trim();
+  const fecha = String(r['FECHA']||'').trim();
+  const motivo = String(r['Motivo de Desvio']||'').trim();
+  return num !== '' && fecha !== '' && motivo !== '';
+}
+
+let ALL_ROWS = [];
+let FILTERED_ROWS = [];
+let sortCol = '|';
+let sortAsc = true;
+let currentPage = 1;
+const PAGE_SIZE = 10;
+let charts = {};
+let isDark = false;
+let CNC_ROWS = [];
+let CNC_LOOKUP = {};
+
+// ─── CNC — Costos de No Calidad ───────────────────────────────────────────────
+function fmtMoney(n) {
+  const v = Number(n) || 0;
+  return '$' + v.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+}
+
+function cncNum(v) {
+  // AR / mixto → número
+  if (v === null || v === undefined) return 0;
+  if (typeof v === 'number') return v;
+  let s = String(v).trim();
+  if (!s) return 0;
+  s = s.replace(/[$\s]/g, '');
+  // si tiene coma decimal estilo AR (1.234,56) → quitar puntos de miles y coma→punto
+  if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+function cncKeyOf(r) {
+  // Para una fila de CALIDAD: DCSJ076 → "76"; año desde FECHA
+  const code = String(r['|'] || '');
+  const m = code.match(/(\d+)/);
+  if (!m) return null;
+  const nro = parseInt(m[1], 10);
+  const d = new Date(String(r['FECHA'] || ''));
+  if (isNaN(d.getTime())) return null;
+  return d.getFullYear() + '-' + nro;
+}
+
+function buildCncLookup() {
+  CNC_LOOKUP = {};
+  CNC_ROWS.forEach(row => {
+    const anio = parseInt(cncNum(row['anio']), 10);
+    const nro = parseInt(cncNum(row['nro_desvio']), 10);
+    if (!anio || isNaN(nro)) return;
+    const key = anio + '-' + nro;
+    if (!CNC_LOOKUP[key]) {
+      CNC_LOOKUP[key] = { total: 0, mo_pp: 0, mo_pc: 0, mo_total: 0, ajustes: 0, horas: 0, reprocesos: [] };
+    }
+    const o = CNC_LOOKUP[key];
+    const total = cncNum(row['costo_total']);
+    const mo_pp = cncNum(row['costo_mo_pp']);
+    const mo_pc = cncNum(row['costo_mo_pc']);
+    let mo_total = cncNum(row['costo_mo_total']);
+    if (!mo_total) mo_total = mo_pp + mo_pc;
+    const ajustes = cncNum(row['costo_ajustes']);
+    const horas = cncNum(row['duracion_h']);
+    o.total += total;
+    o.mo_pp += mo_pp;
+    o.mo_pc += mo_pc;
+    o.mo_total += mo_total;
+    o.ajustes += ajustes;
+    o.horas += horas;
+    o.reprocesos.push(row);
+  });
+}
+
+function cncForRow(r) {
+  const key = cncKeyOf(r);
+  return key ? (CNC_LOOKUP[key] || null) : null;
+}
+
+async function fetchCNC() {
+  try {
+    const res = await fetch(SCRIPT_URL + '?tabla=cnc');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    CNC_ROWS = json.cnc || [];
+    buildCncLookup();
+    if (ALL_ROWS.length) renderAll();
+  } catch (e) {
+    console.error('fetchCNC falló:', e);
+  }
+}
+
+// ─── MODO CLARO/OSCURO ────────────────────────────────────────────────────────
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.classList.toggle('light', !isDark);
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = isDark ? '☀ Modo claro' : '🌙 Modo oscuro';
+  renderAll();
+}
+
+function applyTheme(dark) {
+  if (isDark === dark) return;
+  isDark = dark;
+  document.body.classList.toggle('light', !isDark);
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = isDark ? '☀ Modo claro' : '🌙 Modo oscuro';
+  if (typeof renderAll === 'function') {
+    try { renderAll(); } catch(e){}
+  }
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'vspt-theme') applyTheme(!!e.data.dark);
+});
+
+// Default light al cargar (el padre v14 envía el tema real vía postMessage)
+document.body.classList.add('light');
+
+function chartColors() {
+  return {
+    tick: isDark ? '#B8A898' : '#7a627a',
+    grid: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(78,23,66,0.08)',
+    radarGrid: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(78,23,66,0.12)',
+    radarAngle: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(78,23,66,0.12)',
+    ptLabel: isDark ? '#F2EDE4' : '#4E1742',
+    legend: isDark ? '#B8A898' : '#7a627a',
+  };
+}
+
+// ─── FETCH DATOS ─────────────────────────────────────────────────────────────
+// ─── FETCH — Stale-While-Revalidate con TTL 15 min ──────────────────────────
+const CACHE_KEY_CAL = 'vspt_cal_cache_v2';
+const TTL_MS_CAL = 15 * 60 * 1000;
+
+function readCacheCal() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY_CAL);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.ts || !obj.rows) return null;
+    return { ts: obj.ts, rows: obj.rows, fresh: (Date.now() - obj.ts) < TTL_MS_CAL };
+  } catch(e) { return null; }
+}
+function writeCacheCal(rows) {
+  try { localStorage.setItem(CACHE_KEY_CAL, JSON.stringify({ ts: Date.now(), rows })); } catch(e){}
+}
+
+function applyRows(rows, sourceLabel) {
+  ALL_ROWS = rows;
+  document.getElementById('lastUpdate').textContent = sourceLabel;
+  document.getElementById('footerTs').textContent = new Date().toLocaleString('es-AR');
+  document.getElementById('statusText').textContent = 'Conectado · ' + ALL_ROWS.length + ' desvíos';
+  populateFilters();
+  FILTERED_ROWS = [...ALL_ROWS];
+  renderAll();
+  document.getElementById('loadingSpinner').style.display = 'none';
+  document.getElementById('dashContent').style.display = 'block';
+}
+
+async function fetchFreshCal(silent) {
+  if (silent) document.getElementById('lastUpdate').textContent = 'Actualizando…';
+  const res = await fetch(SCRIPT_URL + '?tabla=calidad');
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  const rawRows = json.calidad || json.rows || [];
+  const norm = rawRows
+    .filter(isFilaValida)
+    .map(r => ({
+      ...r,
+      'Mes': normalizarMes(r['Mes']),
+      'Solicita': normalizarResponsable(r['Solicita'])
+    }));
+  writeCacheCal(norm);
+  applyRows(norm, 'Actualizado: ' + new Date().toLocaleString('es-AR'));
+}
+
+async function fetchData() {
+  fetchCNC();
+  try {
+    const cached = readCacheCal();
+    if (cached) {
+      const ageMin = Math.round((Date.now() - cached.ts) / 60000);
+      applyRows(cached.rows, `Cache · hace ${ageMin}m`);
+      if (!cached.fresh) {
+        fetchFreshCal(true).catch(e => console.error('Refresh bg falló:', e));
+      }
+      return;
+    }
+    await fetchFreshCal(false);
+  } catch(e) {
+    document.getElementById('loadingSpinner').innerHTML =
+      '<div class="error-msg">⚠️ Error al cargar datos: ' + e.message + '<br><small>Verificá la URL del Apps Script y que sea pública.</small></div>';
+    document.getElementById('statusText').textContent = 'Error de conexión';
+    document.getElementById('statusBadge').style.background = 'rgba(239,68,68,0.12)';
+    document.getElementById('statusBadge').style.borderColor = 'rgba(239,68,68,0.3)';
+    document.getElementById('statusBadge').style.color = '#ef4444';
+    document.querySelector('.status-dot').style.background = '#ef4444';
+  }
+}
+
+// ─── POBLAR FILTROS ───────────────────────────────────────────────────────────
+function getUnique(col) {
+  return [...new Set(ALL_ROWS.map(r => String(r[col] || '').trim()).filter(Boolean))].sort();
+}
+
+function getMesesOrdenados() {
+  const set = new Set(ALL_ROWS.map(r => String(r['Mes']||'').trim()).filter(Boolean));
+  return MES_ORDEN.filter(m => set.has(m));
+}
+
+function populateFilters() {
+  const fill = (id, vals) => {
+    const el = document.getElementById(id);
+    const cur = el.value;
+    while(el.options.length > 1) el.remove(1);
+    vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; el.append(o); });
+    if(cur) el.value = cur;
+  };
+  fill('f-mes', getMesesOrdenados());
+  fill('f-producto', getUnique('PRODUCTO'));
+  fill('f-grupo', getUnique('Grupo del Defecto'));
+  fill('f-responsable', getUnique('Solicita'));
+  const disposVals = [...new Set(ALL_ROWS.map(r => String(r['Disposición'] || '').trim()).filter(Boolean))].sort();
+  fill('f-disposicion', disposVals);
+}
+
+// ─── FILTROS ──────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const desde = document.getElementById('f-desde').value;
+  const hasta = document.getElementById('f-hasta').value;
+  const estado = document.getElementById('f-estado').value;
+  const mes = document.getElementById('f-mes').value;
+  const producto = document.getElementById('f-producto').value;
+  const grupo = document.getElementById('f-grupo').value;
+  const clasi = document.getElementById('f-clasificacion').value;
+  const resp = document.getElementById('f-responsable').value;
+  const inoc = document.getElementById('f-inocuidad').value;
+  const disp = document.getElementById('f-disposicion').value;
+
+  FILTERED_ROWS = ALL_ROWS.filter(r => {
+    const fecha = r['FECHA'] ? String(r['FECHA']).substring(0,10) : '';
+    if(desde && fecha && fecha < desde) return false;
+    if(hasta && fecha && fecha > hasta) return false;
+    if(estado && String(r['Estado']||'').trim() !== estado) return false;
+    if(mes && String(r['Mes']||'').trim() !== mes) return false;
+    if(producto && String(r['PRODUCTO']||'').trim() !== producto) return false;
+    if(grupo && String(r['Grupo del Defecto']||'').trim() !== grupo) return false;
+    if(clasi && String(r['Clasificación del defecto']||'').trim() !== clasi) return false;
+    if(resp && String(r['Solicita']||'').trim() !== resp) return false;
+    if(inoc) {
+      const v = String(r['Afecta la Inocuidad']||'').toLowerCase();
+      if(inoc === 'Si' && !v.startsWith('s')) return false;
+      if(inoc === 'No' && !v.startsWith('n')) return false;
+    }
+    if(disp && String(r['Disposición']||'').trim() !== disp) return false;
+    return true;
+  });
+  currentPage = 1;
+  renderAll();
+}
+
+// Grupo dinámico según grupo seleccionado
+document.getElementById('f-grupo').addEventListener('change', function() {
+  const grp = this.value;
+  const el = document.getElementById('f-clasificacion');
+  while(el.options.length > 1) el.remove(1);
+  const vals = grp
+    ? [...new Set(ALL_ROWS.filter(r => String(r['Grupo del Defecto']||'').trim() === grp).map(r => String(r['Clasificación del defecto']||'').trim()).filter(Boolean))].sort()
+    : [...new Set(ALL_ROWS.map(r => String(r['Clasificación del defecto']||'').trim()).filter(Boolean))].sort();
+  vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; el.append(o); });
+  applyFilters();
+});
+
+['f-desde','f-hasta','f-estado','f-mes','f-producto','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'].forEach(id => {
+  document.getElementById(id).addEventListener('change', applyFilters);
+});
+
+function clearFilters() {
+  ['f-desde','f-hasta','f-estado','f-mes','f-producto','f-grupo','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  FILTERED_ROWS = [...ALL_ROWS];
+  currentPage = 1;
+  renderAll();
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+function renderAll() {
+  renderKPIs();
+  renderInsights();
+  renderTopProductos();
+  renderGrupo();
+  renderBarrasMes();
+  renderLeadTimeResp();
+  renderDisposicion();
+  renderInocuidad();
+  renderRadar();
+  renderCncComp();
+  renderCncMes();
+  renderCncTop();
+  renderTable(currentPage);
+}
+
+// ─── CNC: COMPOSICIÓN DEL COSTO ───────────────────────────────────────────────
+function renderCncComp() {
+  destroyChart('ch-cnc-comp');
+  const legend = document.getElementById('legend-cnc-comp');
+  if (legend) legend.innerHTML = '';
+  let mo_pp = 0, mo_pc = 0, ajustes = 0;
+  FILTERED_ROWS.forEach(r => { const o = cncForRow(r); if (o) { mo_pp += o.mo_pp; mo_pc += o.mo_pc; ajustes += o.ajustes; } });
+  const labels = ['Mano de Obra Propia', 'Mano de Obra Contratada', 'Materiales / Ajustes'];
+  const data = [Math.round(mo_pp), Math.round(mo_pc), Math.round(ajustes)];
+  const colors = ['#16a34a', '#EC752D', '#571C4A'];
+  if (data.reduce((a, b) => a + b, 0) <= 0) { noDataMsg('ch-cnc-comp'); return; }
+  const totalC = data.reduce((a, b) => a + b, 0);
+  if (legend) legend.innerHTML = labels.map((l, i) =>
+    `<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:${colors[i]};display:inline-block;"></span>${l} · ${Math.round(data[i] / totalC * 100)}%</span>`).join('');
+  charts['ch-cnc-comp'] = new Chart(document.getElementById('ch-cnc-comp'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors.map(c => c + 'dd'), borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '60%', animation: { duration: 300 },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmtMoney(c.raw)}` } } } }
+  });
+}
+
+// ─── CNC: COSTO POR MES ───────────────────────────────────────────────────────
+function renderCncMes() {
+  destroyChart('ch-cnc-mes');
+  const C = chartColors();
+  const porMes = {};
+  FILTERED_ROWS.forEach(r => {
+    const o = cncForRow(r); if (!o) return;
+    // Mes: usar campo normalizado y, si falta, derivarlo de FECHA
+    let mes = String(r['Mes'] || '').trim();
+    if (!mes || MES_ORDEN.indexOf(mes) < 0) {
+      const d = new Date(String(r['FECHA'] || ''));
+      if (!isNaN(d.getTime())) mes = MES_ORDEN[d.getMonth()];
+    }
+    if (!mes) return;
+    porMes[mes] = (porMes[mes] || 0) + o.total;
+  });
+  const meses = MES_ORDEN.filter(m => porMes[m]);
+  if (!meses.length) { noDataMsg('ch-cnc-mes'); return; }
+  charts['ch-cnc-mes'] = new Chart(document.getElementById('ch-cnc-mes'), {
+    type: 'bar',
+    data: { labels: meses, datasets: [{ label: 'Costo', data: meses.map(m => Math.round(porMes[m])),
+      backgroundColor: '#16a34acc', borderRadius: 5 }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + fmtMoney(c.raw) } } },
+      scales: { x: { ticks: { color: C.tick, font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: C.tick, callback: v => '$' + (v / 1000) + 'k' }, grid: { color: C.grid } } } }
+  });
+}
+
+// ─── CNC: TOP DESVÍOS POR COSTO ───────────────────────────────────────────────
+function renderCncTop() {
+  destroyChart('ch-cnc-top');
+  const C = chartColors();
+  const arr = [];
+  FILTERED_ROWS.forEach(r => {
+    const o = cncForRow(r); if (!o || o.total <= 0) return;
+    arr.push({ code: String(r['|'] || '').trim() || '—', total: o.total });
+  });
+  arr.sort((a, b) => b.total - a.total);
+  const top = arr.slice(0, 10);
+  if (!top.length) { noDataMsg('ch-cnc-top'); return; }
+  charts['ch-cnc-top'] = new Chart(document.getElementById('ch-cnc-top'), {
+    type: 'bar',
+    data: { labels: top.map(t => t.code), datasets: [{ label: 'Costo', data: top.map(t => Math.round(t.total)),
+      backgroundColor: top.map((_, i) => PALETTE[i % PALETTE.length] + 'cc'), borderRadius: 5 }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + fmtMoney(c.raw) } } },
+      scales: { x: { ticks: { color: C.tick, callback: v => '$' + (v / 1000) + 'k' }, grid: { color: C.grid } },
+        y: { ticks: { color: isDark ? '#F2EDE4' : '#4E1742', font: { size: 11 } }, grid: { display: false } } } }
+  });
+}
+
+// ─── CNC: MODAL DRILL-DOWN ────────────────────────────────────────────────────
+function openCncModal(key, code) {
+  const o = CNC_LOOKUP[key];
+  if (!o) return;
+  document.getElementById('cncModalTitle').textContent = 'Costo de No Calidad · ' + (code || key);
+  const nRep = o.reprocesos.length;
+  document.getElementById('cncModalSub').textContent =
+    nRep + (nRep === 1 ? ' reproceso registrado · ' : ' reprocesos registrados · ') +
+    (Math.round(o.horas * 10) / 10) + ' h totales';
+
+  const stats = `
+    <div class="cnc-stat-row">
+      <div class="cnc-stat green"><div class="lbl">Costo Total</div><div class="val">${fmtMoney(o.total)}</div></div>
+      <div class="cnc-stat"><div class="lbl">MO Propia</div><div class="val">${fmtMoney(o.mo_pp)}</div></div>
+      <div class="cnc-stat"><div class="lbl">MO Contratada</div><div class="val">${fmtMoney(o.mo_pc)}</div></div>
+      <div class="cnc-stat"><div class="lbl">Materiales / Ajustes</div><div class="val">${fmtMoney(o.ajustes)}</div></div>
+    </div>`;
+
+  const repros = o.reprocesos.slice().sort((a, b) => cncNum(b['costo_total']) - cncNum(a['costo_total'])).map(rp => {
+    const tarea = String(rp['tipo_actividad'] || '—').trim() || '—';
+    const total = cncNum(rp['costo_total']);
+    const horas = cncNum(rp['duracion_h']);
+    const opp = String(rp['operarios_propios'] || '0').trim();
+    const opc = String(rp['operarios_contratados'] || '0').trim();
+    const orden = String(rp['orden_reproceso'] || '').trim();
+    const obs = String(rp['observaciones'] || '').trim();
+    const fecha = String(rp['fecha_reproceso'] || '').substring(0, 10);
+    return `
+      <div class="cnc-repro">
+        <div class="cnc-repro-head">
+          <div class="cnc-repro-task">${tarea}</div>
+          <div class="cnc-repro-total">${fmtMoney(total)}</div>
+        </div>
+        <div class="cnc-repro-grid">
+          <div>Fecha: <b>${fecha || '—'}</b></div>
+          <div>Duración: <b>${Math.round(horas * 10) / 10} h</b></div>
+          <div>Operarios propios: <b>${opp}</b></div>
+          <div>Operarios contratados: <b>${opc}</b></div>
+          <div>MO propia: <b>${fmtMoney(cncNum(rp['costo_mo_pp']))}</b></div>
+          <div>MO contratada: <b>${fmtMoney(cncNum(rp['costo_mo_pc']))}</b></div>
+          <div>Materiales / Ajustes: <b>${fmtMoney(cncNum(rp['costo_ajustes']))}</b></div>
+          ${orden ? `<div>Orden: <b>${orden}</b></div>` : ''}
+        </div>
+        ${obs ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);"><b style="color:var(--text);">Obs:</b> ${obs}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  document.getElementById('cncModalBody').innerHTML = stats +
+    '<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:10px;">Detalle por reproceso</div>' +
+    repros;
+  document.getElementById('cncModal').classList.add('open');
+}
+
+function closeCncModal() {
+  document.getElementById('cncModal').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCncModal(); });
+
+// ─── KPIs ──────────────────────────────────────────────────────────────────────
+function renderKPIs() {
+  const rows = FILTERED_ROWS;
+  const total = rows.length;
+  const pendientes = rows.filter(r => String(r['Estado']||'').trim().toLowerCase() !== 'cerrado').length;
+  const cerrados = rows.filter(r => String(r['Estado']||'').trim().toLowerCase() === 'cerrado').length;
+  const botellas = rows.reduce((s, r) => s + (parseFloat(r['Botellas']) || 0), 0);
+  const lts = rows.map(r => parseFloat(r['Lead Time (días)'])).filter(v => !isNaN(v) && v >= 0);
+  const avgLt = lts.length ? Math.round(lts.reduce((a,b)=>a+b,0)/lts.length) : 0;
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-pendientes').textContent = pendientes;
+  document.getElementById('kpi-cerrados').textContent = cerrados;
+  document.getElementById('kpi-botellas').textContent = botellas.toLocaleString('es-AR');
+  document.getElementById('kpi-leadtime').textContent = avgLt;
+
+  // CNC — Costo de No Calidad asociado a los desvíos filtrados
+  let cncTotal = 0, cncCount = 0;
+  rows.forEach(r => { const o = cncForRow(r); if (o) { cncTotal += o.total; cncCount++; } });
+  document.getElementById('kpi-cnc').textContent = fmtMoney(cncTotal);
+  document.getElementById('kpi-cnc-sub').textContent = cncCount
+    ? cncCount + (cncCount === 1 ? ' desvío con costo' : ' desvíos con costo')
+    : (CNC_ROWS.length ? 'sin costo en el filtro' : 'sin datos CNC');
+  document.getElementById('kpi-cerrados-sub').textContent = total ? Math.round(cerrados/total*100) + '% tasa de cierre' : '';
+  document.getElementById('kpi-total-sub').textContent = 'registros en el período';
+  document.getElementById('kpi-botellas-sub').textContent = 'unidades afectadas';
+
+  const badgeEl = document.getElementById('kpi-pend-badge');
+  if(pendientes > 5) {
+    badgeEl.innerHTML = '<div class="kpi-badge-red">⚠ ' + pendientes + ' sin cerrar</div>';
+  } else {
+    badgeEl.innerHTML = '<div class="kpi-sub">desvíos activos</div>';
+  }
+}
+
+// ─── INSIGHTS ─────────────────────────────────────────────────────────────────
+function renderInsights() {
+  const rows = FILTERED_ROWS;
+  if(!rows.length) { document.getElementById('insightsGrid').innerHTML = '<div class="no-data">Sin datos suficientes para generar insights.</div>'; return; }
+
+  const insights = [];
+
+  // 1. Defecto más frecuente
+  const defFreq = count(rows, 'Motivo de Desvio');
+  const topDef = topN(defFreq, 1)[0];
+  if(topDef) {
+    const pct = Math.round(topDef[1]/rows.length*100);
+    insights.push({ icon:'🔍', color:'amber', text: `El defecto más frecuente es <strong>${topDef[0]}</strong>, representando el <strong>${pct}%</strong> del total de desvíos.` });
+  }
+
+  // 2. Mes con más desvíos
+  const mesFreq = count(rows, 'Mes');
+  const topMes = topN(mesFreq, 1)[0];
+  if(topMes) {
+    insights.push({ icon:'📅', color:'blue', text: `El mes con mayor cantidad de desvíos fue <strong>${topMes[0]}</strong> con <strong>${topMes[1]}</strong> casos registrados.` });
+  }
+
+  // 3. Producto concentra botellas
+  const prodBot = {};
+  rows.forEach(r => {
+    const p = String(r['PRODUCTO']||'').trim(); const b = parseFloat(r['Botellas'])||0;
+    prodBot[p] = (prodBot[p]||0) + b;
+  });
+  const topProdBot = Object.entries(prodBot).sort((a,b)=>b[1]-a[1])[0];
+  const totalBot = Object.values(prodBot).reduce((a,b)=>a+b,0);
+  if(topProdBot && totalBot) {
+    const pct = Math.round(topProdBot[1]/totalBot*100);
+    insights.push({ icon:'🍾', color:'red', text: `El producto <strong>${topProdBot[0]}</strong> concentra el <strong>${pct}%</strong> del total de botellas afectadas.` });
+  }
+
+  // 4. Pendientes > 15 días
+  const pend = rows.filter(r => String(r['Estado']||'').trim().toLowerCase() !== 'cerrado');
+  const pendMas15 = pend.filter(r => (parseFloat(r['Lead Time (días)'])||0) > 15);
+  if(pend.length) {
+    const pct = Math.round(pendMas15.length/pend.length*100);
+    const col = pct > 30 ? 'red' : pct > 10 ? 'amber' : 'green';
+    insights.push({ icon:'⏰', color: col, text: `El <strong>${pct}%</strong> de los desvíos pendientes supera los <strong>15 días</strong> sin cierre.${pct>30?' — ALERTA':''}`});
+  }
+
+  // 5. Responsable con mayor carga pendiente
+  const respPend = count(pend, 'Solicita');
+  const topResp = topN(respPend, 1)[0];
+  if(topResp) {
+    insights.push({ icon:'👤', color:'amber', text: `El responsable con mayor carga pendiente es <strong>${topResp[0]}</strong> con <strong>${topResp[1]}</strong> desvíos sin cerrar.` });
+  }
+
+  // 6. % afecta inocuidad
+  const inoc = rows.filter(r => String(r['Afecta la Inocuidad']||'').toLowerCase().startsWith('s')).length;
+  if(rows.length) {
+    const pct = Math.round(inoc/rows.length*100);
+    const col = pct > 20 ? 'red' : pct > 5 ? 'amber' : 'green';
+    insights.push({ icon:'⚗️', color: col, text: `El <strong>${pct}%</strong> de los desvíos afecta la <strong>inocuidad del producto</strong>. (${inoc} de ${rows.length})` });
+  }
+
+  // 7. Grupo más frecuente
+  const grpFreq = count(rows, 'Grupo del Defecto');
+  const topGrp = topN(grpFreq, 1)[0];
+  if(topGrp) {
+    const pct = Math.round(topGrp[1]/rows.length*100);
+    insights.push({ icon:'📦', color:'blue', text: `El grupo de defecto <strong>${topGrp[0]}</strong> es el más recurrente con el <strong>${pct}%</strong> de los casos.` });
+  }
+
+  // 8. Lead time promedio cerrados
+  const ltCerr = rows.filter(r=>String(r['Estado']||'').trim().toLowerCase()==='cerrado').map(r=>parseFloat(r['Lead Time (días)'])).filter(v=>!isNaN(v)&&v>=0);
+  if(ltCerr.length) {
+    const avg = Math.round(ltCerr.reduce((a,b)=>a+b,0)/ltCerr.length);
+    const col = avg > 20 ? 'red' : avg > 10 ? 'amber' : 'green';
+    insights.push({ icon:'✅', color: col, text: `El lead time promedio de cierre efectivo es <strong>${avg} días</strong> para los <strong>${ltCerr.length}</strong> desvíos cerrados.` });
+  }
+
+  const grid = document.getElementById('insightsGrid');
+  grid.innerHTML = insights.slice(0,8).map(i =>
+    `<div class="insight-card ${i.color}"><div class="insight-icon">${i.icon}</div><div class="insight-text">${i.text}</div></div>`
+  ).join('');
+}
+
+// ─── HELPER FUNCIONES ─────────────────────────────────────────────────────────
+function count(rows, col) {
+  const m = {};
+  rows.forEach(r => { const v = String(r[col]||'').trim(); if(v) m[v]=(m[v]||0)+1; });
+  return m;
+}
+function topN(obj, n) { return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n); }
+function destroyChart(id) { if(charts[id]) { charts[id].destroy(); delete charts[id]; } }
+function noDataMsg(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = isDark ? '#B8A898' : '#7a627a';
+  ctx.font='13px Inter';
+  ctx.textAlign='center';
+  ctx.fillText('Sin datos para los filtros seleccionados', canvas.width/2, canvas.height/2);
+}
+function getMesesFiltrados() {
+  const set = new Set(FILTERED_ROWS.map(r=>String(r['Mes']||'').trim()).filter(Boolean));
+  const ordered = MES_ORDEN.filter(m => set.has(m));
+  return ordered.length ? ordered : [...set].sort();
+}
+
+// ─── GRÁFICO 1: TOP PRODUCTOS ─────────────────────────────────────────────────
+function renderTopProductos() {
+  destroyChart('ch-top-productos');
+  const C = chartColors();
+  const freq = count(FILTERED_ROWS, 'PRODUCTO');
+  const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,10).reverse();
+  if(!sorted.length) { noDataMsg('ch-top-productos'); return; }
+  const wrap = document.getElementById('ch-top-productos').parentElement;
+  wrap.style.height = Math.max(280, sorted.length*38+60)+'px';
+  charts['ch-top-productos'] = new Chart(document.getElementById('ch-top-productos'), {
+    type:'bar',
+    data:{ labels: sorted.map(s=>s[0]), datasets:[{ label:'Desvíos', data: sorted.map(s=>s[1]), backgroundColor: PALETTE[0]+'cc', borderColor: PALETTE[0], borderWidth:1, borderRadius:4 }]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>' '+c.raw+' desvíos'}} },
+      scales:{ x:{ticks:{color:C.tick,stepSize:1,callback:v=>Math.round(v)},grid:{color:C.grid}}, y:{ticks:{color:isDark?'#F2EDE4':'#4E1742',font:{size:11}},grid:{display:false}} }
+    }
+  });
+}
+
+// ─── GRÁFICO 2: DONA GRUPOS ───────────────────────────────────────────────────
+function renderGrupo() {
+  destroyChart('ch-grupo');
+  const freq = count(FILTERED_ROWS, 'Grupo del Defecto');
+  const entries = Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) { noDataMsg('ch-grupo'); return; }
+  const total = entries.reduce((s,e)=>s+e[1],0);
+  const colors = entries.map((_,i)=>PALETTE[i%PALETTE.length]);
+  document.getElementById('legend-grupo').innerHTML = entries.map((e,i)=>
+    `<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:${colors[i]};flex-shrink:0;"></span>${e[0]} ${Math.round(e[1]/total*100)}%</span>`
+  ).join('');
+  charts['ch-grupo'] = new Chart(document.getElementById('ch-grupo'), {
+    type:'doughnut',
+    data:{ labels: entries.map(e=>e[0]), datasets:[{ data: entries.map(e=>e[1]), backgroundColor: colors, borderWidth:2, borderColor:'#1a1d2e' }]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw} (${Math.round(c.raw/total*100)}%)`}} },
+      cutout:'65%'
+    }
+  });
+}
+
+// ─── GRÁFICO 3: BARRAS APILADAS MES ──────────────────────────────────────────
+function renderBarrasMes() {
+  destroyChart('ch-barras-mes');
+  const mesesSet = getMesesFiltrados();
+  if(!mesesSet.length) { noDataMsg('ch-barras-mes'); return; }
+  const C = chartColors();
+  const cerrados = mesesSet.map(m => FILTERED_ROWS.filter(r=>String(r['Mes']||'').trim()===m && String(r['Estado']||'').trim().toLowerCase()==='cerrado').length);
+  const pendientes = mesesSet.map(m => FILTERED_ROWS.filter(r=>String(r['Mes']||'').trim()===m && String(r['Estado']||'').trim().toLowerCase()!=='cerrado').length);
+  charts['ch-barras-mes'] = new Chart(document.getElementById('ch-barras-mes'), {
+    type:'bar',
+    data:{ labels: mesesSet, datasets:[
+      {label:'Cerrado', data:cerrados, backgroundColor:'#22c55ecc', borderRadius:3, borderSkipped:false},
+      {label:'Pendiente', data:pendientes, backgroundColor:'#f59e0bcc', borderRadius:3, borderSkipped:false}
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:300}, stacked:true,
+      plugins:{ legend:{labels:{color:C.legend,font:{size:11},boxWidth:12}} },
+      scales:{ x:{stacked:true,ticks:{color:C.tick},grid:{display:false}}, y:{stacked:true,ticks:{color:C.tick,callback:v=>Math.round(v)},grid:{color:C.grid}} }
+    }
+  });
+}
+
+// ─── GRÁFICO 5: CANTIDAD DESVÍOS POR RESPONSABLE ─────────────────────────────
+function renderLeadTimeResp() {
+  destroyChart('ch-lt-resp');
+  const C = chartColors();
+  const freq = count(FILTERED_ROWS, 'Solicita');
+  const entries = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12).reverse();
+  if(!entries.length) { noDataMsg('ch-lt-resp'); return; }
+  const wrap = document.getElementById('ch-lt-resp-wrap');
+  wrap.style.height = Math.max(250, entries.length*42+60)+'px';
+  charts['ch-lt-resp'] = new Chart(document.getElementById('ch-lt-resp'), {
+    type:'bar',
+    data:{ labels: entries.map(e=>e[0]), datasets:[{
+      label:'Desvíos', data: entries.map(e=>e[1]),
+      backgroundColor: entries.map((_,i)=>PALETTE[i%PALETTE.length]+'cc'),
+      borderColor: entries.map((_,i)=>PALETTE[i%PALETTE.length]),
+      borderWidth:1, borderRadius:4
+    }]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.raw} desvíos`}} },
+      scales:{
+        x:{ticks:{color:C.tick,stepSize:1,callback:v=>Math.round(v)},grid:{color:C.grid}},
+        y:{ticks:{color:isDark?'#F2EDE4':'#4E1742',font:{size:11}},grid:{display:false}}
+      }
+    }
+  });
+}
+
+// ─── GRÁFICO 8: DISPOSICIÓN ───────────────────────────────────────────────────
+function renderDisposicion() {
+  destroyChart('ch-disposicion');
+  const C = chartColors();
+  const dispBot = {};
+  FILTERED_ROWS.forEach(r => {
+    const d = String(r['Disposición']||'').trim();
+    const b = parseFloat(r['Botellas'])||0;
+    if(d) dispBot[d] = (dispBot[d]||0)+b;
+  });
+  const entries = Object.entries(dispBot).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) { noDataMsg('ch-disposicion'); return; }
+  charts['ch-disposicion'] = new Chart(document.getElementById('ch-disposicion'), {
+    type:'bar',
+    data:{ labels: entries.map(e=>e[0]), datasets:[{ label:'Botellas', data: entries.map(e=>Math.round(e[1])),
+      backgroundColor:entries.map((_,i)=>PALETTE[i%PALETTE.length]+'cc'), borderRadius:5 }]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.raw.toLocaleString('es-AR')} botellas`}} },
+      scales:{ x:{ticks:{color:C.tick,callback:v=>Math.round(v)},grid:{color:C.grid}}, y:{ticks:{color:isDark?'#F2EDE4':'#4E1742',font:{size:11}},grid:{display:false}} }
+    }
+  });
+}
+
+// ─── GRÁFICO 10: INOCUIDAD ────────────────────────────────────────────────────
+function renderInocuidad() {
+  destroyChart('ch-inocuidad');
+  const C = chartColors();
+  const si = FILTERED_ROWS.filter(r=>String(r['Afecta la Inocuidad']||'').toLowerCase().startsWith('s')).length;
+  const no = FILTERED_ROWS.filter(r=>String(r['Afecta la Inocuidad']||'').toLowerCase().startsWith('n')).length;
+  if(!si && !no) { noDataMsg('ch-inocuidad'); return; }
+  charts['ch-inocuidad'] = new Chart(document.getElementById('ch-inocuidad'), {
+    type:'bar',
+    data:{ labels:['Afecta Inocuidad','No Afecta'], datasets:[{
+      data:[si,no], backgroundColor:['#ef4444cc','#22c55ecc'], borderRadius:6, borderWidth:0
+    }]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.raw} desvíos`}} },
+      scales:{ x:{ticks:{color:C.tick},grid:{display:false}}, y:{ticks:{color:C.tick,callback:v=>Math.round(v)},grid:{color:C.grid}} }
+    }
+  });
+}
+
+// ─── GRÁFICO 9: RADAR ─────────────────────────────────────────────────────────
+function renderRadar() {
+  destroyChart('ch-radar');
+  const C = chartColors();
+  const grupos = [...new Set(FILTERED_ROWS.map(r=>String(r['Grupo del Defecto']||'').trim()).filter(Boolean))].sort();
+  const resps = [...new Set(FILTERED_ROWS.map(r=>String(r['Solicita']||'').trim()).filter(Boolean))].sort().slice(0,6);
+  if(!grupos.length || !resps.length) { noDataMsg('ch-radar'); return; }
+  const datasets = resps.map((resp,i) => {
+    const data = grupos.map(g => FILTERED_ROWS.filter(r=>String(r['Solicita']||'').trim()===resp && String(r['Grupo del Defecto']||'').trim()===g).length);
+    return { label:resp, data, backgroundColor:PALETTE[i%PALETTE.length]+'33', borderColor:PALETTE[i%PALETTE.length], borderWidth:1.5, pointRadius:3 };
+  });
+  charts['ch-radar'] = new Chart(document.getElementById('ch-radar'), {
+    type:'radar',
+    data:{ labels: grupos, datasets },
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      plugins:{ legend:{labels:{color:C.legend,font:{size:10},boxWidth:10}} },
+      scales:{ r:{ ticks:{color:C.tick,font:{size:9},backdropColor:'transparent',callback:v=>Math.round(v)}, grid:{color:C.radarGrid}, pointLabels:{color:C.ptLabel,font:{size:10}}, angleLines:{color:C.radarAngle} }}
+    }
+  });
+}
+
+// ─── GRÁFICO 10: INOCUIDAD ────────────────────────────────────────────────────
+function renderInocuidad() {
+  destroyChart('ch-inocuidad');
+  const si = FILTERED_ROWS.filter(r=>String(r['Afecta la Inocuidad']||'').toLowerCase().startsWith('s')).length;
+  const no = FILTERED_ROWS.filter(r=>String(r['Afecta la Inocuidad']||'').toLowerCase().startsWith('n')).length;
+  if(!si && !no) { noDataMsg('ch-inocuidad'); return; }
+  charts['ch-inocuidad'] = new Chart(document.getElementById('ch-inocuidad'), {
+    type:'bar',
+    data:{ labels:['Afecta Inocuidad','No Afecta'], datasets:[{
+      data:[si,no], backgroundColor:['#ef4444cc','#22c55ecc'], borderRadius:6, borderWidth:0
+    }]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:{duration:300},
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.raw} desvíos`}} },
+      scales:{ x:{ticks:{color:'#8b8fa8'},grid:{display:false}}, y:{ticks:{color:'#8b8fa8',callback:v=>Math.round(v)},grid:{color:'rgba(255,255,255,0.05)'}} }
+    }
+  });
+}
+
+// ─── TABLA ─────────────────────────────────────────────────────────────────────
+function sortTable(col) {
+  if(sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; }
+  renderTable(1);
+}
+
+function renderTable(page) {
+  currentPage = page;
+  const search = (document.getElementById('tableSearch').value||'').toLowerCase();
+  let rows = [...FILTERED_ROWS];
+  if(search) {
+    rows = rows.filter(r => ['|','FECHA','PRODUCTO','Motivo de Desvio','Estado','Solicita','Grupo del Defecto'].some(k=>String(r[k]||'').toLowerCase().includes(search)));
+  }
+  rows.sort((a,b) => {
+    let va = a[sortCol]; let vb = b[sortCol];
+    const na = parseFloat(va); const nb = parseFloat(vb);
+    if(!isNaN(na) && !isNaN(nb)) return sortAsc ? na-nb : nb-na;
+    return sortAsc ? String(va||'').localeCompare(String(vb||'')) : String(vb||'').localeCompare(String(va||''));
+  });
+  const total = rows.length;
+  const pages = Math.ceil(total/PAGE_SIZE);
+  const start = (page-1)*PAGE_SIZE;
+  const pageRows = rows.slice(start, start+PAGE_SIZE);
+
+  document.getElementById('tableCount').textContent = `${total} registros`;
+  const tbody = document.getElementById('tableBody');
+  if(!pageRows.length) { tbody.innerHTML = `<tr><td colspan="11" class="no-data">Sin datos para los filtros seleccionados</td></tr>`; }
+  else {
+    tbody.innerHTML = pageRows.map(r => {
+      const estado = String(r['Estado']||'').trim();
+      const estadoBadge = estado.toLowerCase()==='cerrado' ? `<span class="badge badge-green">${estado}</span>` : `<span class="badge badge-amber">${estado||'Pendiente'}</span>`;
+      const inocuidad = String(r['Afecta la Inocuidad']||'').trim();
+      const inocBadge = inocuidad.toLowerCase().startsWith('s') ? `<span class="badge badge-red">Sí</span>` : `<span class="badge badge-green">${inocuidad||'—'}</span>`;
+      const lt = parseFloat(r['Lead Time (días)']);
+      const nroDesvio = String(r['|']||'').trim();
+      const celdaDesvio = nroDesvio ? (() => {
+        // Código completo como texto libre (aparece en el cuerpo del mail) +
+        // "desvio" en el asunto + acotado a la fecha de la fila.
+        const joined = nroDesvio.replace(/\s+/g, '');               // DCSJ003
+        let q = `${joined} subject:desvio`;
+        // Acotar a la fecha de la fila (±1 día por zona horaria / recepción)
+        const d = new Date(String(r['FECHA'] || ''));
+        if (!isNaN(d.getTime())) {
+          const fmt = x => x.getFullYear() + '/' +
+            String(x.getMonth() + 1).padStart(2, '0') + '/' +
+            String(x.getDate()).padStart(2, '0');
+          const desde = new Date(d); desde.setDate(desde.getDate() - 1);
+          const hasta = new Date(d); hasta.setDate(hasta.getDate() + 2);
+          q += ` after:${fmt(desde)} before:${fmt(hasta)}`;
+        }
+        const url = 'https://mail.google.com/mail/u/0/#search/' + encodeURIComponent(q);
+        return `<a href="${url}" target="_blank" rel="noopener" title="Buscar en Gmail: ${q.replace(/"/g, '&quot;')}" style="color:var(--vspt-crimson);font-weight:700;text-decoration:none;border-bottom:1px dotted var(--vspt-crimson);cursor:pointer;">${nroDesvio}</a>`;
+      })() : '—';
+      const cncObj = cncForRow(r);
+      const cncKey = cncKeyOf(r);
+      const celdaCosto = (cncObj && cncObj.total > 0)
+        ? `<a href="#" onclick="openCncModal('${cncKey}', '${nroDesvio}');return false;" title="Ver detalle de costos" style="color:#16a34a;font-weight:700;text-decoration:none;border-bottom:1px dotted #16a34a;cursor:pointer;">${fmtMoney(cncObj.total)}</a>`
+        : '<span style="color:var(--muted);">—</span>';
+      return `<tr>
+        <td>${celdaDesvio}</td>
+        <td>${String(r['FECHA']||'').substring(0,10)||'—'}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;" title="${r['PRODUCTO']||''}">${String(r['PRODUCTO']||'').substring(0,25)||'—'}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;" title="${r['Motivo de Desvio']||''}">${String(r['Motivo de Desvio']||'').substring(0,30)||'—'}</td>
+        <td style="text-align:right;">${isNaN(parseFloat(r['Botellas']))?'—':Math.round(parseFloat(r['Botellas'])).toLocaleString('es-AR')}</td>
+        <td>${estadoBadge}</td>
+        <td style="text-align:right;">${isNaN(lt)?'—':Math.round(lt)+'d'}</td>
+        <td>${r['Solicita']||'—'}</td>
+        <td><span class="badge" style="background:rgba(102,126,234,0.15);color:#a5b4fc;">${r['Grupo del Defecto']||'—'}</span></td>
+        <td>${inocBadge}</td>
+        <td style="text-align:right;">${celdaCosto}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Paginación
+  const pag = document.getElementById('pagination');
+  if(pages <= 1) { pag.innerHTML=''; return; }
+  let pagHtml = `<span class="page-info">${start+1}-${Math.min(start+PAGE_SIZE,total)} de ${total}</span>`;
+  if(page>1) pagHtml += `<button class="page-btn" onclick="renderTable(${page-1})">‹</button>`;
+  const from = Math.max(1,page-2); const to = Math.min(pages, page+2);
+  for(let i=from;i<=to;i++) pagHtml += `<button class="page-btn${i===page?' active':''}" onclick="renderTable(${i})">${i}</button>`;
+  if(page<pages) pagHtml += `<button class="page-btn" onclick="renderTable(${page+1})">›</button>`;
+  pag.innerHTML = pagHtml;
+}
+
+// ─── INIT ──────────────────────────────────────────────────────────────────────
+fetchData();
+</script>
+
+<script>
+/* ===== Asistente Calidad (filtros + resaltar filas + voz + Gemini) ===== */
+(function(){
+  const COLORS={amarillo:'#F8C040',verde:'#98A040',rojo:'#D81840',azul:'#3b82f6',naranja:'#F08808',violeta:'#701F52',celeste:'#5DC7D1'};
+  const MESES={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
+  const _n=s=>String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  function st(t,e){const el=document.getElementById('asistC-st');if(el){el.textContent=t||'';el.style.color=e?'var(--vspt-crimson)':'var(--muted)';}}
+  const SELS=['f-estado','f-mes','f-producto','f-grupo','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'];
+  function _anio(){ return new Date().getFullYear(); }
+  function _iso(y,m,d){ return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+  function buscarFechas(t){
+    const out=[],seen={}; let m;
+    let rng=t.match(/(\d{1,2})\s+al\s+(\d{1,2})\s*(?:de\s+)?([a-z]{3,12})(?:\s+(?:de\s+)?(\d{4}))?/);
+    if(rng){const mo=MESES[rng[3]];if(mo){let y=rng[4]?+rng[4]:_anio();[+rng[1],+rng[2]].forEach((d,k)=>{if(d>=1&&d<=31){const i=_iso(y,mo,d);if(!seen[i]){seen[i]=1;out.push({x:k,i});}}});}}
+    let re=/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/g;
+    while((m=re.exec(t))){const d=+m[1],mo=+m[2];let y=m[3]?+m[3]:_anio();if(y<100)y+=2000;if(d>=1&&d<=31&&mo>=1&&mo<=12){const i=_iso(y,mo,d);if(!seen[i]){seen[i]=1;out.push({x:m.index,i});}}}
+    re=/\b(\d{1,2})\s*(?:de\s+)?([a-z]{3,12})(?:\s+(?:de\s+)?(\d{4}))?\b/g;
+    while((m=re.exec(t))){const mo=MESES[m[2]];if(!mo)continue;const d=+m[1];let y=m[3]?+m[3]:_anio();if(d>=1&&d<=31){const i=_iso(y,mo,d);if(!seen[i]){seen[i]=1;out.push({x:m.index,i});}}}
+    return out.sort((a,b)=>a.x-b.x).map(o=>o.i);
+  }
+  function limpiarColor(){ document.querySelectorAll('#tableBody tr[data-hl]').forEach(tr=>{tr.removeAttribute('data-hl');tr.querySelectorAll('td').forEach(td=>{td.style.background='';td.style.color='';});}); }
+  function parse(txt){
+    const t=_n(txt); if(!t) return null;
+    if(/(limpi|borr|quit|saca).*(color|resalt|marca)/.test(t)) return {a:'unhl'};
+    if(/(limpi|borr|reset).*(filtro)|^limpiar filtros|^limpiar$/.test(t)) return {a:'clear'};
+    // resaltar / marcar filas
+    if(/resalt|marc|pint|color/.test(t)){
+      let color=null; for(const k in COLORS){ if(t.includes(k)){color=k;break;} }
+      const mq=txt.match(/"([^"]+)"|'([^']+)'/);
+      let val=mq?(mq[1]||mq[2]):null;
+      if(!val){ const m=t.match(/(?:de|los|las|el|la)\s+([a-z0-9]{3,})\s*$/); if(m) val=m[1]; }
+      if(!val){ const m=t.match(/([a-z0-9]{4,})\s*$/); if(m) val=m[1]; }
+      if(val) return {a:'hl',val:val,color:color||'rojo'};
+    }
+    // fechas
+    if(/filtr|mostrar|fecha|desde|hasta|entre|\bdel\b|\bel \d/.test(t)){
+      const fs=buscarFechas(t); if(fs.length) return {a:'fechas',desde:fs[0],hasta:fs[1]||fs[0]};
+    }
+    // filtros por opciones de los selects
+    const f={};
+    if(/pendiente|abierto/.test(t)) f['f-estado']='Pendiente';
+    else if(/cerrad/.test(t)) f['f-estado']='Cerrado';
+    if(/inocuidad/.test(t)){ if(/\bno\b/.test(t)) f['f-inocuidad']='No'; else if(/\bs[ií]\b/.test(t)) f['f-inocuidad']='Sí'; }
+    for(const k in MESES){ if(new RegExp('\\b'+k+'\\b').test(t)){ const sel=document.getElementById('f-mes'); if(sel){ for(const o of sel.options){ if(_n(o.value).indexOf(k)===0||_n(o.text).indexOf(k)===0){ f['f-mes']=o.value; break; } } } break; } }
+    ['f-producto','f-grupo','f-clasificacion','f-responsable','f-disposicion'].forEach(id=>{
+      const sel=document.getElementById(id); if(!sel) return;
+      for(const o of sel.options){ const ov=_n(o.value); if(ov && ov.length>2 && t.includes(ov)){ f[id]=o.value; break; } }
+    });
+    return Object.keys(f).length ? {a:'filtros',f} : null;
+  }
+  function apply(act){
+    if(!act){ st('No entendí el comando.', true); return; }
+    if(act.a==='unhl'||act.accion==='limpiar'){ limpiarColor(); st('✓ Colores limpiados'); return; }
+    if(act.a==='clear'||act.accion==='limpiarFiltros'){ if(typeof clearFilters==='function')clearFilters(); st('✓ Filtros restablecidos'); return; }
+    if(act.a==='hl'||act.accion==='resaltar'||act.accion==='filtrar'){
+      const col=COLORS[_n(act.color)]||act.color||'#D81840';
+      const val=_n(act.val||act.valor); if(!val){ st('Falta qué resaltar.', true); return; }
+      let n=0; document.querySelectorAll('#tableBody tr').forEach(tr=>{
+        if(_n(tr.textContent).includes(val)){ tr.setAttribute('data-hl',col); tr.querySelectorAll('td').forEach(td=>{td.style.background=col;td.style.color='#1a1915';}); n++; }
+      });
+      st(n?`✓ ${n} fila(s) resaltadas (página actual)`:'Sin coincidencias en la página visible.', n===0); return;
+    }
+    let f=act.f||act.filtros||null;
+    if(!f && act.a==='fechas'||act.accion==='fechas'){ f={'f-desde':act.desde,'f-hasta':act.hasta||act.desde}; }
+    if(f && typeof f==='object'){
+      const partes=[];
+      for(const id in f){ const el=document.getElementById(id); if(el && f[id]!=null && f[id]!==''){ el.value=String(f[id]); partes.push(id.replace('f-','')+'='+f[id]); } }
+      if(typeof applyFilters==='function') applyFilters();
+      st(partes.length?('✓ '+partes.join(' · ')):'No reconocí el filtro', !partes.length); return;
+    }
+    st('Comando no aplicable.', true);
+  }
+  const CTX='Página CALIDAD (desvíos). Filtros (id→control): f-estado (Pendiente/Cerrado), f-mes, '+
+    'f-producto, f-grupo, f-clasificacion, f-responsable, f-inocuidad (Sí/No), f-disposicion, f-desde, f-hasta (AAAA-MM-DD). '+
+    'Acciones: {"accion":"setfiltros","filtros":{"<id>":"<valor>"}}, '+
+    '{"accion":"fechas","desde":"AAAA-MM-DD","hasta":"..."}, '+
+    '{"accion":"resaltar","valor":"texto","color":"rojo|verde|..."} (resalta filas de la tabla cuyo texto contenga el valor), '+
+    '{"accion":"limpiar"} colores, {"accion":"limpiarFiltros"}.';
+  let _rec=null;
+  function voz(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ st('Tu navegador no soporta voz (usá Chrome/Edge).', true); return; }
+    const b=document.getElementById('asistC-mic');
+    if(_rec){ try{_rec.stop();}catch(e){} _rec=null; if(b)b.textContent='🎤'; return; }
+    const r=new SR(); _rec=r; r.lang='es-AR'; r.interimResults=false; r.maxAlternatives=1;
+    r.onstart=()=>{ if(b)b.textContent='🔴'; st('Escuchando…'); };
+    r.onerror=e=>st(e.error==='not-allowed'?'Permiso de micrófono denegado.':'Error de voz: '+e.error,true);
+    r.onend=()=>{ if(b)b.textContent='🎤'; _rec=null; };
+    r.onresult=e=>{ const tx=e.results[0][0].transcript.trim(); const i=document.getElementById('asistC-in'); if(i)i.value=tx; st('🗣 "'+tx+'"'); ejec(); };
+    try{ r.start(); }catch(e){ st('No pude iniciar el micrófono.',true); _rec=null; if(b)b.textContent='🎤'; }
+  }
+  async function ejec(){
+    const i=document.getElementById('asistC-in'); const tx=((i&&i.value)||'').trim(); if(!tx) return;
+    st('Procesando…');
+    const loc=parse(tx); if(loc){ apply(loc); return; }
+    try{
+      st('Consultando IA…');
+      const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'asistente',texto:tx,contexto:CTX})});
+      const raw=await res.text(); let j;
+      try{ j=JSON.parse(raw); }catch(_){ throw new Error('Respuesta no-JSON (HTTP '+res.status+')'); }
+      if(j.status!=='success'||!j.act) throw new Error(j.msg||'sin respuesta');
+      apply(j.act);
+    }catch(e){ console.error(e); st('IA: '+(e.message||e), true); }
+  }
+  document.getElementById('asistC-go').onclick=ejec;
+  document.getElementById('asistC-mic').onclick=voz;
+  window.__asistCexec=ejec;
+})();
+</script>
+</body>
+</html>

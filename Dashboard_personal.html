@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!-- Control de acceso VSPT — solo correos @vspt.com.ar (ver auth.js) -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VSPT · Personal — Distribución de Turnos</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300..900;1,400..700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --vspt-deep-purple:#4E1742; --vspt-wine:#701F52; --vspt-plum:#301030;
+    --vspt-crimson:#D81840; --vspt-beige:#E0D0B8; --vspt-olive:#98A040;
+    --vspt-orange:#F08808; --vspt-yellow:#F8C040; --vspt-magenta:#B61858;
+    --grad-wine:linear-gradient(90deg,var(--vspt-crimson),var(--vspt-wine),var(--vspt-plum));
+    --l1:#701F52; --l2:#5DC7D1; --l3:#F08808;  /* colores de línea OPINONA */
+    --bg:#1A1915; --card:#222220; --card2:#2A2A28; --border:rgba(200,168,130,0.14);
+    --text:#F3F1EB; --muted:#c9b8c4; --th-bg:#3a1f33; --tr-hover:rgba(216,24,64,0.06);
+    --td-border:rgba(255,255,255,0.07); --green:var(--vspt-olive);
+  }
+  body.light{ --bg:#F3F1EB; --card:#fff; --card2:#FAF7F0; --border:rgba(78,23,66,0.14);
+    --text:#301030; --muted:#7a627a; --th-bg:#F3F1EB; --tr-hover:rgba(78,23,66,0.05);
+    --td-border:rgba(78,23,66,0.08); }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Montserrat',system-ui,sans-serif;font-size:14px}
+  .header{background:linear-gradient(135deg,var(--vspt-plum),var(--vspt-deep-purple) 55%,var(--vspt-wine));border-bottom:3px solid var(--vspt-crimson);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .header-left{display:flex;align-items:center;gap:16px}
+  .logo{width:46px;height:46px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:5px;overflow:hidden}
+  .logo img{width:100%;height:100%;object-fit:contain}
+  .header-title{font-size:20px;font-weight:700;color:#fff}
+  .header-title span{color:var(--vspt-crimson)}
+  .header-sub{font-size:10px;color:var(--vspt-beige);margin-top:3px;text-transform:uppercase;letter-spacing:0.2em;font-weight:600}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  /* Botones — misma línea de diseño, distinto color por acción */
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text);padding:8px 15px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:0.05em;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{border-color:var(--vspt-crimson);box-shadow:0 2px 10px rgba(216,24,64,0.25)}
+  .btn.primary{background:var(--vspt-crimson);border-color:var(--vspt-crimson);color:#fff}
+  .btn.olive{background:var(--vspt-olive);border-color:var(--vspt-olive);color:#1a1915}
+  .btn.accent{background:var(--vspt-wine);border-color:var(--vspt-wine);color:#fff}
+  .btn.ghost{background:transparent;color:var(--text)}
+  .btn.primary:hover,.btn.olive:hover,.btn.accent:hover{filter:brightness(1.08)}
+  /* Botón del header (sobre fondo oscuro siempre) */
+  .btn-hdr{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:20px;padding:8px 12px;cursor:pointer;font-size:13px;font-family:inherit;transition:all .2s}
+  .btn-hdr:hover{background:var(--vspt-crimson);border-color:var(--vspt-crimson)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+  .status-badge{display:flex;align-items:center;gap:7px;background:rgba(248,192,64,0.18);border:1px solid rgba(248,192,64,0.4);color:var(--vspt-yellow);padding:6px 13px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em}
+  .status-dot{width:7px;height:7px;border-radius:50%;background:var(--vspt-yellow);animation:pulse 2s infinite}
+  .status-badge.ok{background:rgba(152,160,64,0.18);border-color:rgba(152,160,64,0.4);color:#c5cf6e}
+  .status-badge.ok .status-dot{background:var(--vspt-olive)}
+  .status-badge.err{background:rgba(216,24,64,0.18);border-color:rgba(216,24,64,0.45);color:#ff7a93}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 24px;background:var(--card);border-bottom:1px solid var(--border)}
+  .toolbar label{font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:700}
+  select,input[type=text],input[type=date]{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-family:inherit;font-size:13px}
+  input[type=date]{color-scheme:dark} body.light input[type=date]{color-scheme:light}
+  .content{padding:20px 24px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .kpi{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 16px 14px;box-shadow:0 6px 18px rgba(0,0,0,0.22);transition:transform .2s,box-shadow .2s}
+  body.light .kpi{box-shadow:0 6px 16px rgba(78,23,66,0.10)}
+  .kpi:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,0.30)}
+  .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad-wine)}
+  .kpi.amber::before{background:linear-gradient(90deg,var(--vspt-yellow),var(--vspt-orange))}
+  .kpi.red::before{background:linear-gradient(90deg,var(--vspt-crimson),var(--vspt-magenta))}
+  .kpi.olive::before{background:linear-gradient(90deg,var(--vspt-olive),#c5cf6e)}
+  .kpi.wine::before{background:linear-gradient(90deg,var(--vspt-wine),var(--vspt-deep-purple))}
+  .kpi.orange::before{background:linear-gradient(90deg,var(--vspt-orange),var(--vspt-yellow))}
+  .kpi .v{font-size:28px;font-weight:800;letter-spacing:-0.02em;line-height:1.05}
+  .kpi.amber .v{color:var(--vspt-yellow)} .kpi.red .v{color:#ff6b8a} body.light .kpi.red .v{color:var(--vspt-crimson)}
+  .kpi.olive .v{color:#c5cf6e} body.light .kpi.olive .v{color:var(--vspt-olive)}
+  .kpi.wine .v{color:#e2a4cf} body.light .kpi.wine .v{color:var(--vspt-wine)}
+  .kpi.orange .v{color:var(--vspt-orange)}
+  .kpi .v{color:var(--vspt-yellow)}
+  .kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:0.14em;color:var(--muted);margin-top:6px;font-weight:600}
+  .kpi small{color:var(--muted);font-weight:600;font-size:11px}
+  h2{font-size:15px;font-weight:800;margin:22px 0 10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--vspt-beige)}
+  .turnos{display:grid;grid-template-columns:1fr;gap:18px}
+  .turno-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .turno-head{background:var(--th-bg);padding:10px 16px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+  .turno-head .hor{font-size:11px;color:var(--muted);font-weight:600}
+  .turno-head .hor-edit{font-size:11px;color:var(--muted);font-weight:600;background:transparent;border:1px solid transparent;border-radius:6px;padding:3px 8px;text-align:right;flex:1;min-width:0;margin-left:10px;font-family:inherit;cursor:text}
+  .turno-head .hor-edit:hover{border-color:var(--border);background:rgba(0,0,0,0.12)}
+  .turno-head .hor-edit:focus{border-color:var(--vspt-crimson);background:var(--card2);color:var(--text);outline:none;text-align:left}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:7px 10px;border-bottom:1px solid var(--td-border);text-align:left;font-size:13px}
+  th{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);background:var(--card2)}
+  td.puesto{font-weight:700;color:var(--vspt-beige);white-space:nowrap}
+  tr:hover{background:var(--tr-hover)}
+  .slot{cursor:pointer;border-radius:6px;padding:4px 8px;display:inline-flex;align-items:center;gap:6px;min-width:140px}
+  .slot:hover{background:var(--tr-hover);outline:1px dashed var(--border)}
+  .slot.vacant{color:var(--muted);font-style:italic}
+  .badge{font-size:9px;font-weight:800;padding:1px 6px;border-radius:10px}
+  .badge.P{background:rgba(152,160,64,0.25);color:#c5cf6e}
+  .badge.E{background:rgba(240,136,8,0.22);color:var(--vspt-orange)}
+  .star{color:var(--vspt-crimson);font-size:12px}
+  .aux-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+  .aux-item{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .aux-item .cat{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.06em}
+  .roster-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .pill{padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--card2);color:var(--muted)}
+  .pill.active{background:var(--vspt-crimson);color:#fff;border-color:var(--vspt-crimson)}
+  .act{cursor:pointer;font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text)}
+  .act:hover{border-color:var(--vspt-crimson)}
+  .est-activo{color:#c5cf6e;font-weight:700}
+  .est-baja{color:#ff7a93;font-weight:700}
+  .est-licencia,.est-vacaciones{color:var(--vspt-yellow);font-weight:700}
+  /* modal popover para elegir persona */
+  #pop{position:absolute;z-index:100;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.5);width:280px;max-height:340px;overflow:auto;display:none}
+  #pop input{width:100%;border:none;border-bottom:1px solid var(--border);border-radius:0;background:var(--card2)}
+  #pop .opt{padding:7px 11px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;gap:8px}
+  #pop .opt:hover{background:var(--tr-hover)}
+  #pop .opt.clear{color:#ff7a93;font-style:italic}
+  .tab-nav2{display:flex;gap:4px;padding:0 24px;background:var(--card);border-bottom:1px solid var(--border)}
+  .tab2{padding:13px 18px;font-weight:700;color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;text-transform:uppercase;font-size:11px;letter-spacing:0.1em;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit}
+  .tab2.active{color:var(--vspt-yellow);border-bottom-color:var(--vspt-yellow)}
+  .hidden{display:none}
+  .hint{font-size:11px;color:var(--muted);margin:6px 0 14px}
+
+  /* ===== Layout dos columnas estilo Excel ===== */
+  .layout{display:flex;gap:16px;align-items:flex-start}
+  .col-left{flex:1;min-width:0}
+  .col-right{width:300px;flex-shrink:0}
+  .turno-head .lc{display:inline-flex;gap:6px;margin-left:12px}
+  .turno-head .lc b{background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:1px 8px;font-size:11px;font-weight:700;color:var(--vspt-yellow)}
+  /* tabla compacta estilo Excel: 3 líneas × (Operación | P/E | Operario) */
+  table.excel{table-layout:fixed;font-size:12px}
+  table.excel th,table.excel td{padding:3px 6px;border:1px solid var(--td-border);text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  table.excel col.c-op{width:13%} table.excel col.c-pe{width:26px}
+  table.excel .sup-row th{background:var(--card2);color:var(--muted);font-weight:700;font-size:10px;text-transform:none;letter-spacing:0;text-align:center;border-bottom:none}
+  table.excel .sup-row .sup-slot{display:inline-flex;align-items:center;gap:6px;justify-content:center;width:100%;border:1px solid transparent;border-radius:5px;padding:2px 6px;cursor:pointer;color:var(--text);font-weight:700;font-size:10px}
+  table.excel .sup-row .sup-slot:hover{border-color:var(--border);background:rgba(0,0,0,0.12)}
+  table.excel .sup-row .sup-slot.vacant{color:var(--muted);font-style:italic;font-weight:600}
+  table.excel .sup-row .sup-slot[draggable="true"]{cursor:grab}
+  table.excel .sup-row .sup-slot[draggable="true"]:active{cursor:grabbing}
+  #rosterHead th.rsort{cursor:pointer;user-select:none}
+  #rosterHead th.rsort:hover{color:var(--vspt-crimson)}
+  .conv-badge{font-size:8px;font-weight:800;border-radius:8px;padding:1px 5px;letter-spacing:.03em}
+  .conv-badge.FC{background:rgba(93,199,209,.22);color:#2BA6B0}
+  body:not(.light) .conv-badge.FC{color:#5DC7D1}
+  .conv-badge.DC{background:rgba(152,160,64,.22);color:#7c8330}
+  body:not(.light) .conv-badge.DC{color:#c5cf6e}
+  #pop .pop-chk{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);padding:5px 9px;font-weight:600;cursor:pointer;border-bottom:1px solid var(--border)}
+  #pop .pop-chk input{cursor:pointer}
+  table.excel .lhead{background:var(--th-bg);color:var(--vspt-beige);text-align:center;font-size:11px;letter-spacing:0.04em}
+  table.excel .lhead .cnt{display:inline-block;min-width:18px;background:var(--vspt-crimson);color:#fff;border-radius:9px;padding:0 6px;font-size:10px;margin-left:4px}
+  table.excel .colh{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.06em;background:var(--card2)}
+  table.excel td.op{color:var(--muted);font-size:9px;font-weight:700}
+  table.excel td.pe{text-align:center;font-weight:800;padding-left:2px;padding-right:2px}
+  table.excel th.pe-h{text-align:center;padding-left:2px;padding-right:2px}
+  table.excel td.nm{cursor:pointer}
+  table.excel td.nm:hover{outline:1px dashed var(--vspt-crimson);outline-offset:-1px}
+  table.excel td.nm .vac{color:var(--muted);font-style:italic}
+  table.excel .ev{background:rgba(248,210,16,0.22)}            /* eventual = amarillo */
+  body.light table.excel .ev{background:#FFF7CC}
+  table.excel .brig{color:#ff5a78;font-weight:700}             /* brigada = rojo */
+  /* bloques auxiliares (derecha) */
+  .aux-block{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden}
+  .aux-h{background:var(--th-bg);color:var(--vspt-beige);font-weight:700;font-size:11px;padding:6px 10px;letter-spacing:0.03em}
+  .aux-row{display:flex;align-items:center;gap:6px;padding:4px 8px;border-top:1px solid var(--td-border);font-size:12px}
+  .aux-row .pe{width:18px;text-align:center;font-weight:800;color:var(--muted)}
+  .aux-row .nm{flex:1;cursor:pointer;padding:2px 4px;border-radius:5px}
+  .aux-row .nm:hover{outline:1px dashed var(--vspt-crimson)}
+  .aux-row .nm.ev{background:rgba(248,210,16,0.18)}
+  .aux-row .nm.brig{color:#ff5a78;font-weight:700}
+  .aux-row .del{cursor:pointer;color:#ff7a93;font-weight:700;font-size:11px}
+  .aux-add{padding:5px 10px;font-size:11px;color:var(--muted);border-top:1px dashed var(--border);text-align:center;font-style:italic}
+
+  /* ===== Drag & drop ===== */
+  .palette{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:14px}
+  .pal-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px}
+  .pal-chips{display:flex;flex-wrap:wrap;gap:6px;max-height:118px;overflow:auto}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:4px 10px;font-size:12px;cursor:grab;user-select:none;white-space:nowrap}
+  .chip:hover{border-color:var(--vspt-crimson)}
+  .chip:active{cursor:grabbing}
+  .chip .cpe{font-weight:800;font-size:10px;width:14px;text-align:center;color:var(--muted)}
+  .chip.E{background:rgba(248,210,16,0.16)}
+  .chip.brig{color:#ff5a78}
+  .dragging{opacity:.35}
+  .drop-ok{outline:2px dashed var(--vspt-crimson)!important;outline-offset:-2px;background:var(--tr-hover)!important}
+  table.excel td.nm[draggable="true"]{cursor:grab}
+  .aux-row .nm[draggable="true"]{cursor:grab}
+  /* horas extra */
+  .he-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .he-bar{display:flex;align-items:center;gap:8px}
+  .he-bar .lbl{width:30px;font-weight:700;color:var(--vspt-beige)}
+  .he-bar .track{flex:1;height:18px;background:var(--card2);border-radius:9px;overflow:hidden;border:1px solid var(--border);display:block}
+  .he-bar .fill{display:block;height:100%;border-radius:9px;background:var(--vspt-crimson);transition:width .4s}
+  .he-bar .val{width:90px;text-align:right;font-weight:700;font-size:12px}
+  td.banda-1{color:var(--vspt-yellow);font-weight:700}
+  td.banda-2{color:#ff7a93;font-weight:700}
+  td.banda-gris{color:var(--muted);font-style:italic}
+  td.banda-finde{color:var(--vspt-orange);font-weight:700}
+  table.sortable th{cursor:pointer;user-select:none;white-space:nowrap;position:sticky;top:0;z-index:1}
+  table.sortable th:hover{color:var(--text);background:var(--tr-hover)}
+  table.sortable th.sorted{color:var(--vspt-yellow)}
+  table.sortable th.sorted::after{content:attr(data-dir);margin-left:5px;font-size:9px}
+  #weekRange{font-weight:700;color:var(--vspt-beige);background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:5px 10px}
+  /* equipos */
+  .equipos{display:flex;flex-wrap:wrap;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:14px}
+  .eq-title{font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:var(--vspt-beige)}
+  .eq-badges{display:inline-flex;gap:6px}
+  .eq-badges b{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:3px 10px;font-size:12px}
+  .eq-badges b.tot{background:var(--vspt-crimson);border-color:var(--vspt-crimson);color:#fff}
+  .eq-sep{width:1px;align-self:stretch;background:var(--border)}
+  .eq-ref{display:inline-flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);align-items:center}
+  .eq-ref b{color:var(--vspt-yellow)}
+  .eq-ref .he{color:#ff7a93}
+  .eq-note{font-size:10px;color:var(--muted);font-style:italic;flex-basis:100%}
+  /* asistente */
+  .asist-bar{display:flex;gap:8px;align-items:center;background:linear-gradient(90deg,rgba(216,24,64,0.10),transparent);border:1px solid var(--border);border-radius:12px;padding:8px 12px;margin-bottom:14px}
+  .asist-bar input{flex:1;min-width:200px}
+  .asist-bar .ico{font-size:18px}
+  #asist-status{font-size:11px;color:var(--muted)}
+  #asist-status.err{color:#ff7a93}
+  #asist-mic.rec{background:var(--vspt-crimson);border-color:var(--vspt-crimson)}
+  /* ===== Selección múltiple ===== */
+  table.excel td.nm.selected,.aux-row .nm.selected,.chip.selected{outline:2px solid var(--vspt-yellow)!important;outline-offset:-1px;background:rgba(248,192,64,0.20)!important;border-radius:5px}
+  .chip.selected{border-color:var(--vspt-yellow)}
+  .sel-badge{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--vspt-yellow);margin-left:12px}
+  .sel-badge a{color:var(--muted);cursor:pointer;text-decoration:underline}
+  /* ===== Bloques auxiliares editables ===== */
+  .aux-block .aux-h{display:flex;align-items:center;gap:4px}
+  .aux-title{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:6px;color:var(--vspt-beige);font-weight:700;font-size:11px;padding:3px 6px;font-family:inherit;letter-spacing:.03em}
+  .aux-title:hover{border-color:var(--border)}
+  .aux-title:focus{border-color:var(--vspt-crimson);background:var(--card2);color:var(--text);outline:none}
+  .aux-h .del-block{cursor:pointer;color:var(--muted);font-size:12px;padding:0 5px;line-height:1}
+  .aux-h .del-block:hover{color:#ff7a93}
+  .aux-hor{width:calc(100% - 16px);margin:5px 8px 3px;display:block;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:3px 7px;font-family:inherit}
+  .aux-hor:focus{border-color:var(--vspt-crimson);color:var(--text);outline:none}
+  .aux-add{cursor:pointer}
+  .aux-add:hover{color:var(--vspt-crimson)}
+  .estado-block{border-color:rgba(248,192,64,0.35)}
+  .estado-title{color:var(--vspt-yellow)!important}
+  .aux-count{display:inline-block;min-width:18px;text-align:center;background:rgba(248,192,64,0.18);color:var(--vspt-yellow);border-radius:9px;font-size:10px;padding:1px 6px;margin-left:4px}
+  .estado-hint{font-size:10px;color:var(--muted);padding:2px 8px 6px;line-height:1.35}
+  .aux-empty{font-size:11px;color:var(--muted);font-style:italic;padding:4px 8px 6px}
+  .estado-detail{display:block;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.02em;margin-top:1px}
+  .aux-newgrp{margin-top:6px;width:100%;justify-content:center}
+  .add-turno-row{margin:2px 0 14px}
+  /* ===== Horarios particulares por día ===== */
+  .hd-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px}
+  .hd-table{width:100%;border-collapse:collapse}
+  .hd-table th,.hd-table td{padding:5px 8px;text-align:left;border-bottom:1px solid var(--td-border);font-size:12px;vertical-align:middle}
+  .hd-table th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .hd-table .del{cursor:pointer;color:#ff7a93;font-weight:700;text-align:center;width:30px}
+  .hd-empty{color:var(--muted);font-style:italic;font-size:12px;padding:8px 2px}
+  /* ===== Mail para consultora ===== */
+  .cfg-rows{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+  .cfg-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .cfg-row label{min-width:96px}
+  .cons-overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:flex-start;justify-content:center;z-index:1000;padding:28px 16px;overflow:auto}
+  .cons-overlay.open{display:flex}
+  .cons-dialog{background:var(--card);border:1px solid var(--border);border-radius:16px;max-width:780px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  .cons-dialog .ch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)}
+  .cons-dialog .ch h3{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--vspt-beige)}
+  .cons-dialog .ch h3 span{color:var(--vspt-crimson)}
+  .cons-close{background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;padding:2px 6px}
+  .cons-close:hover{color:var(--vspt-crimson)}
+  .cons-body{padding:16px 20px}
+  .cons-lab{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:0 0 6px}
+  .cons-notas{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;line-height:1.45;resize:vertical}
+  .cons-prev-lab{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:16px 0 8px}
+  /* tarjeta blanca que se exporta como imagen (fondo claro para pegar en mail) */
+  .cons-card{background:#fff;color:#2a1226;border-radius:12px;padding:22px 26px;font-family:'Montserrat',sans-serif;border:1px solid #e6ddd2}
+  .cc-title{font-size:20px;font-weight:800;color:#701F52;letter-spacing:.02em;margin-bottom:4px}
+  .cc-sub{font-size:12px;color:#8a6a82;font-weight:600;margin-bottom:16px}
+  .cc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px 30px}
+  .cc-block{break-inside:avoid}
+  .cc-bh{font-size:13px;font-weight:800;color:#fff;background:#701F52;border-radius:7px;padding:6px 11px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .cc-bh .cc-hor{font-weight:700;color:#F8C040;font-size:12px;white-space:nowrap}
+  .cc-name{font-size:14px;font-weight:600;color:#2a1226;padding:4px 2px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f0e9e0}
+  .cc-name:last-child{border-bottom:none}
+  .cc-e{font-size:10px;font-weight:800;color:#F08808;background:rgba(240,136,8,.16);border-radius:9px;padding:1px 7px;min-width:18px;text-align:center}
+  .cc-empty{color:#8a6a82;font-style:italic;font-size:13px;padding:8px 0}
+  .cons-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:4px 20px 20px}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <div class="logo"><img src="assets/marca-secundaria.jpg" alt="VSPT" onerror="this.style.display='none'"></div>
+    <div>
+      <div class="header-title">VSPT <span>Wine Group</span> · PERSONAL</div>
+      <div class="header-sub">Planta San Juan / Graffigna — Distribución de Turnos</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn-hdr" onclick="toggleTheme()"><span id="themeIcon">🌙</span></button>
+    <div class="status-badge" id="status"><span class="status-dot"></span><span id="statusMsg">CARGANDO…</span></div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <label>Año</label>
+  <select id="yearSel" onchange="onYearChange()"></select>
+  <label>Semana</label>
+  <select id="weekSel" onchange="onWeekChange()"></select>
+  <span id="weekRange" class="hint" style="margin:0"></span>
+  <button class="btn" onclick="nuevaSemana()">➕ Nueva semana</button>
+  <span style="flex:1"></span>
+  <button class="btn ghost" id="btnUndo" onclick="deshacer()" disabled>↶ Deshacer</button>
+  <button class="btn olive" onclick="guardar()">💾 Guardar cambios</button>
+  <button class="btn primary" id="btnGenerar" onclick="generarTurno()" title="Guardá los cambios antes de enviar">📤 Generar turno + Gmail</button>
+  <button class="btn accent" id="btnConsultora" onclick="mailConsultora()" title="Mail con los eventuales y su turno para la consultora">📋 Mail para consultora</button>
+</div>
+<div class="toolbar" style="border-top:none;padding-top:0">
+  <div class="cfg-rows" style="flex:1">
+    <div class="cfg-row">
+      <label>✉️ Turno a</label>
+      <input type="text" id="emails" placeholder="correo1@empresa.com, correo2@empresa.com" style="flex:1;min-width:280px" onchange="guardarConfig()">
+      <span class="hint" id="cfgHint" style="margin:0"></span>
+    </div>
+    <div class="cfg-row">
+      <label>📋 Consultora a</label>
+      <input type="text" id="emailsConsultora" placeholder="correos de la consultora (Randstad)" style="flex:1;min-width:280px" onchange="guardarConfig()">
+      <span class="hint" id="cfgHintCons" style="margin:0"></span>
+    </div>
+  </div>
+</div>
+
+<div class="tab-nav2">
+  <button class="tab2 active" data-t="grid" onclick="setTab('grid')">🗓️ Distribución</button>
+  <button class="tab2" data-t="roster" onclick="setTab('roster')">👥 Personal (roster)</button>
+  <button class="tab2" data-t="he" onclick="setTab('he')">⏱️ Horas Extra</button>
+  <button class="tab2" data-t="ind" onclick="setTab('ind')">📊 Indicadores</button>
+</div>
+
+<div class="content">
+  <!-- ===== TAB DISTRIBUCIÓN ===== -->
+  <div id="tab-grid">
+    <div class="asist-bar">
+      <span class="ico">🤖</span>
+      <input id="asist-input" type="text" placeholder='Ej: "mover todo el personal de línea 2 turno mañana a línea 3 turno tarde"  ·  "intercambiar línea 1 con línea 3 turno mañana"  ·  "vaciar línea 2 turno tarde"' onkeydown="if(event.key==='Enter')asistEjecutar()">
+      <button class="btn ghost" id="asist-mic" onclick="asistVoz()" title="Dictar por voz">🎤</button>
+      <button class="btn accent" onclick="asistEjecutar()">Ejecutar</button>
+      <span id="asist-status"></span>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="equipos" id="equipos"></div>
+    <p class="hint">Arrastrá un nombre de <b>Disponibles</b> a un puesto, o entre puestos para mover/intercambiar. Soltá en Disponibles para liberar. (También podés hacer click en un casillero.) Amarillo = eventual · Rojo = brigada.</p>
+    <div class="palette" id="palette" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropPalette(event)"></div>
+    <div class="layout">
+      <div class="col-left">
+        <div class="turnos" id="turnos"></div>
+        <div class="add-turno-row" id="addTurnoRow"></div>
+      </div>
+      <div class="col-right">
+        <h2 style="margin-top:0">Auxiliares · Filtros · Destajo · Vacaciones</h2>
+        <div id="aux"></div>
+      </div>
+    </div>
+    <h2>🕒 Horarios particulares por día <small style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(excepciones puntuales: un día que un turno entra o sale distinto)</small></h2>
+    <div class="hd-card" id="horDia"></div>
+  </div>
+
+  <!-- ===== TAB HORAS EXTRA ===== -->
+  <div id="tab-he" class="hidden">
+    <div class="he-tools">
+      <label>Año</label>
+      <select id="heYear" onchange="heYearChange()"></select>
+      <label>Mostrar</label>
+      <select id="heBanda" onchange="renderHE()"><option value="con">Solo días con HE</option><option value="">Todos los días</option><option value="HE (finde)">Fin de semana</option><option value="sin equipos">Sin referencia (sin plan)</option></select>
+      <span class="hint" style="margin:0">HE del día = Σ T.con personal de las 3 líneas − (equipos × 9h Lun-Jue / 8h Vie). El personal rota entre líneas, por eso se mide el <b>total</b>, no por línea.</span>
+    </div>
+    <div class="kpis" id="heKpis"></div>
+    <h2>Horas extra por mes</h2>
+    <div id="heMeses"></div>
+    <h2>Detalle por día <small style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(click en el encabezado para ordenar · “Detalle” = T.con personal por línea)</small></h2>
+    <div class="turno-card" style="overflow:auto;max-height:460px">
+      <table class="sortable"><thead><tr>
+        <th onclick="heOrdenar('fecha')">Fecha</th><th onclick="heOrdenar('dia')">Día</th>
+        <th onclick="heOrdenar('equipos')">Equipos</th><th onclick="heOrdenar('tpers')">T. total c/personal</th>
+        <th onclick="heOrdenar('ref')">Referencia</th><th onclick="heOrdenar('he')">HE (h)</th>
+        <th onclick="heOrdenar('banda')">Estado</th><th>Detalle por línea</th></tr></thead>
+      <tbody id="heBody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ===== TAB INDICADORES ===== -->
+  <div id="tab-ind" class="hidden">
+    <div class="he-tools">
+      <label>Año</label>
+      <select id="indYear" onchange="renderIndicadores()"></select>
+      <span class="hint" style="margin:0">📊 <b>Equipos</b> = líneas-turno con dotación por semana. <b>Eventuales</b> = personas tipo E asignadas a puestos de línea. Datos de las semanas cargadas en el tablero.</span>
+    </div>
+    <h2>Equipos en planta por semana</h2>
+    <div class="turno-card" style="height:340px"><canvas id="chEquipos"></canvas></div>
+    <h2>Eventuales por semana</h2>
+    <div class="turno-card" style="height:340px"><canvas id="chEvent"></canvas></div>
+  </div>
+
+  <!-- ===== TAB ROSTER ===== -->
+  <div id="tab-roster" class="hidden">
+    <div class="roster-tools">
+      <input type="text" id="rosterSearch" placeholder="Buscar nombre…" oninput="renderRoster()" style="min-width:200px">
+      <span id="rpills"></span>
+      <select id="fTipo" onchange="rosterTipo=this.value;renderRoster()" title="Filtrar por tipo de personal">
+        <option value="todos">Tipo: todos</option><option value="P">Propios (P)</option><option value="E">Eventuales (E)</option>
+      </select>
+      <select id="fConv" onchange="rosterConv=this.value;renderRoster()" title="Filtrar por convenio">
+        <option value="todos">Convenio: todos</option><option value="DC">Dentro (DC)</option><option value="FC">Fuera (FC)</option>
+      </select>
+      <span style="flex:1"></span>
+      <button class="btn primary" onclick="nuevoPersonal()">➕ Nuevo ingreso</button>
+    </div>
+    <div class="turno-card">
+      <table>
+        <thead id="rosterHead"></thead>
+        <tbody id="rosterBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="pop"></div>
+
+<!-- ===== Modal: Mail para consultora ===== -->
+<div class="cons-overlay" id="consModal">
+  <div class="cons-dialog">
+    <div class="ch">
+      <h3>📋 Mail para <span>consultora</span> — eventuales semana <span id="consFecha"></span></h3>
+      <button class="cons-close" onclick="cerrarConsultora()" title="Cerrar">✕</button>
+    </div>
+    <div class="cons-body">
+      <label class="cons-lab">Notas (feriados, bajas, cambios de horario) — se incluyen arriba del listado en el mail</label>
+      <textarea id="notasConsultora" class="cons-notas" rows="4" oninput="guardarNotasConsultora()"></textarea>
+      <div class="cons-prev-lab">Listado de eventuales (esta imagen es la que se pega en el mail)</div>
+      <div id="consCard" class="cons-card"></div>
+    </div>
+    <div class="cons-actions">
+      <button class="btn primary" onclick="abrirGmailConsultora()">✉️ Abrir Gmail (con listado)</button>
+      <button class="btn olive" onclick="copiarImagenConsultora()">📋 Copiar imagen</button>
+      <button class="btn ghost" onclick="descargarImagenConsultora()">⬇️ Descargar imagen</button>
+      <span class="hint" id="consHint" style="margin-left:auto"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbx8alYmoiwb5-z1nyvXfyCSLfELACGZ4qGGtIoS3j6lF1yS6SmFH0wYRbKfQPrq5P6N/exec";
+// Destinatarios por defecto (correo de Mathias Soriano) — aparecen aunque la API aún no esté redeployada.
+const EMAILS_DEFAULT = "lesgomez@vspt.com.ar, gsagua@vspt.com.ar, marivero@vspt.com.ar, jmsoriano@vspt.com.ar, preventoressj@vspt.com.ar, anibal_moreno23@hotmail.com, sebjofre@vspt.com.ar, crisvallem.23@gmail.com, fdplitman@vspt.com.ar, fnaguilera@vspt.com.ar, pdamico@vspt.com.ar, emgonzalez@vspt.com.ar, mmarzano@vspt.com.ar, fbalmaceda@vspt.com.ar";
+const PUESTOS = ["DESPALETIZADORA","LLENADORA","CAPSULADORA","ETIQUETADORA","VISOR","STICKEADORA","ARMADORA DE CAJAS","ENCAJONADORA","PALETIZADO","PALETIZADO"];
+// Destinatarios de la consultora (Randstad) — del correo de ejemplo.
+const EMAILS_CONSULTORA_DEFAULT = "taortiz@randstad.com.ar, mcastaneda@randstad.com.ar, mlcoria@randstad.com.ar, lesgomez@vspt.com.ar, emgonzalez@vspt.com.ar, gsagua@vspt.com.ar, marivero@vspt.com.ar, jmsoriano@vspt.com.ar, crisvallem.23@gmail.com, preventoressj@vspt.com.ar";
+const NOTAS_CONS_DEFAULT = "Recordar que los días viernes el horario de trabajo es de 1 hs menos: turno mañana de 05:00 a 13:00, turno tarde de 13:00 a 21:00.";
+const TURNOS = ["MAÑANA","TARDE","NOCHE"];
+const LINEAS = ["1","2","3"];
+
+let ASIG = [];   // asignaciones (todas las semanas)
+let PERS = [];   // roster
+let CONFIG = { emails_turno:EMAILS_DEFAULT, emails_consultora:EMAILS_CONSULTORA_DEFAULT, notas_consultora:NOTAS_CONS_DEFAULT, jefe:"Gomez Lucio" };
+let HE = [];     // HE_DIARIO (horas extra por fecha/línea)
+let rosterFilter = "todos";
+let rosterTipo = "todos";
+let rosterConv = "todos";
+let rosterSort = {col:"nombre",dir:1};
+let dirty = false;
+let undoStack = [];      // pila de estados para "Deshacer"
+let savedState = "";     // foto del último estado guardado (para detectar cambios)
+let sel = new Map();     // selección múltiple: UPPER -> nombre display
+let forceNoche = false;  // mostrar turno noche aunque esté vacío (sesión)
+function isSel(n){ return sel.has(String(n||"").toUpperCase()); }
+function toggleSel(n){ if(!n)return; const k=n.toUpperCase(); if(sel.has(k))sel.delete(k); else sel.set(k,n); render(); }
+function clearSel(){ sel.clear(); render(); }
+function selNames(){ return [...sel.values()]; }
+function cellClick(ev,b){
+  if(ev.ctrlKey||ev.metaKey||ev.shiftKey){ const s=slotByKey(d64(b)); if(s&&s.nombre){ ev.stopPropagation(); ev.preventDefault(); toggleSel(s.nombre); } return; }
+  openPop(ev,b);
+}
+function chipClick(ev,b){ if(ev.ctrlKey||ev.metaKey||ev.shiftKey){ ev.preventDefault(); toggleSel(d64(b)); } }
+function auxNmClick(ev,idx){ const a=ASIG[idx]; if(!a)return; if(ev.ctrlKey||ev.metaKey||ev.shiftKey){ ev.stopPropagation(); ev.preventDefault(); toggleSel(a.nombre); } }
+// saca a una persona de TODA asignación real (slots + aux) de la semana actual
+function removeNameFromWeek(n){ const k=_normNombre(n); ASIG=ASIG.filter(a=>!(a.semana===curWeek()&&a.nombre&&_normNombre(a.nombre)===k&&!a.puesto.startsWith("__"))); }
+// quita el nombre de toda asignación real de la semana, salvo una fila puntual (evita duplicados al reasignar)
+function quitarNombreSemana(nombre, exceptRow){ const k=_normNombre(nombre); ASIG=ASIG.filter(a=> a===exceptRow || !(a.semana===curWeek()&&a.nombre&&_normNombre(a.nombre)===k&&!a.puesto.startsWith("__"))); }
+// limpia a una persona como supervisor en toda la semana, salvo en (exceptT,exceptL)
+function limpiarSupervisor(nombre, exceptT, exceptL){ const k=_normNombre(nombre); ASIG.forEach(a=>{ if(a.semana===curWeek()&&a.supervisor&&_normNombre(a.supervisor)===k&&!(a.turno===exceptT&&a.linea===exceptL)) a.supervisor=""; }); }
+function primerPuestoLibre(t,l){
+  const occ={}; slotsLinea(t,l).filter(a=>a.nombre).forEach(a=>{const p=a.puesto.toUpperCase();occ[p]=(occ[p]||0)+1;});
+  const used={};
+  for(const p of PUESTOS){ const P=p.toUpperCase(); used[P]=used[P]||0; if(used[P]<(occ[P]||0)){ used[P]++; continue; } return p; }
+  return PUESTOS[PUESTOS.length-1];
+}
+function moverGrupoALinea(names,t,l){
+  if(!names||!names.length)return;
+  pushUndo();
+  const rf=_refHorSup(t,l);
+  names.forEach(n=>removeNameFromWeek(n));
+  names.forEach(n=>{ reactivarSiInactivo(n); const pu=primerPuestoLibre(t,l); ASIG.push({semana:curWeek(),turno:t,linea:l,puesto:pu,nombre:n,horario:rf.horario||"",supervisor:rf.supervisor||"",orden:nextOrden()}); });
+  sel.clear(); markDirty(); render();
+}
+function grupoAAux(names,cat){
+  if(!names||!names.length)return;
+  pushUndo();
+  const hor=auxHorOf(cat);
+  names.forEach(n=>{ removeNameFromWeek(n); reactivarSiInactivo(n); ASIG.push({semana:curWeek(),turno:"",linea:"",puesto:cat,nombre:n,horario:hor,supervisor:"",orden:0}); });
+  sel.clear(); markDirty(); render();
+}
+function liberarGrupo(names){ if(!names||!names.length)return; pushUndo(); names.forEach(n=>removeNameFromWeek(n)); sel.clear(); markDirty(); render(); }
+
+const $ = s => document.querySelector(s);
+function setStatus(msg, cls){ $("#statusMsg").textContent = msg; $("#status").className = "status-badge" + (cls?(" "+cls):""); }
+function toggleTheme(){ document.body.classList.toggle("light"); $("#themeIcon").textContent = document.body.classList.contains("light")?"☀️":"🌙"; }
+function snap(){ return JSON.stringify({A:ASIG,P:PERS}); }
+function pushUndo(){ undoStack.push(snap()); if(undoStack.length>60) undoStack.shift(); updateUI(); }
+function markDirty(){ dirty = (snap() !== savedState); updateUI(); }
+function updateUI(){
+  setStatus(dirty?"CAMBIOS SIN GUARDAR":"AL DÍA", dirty?"err":"ok");
+  const g=$("#btnGenerar"); if(g){ g.disabled=dirty; g.title=dirty?"Guardá los cambios antes de enviar":"Generar y enviar el turno"; }
+  const u=$("#btnUndo"); if(u) u.disabled=!undoStack.length;
+}
+function deshacer(){
+  if(!undoStack.length) return;
+  const s=JSON.parse(undoStack.pop());
+  ASIG=s.A.map(normAsig); PERS=s.P.map(normPers);
+  closePop(); markDirty(); render();
+  if(!$("#tab-roster").classList.contains("hidden")) renderRoster();
+}
+
+// ---------- carga ----------
+async function load(){
+  setStatus("CARGANDO…");
+  try{
+    const r = await fetch(API_URL + "?tabla=asignacion");
+    const d = await r.json();
+    ASIG = (d.asignacion||[]).map(normAsig);
+    const r2 = await fetch(API_URL + "?tabla=personal");
+    const d2 = await r2.json();
+    PERS = (d2.personal||[]).map(normPers);
+    migrarEstadoBlocks();
+    try{
+      const r3 = await fetch(API_URL + "?tabla=personal_config");
+      const d3 = await r3.json();
+      if(d3.personal_config) CONFIG = Object.assign(CONFIG, d3.personal_config);
+    }catch(e){}
+    try{
+      const r4 = await fetch(API_URL + "?tabla=he");
+      const d4 = await r4.json();
+      HE = (d4.he||[]).map(h=>({fecha:str(h.fecha),anio:Number(h.anio)||0,dia:str(h.dia_semana),
+        equipos:str(h.equipos),tpers:Number(h.t_con_personal)||0,
+        ref:(h.referencia===""||h.referencia==null)?"":Number(h.referencia),
+        he:Number(h.he_horas)||0,banda:str(h.banda),detalle:str(h.detalle_lineas)}));
+    }catch(e){}
+    $("#emails").value = CONFIG.emails_turno || EMAILS_DEFAULT;
+    $("#emailsConsultora").value = CONFIG.emails_consultora || localStorage.getItem("vspt_emails_cons") || EMAILS_CONSULTORA_DEFAULT;
+    populateWeeks();
+    setTab('grid');
+    render();
+    savedState = snap(); undoStack = []; dirty = false; updateUI();
+    if(!ASIG.length && !PERS.length) cargarDemo();   // editor sin conexión a la API → datos de ejemplo
+  }catch(e){ console.warn("API no disponible — cargando datos de ejemplo", e); cargarDemo(); }
+}
+// ---------- Datos de ejemplo (solo cuando la API no responde, p.ej. en el editor) ----------
+function cargarDemo(){
+  const SEM="01/06/2026", SEM2="26/05/2026", HM="05:00 a 14:00", HT="14:00 a 23:00";
+  const P=(nombre,brig,conv)=>({nombre,tipo:"P",agencia:"",brigada:brig?"SI":"NO",convenio:conv||"DC",estado:"activo",motivo:"",vac_desde:"",vac_hasta:""});
+  const E=(nombre)=>({nombre,tipo:"E",agencia:"Randstad",brigada:"NO",convenio:"DC",estado:"activo",motivo:"",vac_desde:"",vac_hasta:""});
+  PERS=[
+    P("Lopez Fabio"),P("Amarfil Braian"),P("Garin Santiago",true),P("Montaña Martin"),P("Ramos Gustavo",true),
+    P("Olmos Ruben"),P("Paez Cristian"),P("Quiroga Luis"),P("Sosa Mario"),P("Torres Pablo"),P("Videla Juan"),
+    P("Bordon Hugo"),P("Chavez Ezequiel"),P("Espinoza Oscar"),P("Vera Ivan",true),P("Mut Martin",false,"FC"),
+    P("Alvarez Gloria",false,"FC"),P("Rojas Juan Carlos"),P("Abellay Gabriel Andres"),P("Montaña Diego"),
+    P("Gomez Lucio",false,"FC"),P("Rivero Maximiliano",false,"FC"),P("Funes Carla",false,"FC"),
+    E("ELIAS VARAS"),E("PEDRO OLIVERA"),E("GONZALO VEGA"),E("MARIO GERMAN SALINAS"),E("RIVEROS FAVIO"),
+    E("CARLOS RODRIGUEZ"),E("SANTINO YUDICA"),E("EMMANUEL QUEVEDO"),E("MAURICIO AGUIRRE"),E("SUSANA ARABEL"),
+  ];
+  Object.assign(PERS.find(p=>p.nombre==="Torres Pablo"),{estado:"vacaciones",vac_desde:"2026-05-30",vac_hasta:"2026-06-08"});
+  Object.assign(PERS.find(p=>p.nombre==="Quiroga Luis"),{estado:"licencia",motivo:"ART"});
+  PERS=PERS.map(normPers);
+  const A=[], fila=(turno,linea,puesto,nombre,horario,sup)=>A.push({semana:SEM,turno,linea,puesto,nombre,horario,supervisor:sup||"",orden:0});
+  [["DESPALETIZADORA","Lopez Fabio"],["LLENADORA","ELIAS VARAS"],["CAPSULADORA","PEDRO OLIVERA"],["ETIQUETADORA","Amarfil Braian"],["VISOR","Garin Santiago"],["STICKEADORA","GONZALO VEGA"],["ARMADORA DE CAJAS","Montaña Martin"],["ENCAJONADORA","Ramos Gustavo"],["PALETIZADO","MARIO GERMAN SALINAS"],["PALETIZADO","RIVEROS FAVIO"]].forEach(([pu,nm])=>fila("MAÑANA","1",pu,nm,HM,"Gomez Lucio"));
+  [["DESPALETIZADORA","Olmos Ruben"],["LLENADORA","CARLOS RODRIGUEZ"],["CAPSULADORA","SANTINO YUDICA"],["ETIQUETADORA","Paez Cristian"],["VISOR","Sosa Mario"],["STICKEADORA","EMMANUEL QUEVEDO"],["ARMADORA DE CAJAS","Videla Juan"],["ENCAJONADORA","Vera Ivan"],["PALETIZADO","MAURICIO AGUIRRE"]].forEach(([pu,nm])=>fila("TARDE","1",pu,nm,HT,"Rivero Maximiliano"));
+  A.push({semana:SEM,turno:"",linea:"",puesto:"Declaraciones",nombre:"Alvarez Gloria",horario:"",supervisor:"",orden:0});
+  A.push({semana:SEM,turno:"",linea:"",puesto:"Declaraciones",nombre:"Mut Martin",horario:"",supervisor:"",orden:0});
+  A.push({semana:SEM,turno:"",linea:"",puesto:"Filtros",nombre:"Rojas Juan Carlos",horario:"23:00 a 07:00",supervisor:"",orden:0});
+  A.push({semana:SEM,turno:"",linea:"",puesto:"Filtros",nombre:"Abellay Gabriel Andres",horario:"23:00 a 07:00",supervisor:"",orden:0});
+  A.push({semana:SEM,turno:"",linea:"",puesto:"Destajo",nombre:"Montaña Diego",horario:"06:00 a 15:00",supervisor:"",orden:0});
+  [["DESPALETIZADORA","Lopez Fabio"],["LLENADORA","ELIAS VARAS"],["CAPSULADORA","PEDRO OLIVERA"],["ETIQUETADORA","Amarfil Braian"]].forEach(([pu,nm])=>A.push({semana:SEM2,turno:"MAÑANA",linea:"1",puesto:pu,nombre:nm,horario:HM,supervisor:"Gomez Lucio",orden:0}));
+  ASIG=A.map(normAsig);
+  HE=[
+    {fecha:"2026-06-01",anio:2026,dia:"Lunes",equipos:"2",tpers:18,ref:18,he:0,banda:"normal",detalle:"L1:18"},
+    {fecha:"2026-06-02",anio:2026,dia:"Martes",equipos:"2",tpers:21,ref:18,he:3,banda:"HE",detalle:"L1:12 L2:9"},
+    {fecha:"2026-06-04",anio:2026,dia:"Jueves",equipos:"2",tpers:24,ref:18,he:6,banda:"HE",detalle:"L1:12 L3:12"},
+    {fecha:"2026-06-06",anio:2026,dia:"Sábado",equipos:"0",tpers:8,ref:"",he:8,banda:"HE (finde)",detalle:"L1:8"},
+    {fecha:"2026-05-26",anio:2026,dia:"Lunes",equipos:"2",tpers:18,ref:18,he:0,banda:"normal",detalle:"L1:18"},
+    {fecha:"2026-05-28",anio:2026,dia:"Miércoles",equipos:"3",tpers:30,ref:27,he:3,banda:"HE",detalle:"L1:12 L2:9 L3:9"},
+    {fecha:"2025-12-15",anio:2025,dia:"Lunes",equipos:"2",tpers:20,ref:18,he:2,banda:"HE",detalle:"L1:20"},
+    {fecha:"2025-12-16",anio:2025,dia:"Martes",equipos:"2",tpers:18,ref:18,he:0,banda:"normal",detalle:"L1:18"},
+  ];
+  $("#emails").value = $("#emails").value || EMAILS_DEFAULT;
+  $("#emailsConsultora").value = $("#emailsConsultora").value || EMAILS_CONSULTORA_DEFAULT;
+  migrarEstadoBlocks();
+  populateWeeks(); setTab('grid'); render();
+  savedState=snap(); undoStack=[]; dirty=false; updateUI();
+  setStatus("DATOS DE EJEMPLO (demo)","ok");
+}
+function normAsig(o){ return {semana:str(o.semana),turno:str(o.turno).toUpperCase(),linea:str(o.linea),puesto:str(o.puesto),nombre:str(o.nombre),horario:str(o.horario),supervisor:str(o.supervisor),orden:Number(o.orden)||0}; }
+function normPers(o){ return {nombre:str(o.nombre),tipo:str(o.tipo).toUpperCase(),agencia:str(o.agencia),brigada:str(o.brigada).toUpperCase()==="SI"?"SI":"NO",convenio:str(o.convenio).toUpperCase()==="FC"?"FC":"DC",estado:(str(o.estado)||"activo").toLowerCase(),motivo:str(o.motivo),vac_desde:str(o.vac_desde),vac_hasta:str(o.vac_hasta)}; }
+function str(v){ return v==null?"":String(v).trim(); }
+
+function weeks(){ return [...new Set(ASIG.map(a=>a.semana))].filter(Boolean); }
+function semStart(sem){ const m=String(sem).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m? new Date(+m[3],+m[2]-1,+m[1]) : null; }
+function semYear(sem){ const d=semStart(sem); return d? d.getFullYear():0; }
+function isoWeek(d){ if(!d)return 0; const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const day=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-day+3); const y0=new Date(Date.UTC(t.getUTCFullYear(),0,4)); const d0=(y0.getUTCDay()+6)%7; y0.setUTCDate(y0.getUTCDate()-d0+3); return 1+Math.round((t-y0)/6048e5); }
+function populateWeeks(){
+  const ws = weeks();
+  if(!ws.length){ $("#yearSel").innerHTML=""; $("#weekSel").innerHTML=""; $("#weekRange").textContent=""; return; }
+  const years=[...new Set(ws.map(semYear))].sort((a,b)=>a-b);
+  $("#yearSel").innerHTML=years.map(y=>`<option>${y}</option>`).join("");
+  $("#yearSel").value=years[years.length-1];
+  fillWeekSel(true);
+}
+function fillWeekSel(selLast){
+  const y=Number($("#yearSel").value);
+  const ws=weeks().filter(s=>semYear(s)===y).sort((a,b)=>semStart(a)-semStart(b));
+  $("#weekSel").innerHTML=ws.map(s=>`<option value="${esc(s)}">Sem ${isoWeek(semStart(s))}</option>`).join("");
+  if(selLast && ws.length) $("#weekSel").selectedIndex=ws.length-1;
+  updateRange();
+}
+function onYearChange(){ fillWeekSel(true); onWeekChange(); syncHeDesdeArriba(); }
+// Sincroniza el filtro de año de Horas Extra con el de la barra superior
+function syncHeDesdeArriba(){
+  const he=$("#heYear"); if(!he||!he.options.length) return;
+  const y=$("#yearSel").value;
+  if([...he.options].some(o=>o.value===String(y))){
+    if(he.value!==String(y)){ he.value=y; if(!$("#tab-he").classList.contains("hidden")) renderHE(); }
+  }
+}
+// Cambio en el filtro de año de Horas Extra → sincroniza la barra superior
+function heYearChange(){
+  const he=$("#heYear"), v=he.value, main=$("#yearSel");
+  if(v&&v!=="0"&&main&&[...main.options].some(o=>o.value===v)&&main.value!==v){
+    main.value=v; fillWeekSel(true); onWeekChange();
+  }
+  renderHE();
+}
+function onWeekChange(){ sel.clear(); forceNoche=false; updateRange(); render(); }
+function updateRange(){ const s=curWeek(); $("#weekRange").textContent = s? "📅 "+s : ""; }
+function curWeek(){ return $("#weekSel").value; }
+
+// ---------- roster helpers ----------
+function _normNombre(s){ return String(s||"").trim().toUpperCase().replace(/\s+/g," ").normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
+function persByName(n){ const k=_normNombre(n); return PERS.find(p=>_normNombre(p.nombre)===k); }
+function tipoDe(n){ const p=persByName(n); return p?p.tipo:""; }
+function esBrigada(n){ const p=persByName(n); return p&&p.brigada==="SI"; }
+function convenioDe(n){ const p=persByName(n); return p?p.convenio:""; }
+function esFC(n){ const p=persByName(n); return p&&p.convenio==="FC"; }
+function supervisoresEnSemana(){ return new Set(ASIG.filter(a=>a.semana===curWeek()&&a.supervisor).map(a=>a.supervisor.toUpperCase())); }
+const AUX_SOLO_FC=["declaraciones"];   // grupos auxiliares que solo admiten Fuera de Convenio
+function grupoSoloFC(cat){ return AUX_SOLO_FC.includes(String(cat||"").toLowerCase()); }
+function activos(){ return PERS.filter(p=>p.estado==="activo"); }
+function asignadosEnSemana(){ return new Set(ASIG.filter(a=>a.semana===curWeek()&&a.nombre).map(a=>a.nombre.toUpperCase())); }
+
+// ---------- render distribución ----------
+function render(){
+  if(!curWeek()){ $("#turnos").innerHTML="<p class='hint'>No hay semanas cargadas.</p>"; $("#kpis").innerHTML=""; $("#aux").innerHTML=""; $("#palette").innerHTML=""; return; }
+  renderKpis(); renderEquipos(); renderPalette(); renderTurnos(); renderAux(); renderHorDia();
+}
+const HORAS_LUN_JUE=9, HORAS_VIERNES=8;
+function equiposSemana(){
+  const wk=curWeek();
+  const lineasCon=(t)=>new Set(ASIG.filter(a=>a.semana===wk&&a.turno===t&&a.linea&&a.nombre).map(a=>a.linea)).size;
+  const manana=lineasCon("MAÑANA"), tarde=lineasCon("TARDE"), noche=lineasCon("NOCHE"), total=manana+tarde+noche;
+  return {manana,tarde,noche,total, refLJ: total*HORAS_LUN_JUE, refV: total*HORAS_VIERNES};
+}
+function renderEquipos(){
+  const e=equiposSemana();
+  $("#equipos").innerHTML=`
+    <span class="eq-title">⚙️ Equipos</span>
+    <span class="eq-badges"><b>Mañana ${e.manana}</b><b>Tarde ${e.tarde}</b>${e.noche?`<b>Noche ${e.noche}</b>`:""}<b class="tot">Total ${e.total}</b></span>
+    <span class="eq-sep"></span>
+    <span class="eq-ref">
+      <span style="text-transform:uppercase;font-size:10px;letter-spacing:.06em">Horas normales/día:</span>
+      <span>Lun–Jue <b>${e.refLJ} h</b></span>
+      <span>Viernes <b>${e.refV} h</b></span>
+      <span>Sábado <b class="he">siempre HE</b></span>
+      <span class="eq-note">Si las horas reales del día superan la referencia → ese día hubo hora extra.</span>
+    </span>`;
+}
+function renderPalette(){
+  const taken=asignadosEnSemana();
+  const sups=supervisoresEnSemana();
+  const avail=activos().filter(p=>!taken.has(p.nombre.toUpperCase())&&!sups.has(p.nombre.toUpperCase())).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const badge = sel.size? `<span class="sel-badge">✓ ${sel.size} seleccionados · <a onclick="clearSel()">limpiar</a> <span style="color:var(--muted);font-weight:400">(Ctrl/Cmd+clic para sumar; arrastrá cualquiera para mover el grupo)</span></span>`:`<span class="sel-badge" style="color:var(--muted);font-weight:400">Ctrl/Cmd+clic para seleccionar varias y moverlas juntas</span>`;
+  $("#palette").innerHTML =
+    `<div class="pal-h">Disponibles para asignar (${avail.length}) — arrastrá a un puesto${badge}</div>`+
+    `<div class="pal-chips">`+ (avail.length? avail.map(p=>
+      `<span class="chip ${p.tipo}${p.brigada==='SI'?' brig':''}${isSel(p.nombre)?' selected':''}" draggable="true" ondragstart="dragStartPalette(event,'${b64(p.nombre)}')" ondragend="dragEndAny(event)" onclick="chipClick(event,'${b64(p.nombre)}')"><span class="cpe">${p.tipo}</span>${esc(p.nombre)}</span>`
+    ).join("") : `<span class="hint" style="margin:0">Todos los activos están asignados.</span>`) +`</div>`;
+}
+
+function slotsLinea(turno,linea){
+  return ASIG.filter(a=>a.semana===curWeek()&&a.turno===turno&&a.linea===linea);
+}
+function lineCount(t,l){ return ASIG.filter(a=>a.semana===curWeek()&&a.turno===t&&a.linea===l&&a.nombre).length; }
+function setHorarioTurno(t,v){
+  const filas=ASIG.filter(a=>a.semana===curWeek()&&a.turno===t);
+  if(!filas.length){ setStatus("Asigná al menos una persona a ese turno antes de fijar el horario","err"); return; }
+  pushUndo();
+  filas.forEach(a=>a.horario=v.trim());
+  markDirty();
+}
+// ---------- Supervisor (se elige una persona del roster; candidatos = Fuera de Convenio) ----------
+let popSup=null;       // {t,l} cuando el popover edita un supervisor
+let popInclDC=false;   // incluir Dentro de Convenio en el picker de supervisor
+function openPopSup(ev,t,l){
+  ev.stopPropagation();
+  const filas=ASIG.filter(a=>a.semana===curWeek()&&a.turno===t&&a.linea===l);
+  if(!filas.length){ setStatus("Asigná al menos una persona a esa línea antes de poner el supervisor","err"); return; }
+  popKey=null; popAuxIdx=null; popSup={t,l}; popInclDC=false;
+  showPop(ev);
+}
+function togglePopDC(v){
+  popInclDC=v;
+  const taken=asignadosEnSemana();
+  const opts=activos().filter(p=> v?true:p.convenio==="FC").sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  window._popOpts=opts.map(p=>({n:p.nombre,t:p.tipo,a:p.agencia,conv:p.convenio,used:taken.has(p.nombre.toUpperCase())}));
+  renderPopList(($("#popSearch")&&$("#popSearch").value.toLowerCase())||"");
+}
+function dropSup(e,t,l){
+  e.preventDefault(); dragLeave(e.currentTarget); clearDropMarks();
+  if(!dragData||dragData.kind==='multi'){ dragData=null; return; }
+  const nombre=dragData.name||"";
+  if(!nombre){ dragData=null; return; }
+  const filas=ASIG.filter(a=>a.semana===curWeek()&&a.turno===t&&a.linea===l);
+  if(!filas.length){ setStatus("Asigná al menos una persona a esa línea antes de poner el supervisor","err"); dragData=null; return; }
+  if(!esFC(nombre) && !confirm(`${nombre} está Dentro de Convenio (DC). ¿Asignarlo igual como supervisor?`)){ dragData=null; return; }
+  pushUndo(); limpiarSupervisor(nombre,t,l); filas.forEach(a=>a.supervisor=nombre); dragData=null; markDirty(); render();
+}
+function dragStartSup(e,t,l){
+  const sup=(slotsLinea(t,l)[0]||{}).supervisor||"";
+  if(!sup){ e.preventDefault(); return; }
+  dragData={kind:'sup', name:sup, t, l};
+  e.dataTransfer.effectAllowed='move';
+  try{e.dataTransfer.setData('text/plain',sup);}catch(_){}
+  e.currentTarget.classList.add('dragging');
+}
+
+function renderTurnos(){
+  let html="";
+  TURNOS.forEach(t=>{
+    const any = ASIG.filter(a=>a.semana===curWeek()&&a.turno===t);
+    if(t==="NOCHE" && !forceNoche && !any.some(a=>a.nombre)) return;
+    const hor = (any[0]||{}).horario||"";
+    const lc = LINEAS.map(l=>`<b>L${l}: ${lineCount(t,l)}</b>`).join("");
+    html += `<div class="turno-card"><div class="turno-head"><span>TURNO ${t} <span class="lc">${lc}</span></span><input class="hor-edit" type="text" value="${esc(hor)}" title="Editá el horario de este turno (se aplica a toda la gente del turno)" placeholder="horario de entrada/salida del turno" onchange="setHorarioTurno('${t}',this.value)"></div>`;
+    html += `<table class="excel">`;
+    // cada línea lleva su propia columna de Puesto (para ubicar bien la máquina en L2/L3)
+    html += `<colgroup>`+LINEAS.map(()=>`<col class="c-op"><col class="c-pe"><col class="c-nm">`).join("")+`</colgroup>`;
+    html += `<thead>`;
+    // supervisores por línea
+    html += `<tr class="sup-row">`+LINEAS.map(l=>{
+      const sup=(slotsLinea(t,l)[0]||{}).supervisor||"";
+      const conv=sup?convenioDe(sup):"";
+      return `<th colspan="3"><div class="sup-slot${sup?'':' vacant'}" ${sup?`draggable="true" ondragstart="dragStartSup(event,'${t}','${l}')" ondragend="dragEndAny(event)"`:""} onclick="openPopSup(event,'${t}','${l}')" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropSup(event,'${t}','${l}')" title="Click para elegir, o arrastrá para mover el supervisor de la Línea ${l} (${t})">`+
+        (sup? `<span>${esc(sup)}</span>${conv?`<span class="conv-badge ${conv}">${conv}</span>`:""}` : `+ Supervisor L${l}`)+
+      `</div></th>`;
+    }).join("")+`</tr>`;
+    // encabezado LÍNEA n con conteo
+    html += `<tr>`+LINEAS.map(l=>`<th colspan="3" class="lhead">LÍNEA ${l}<span class="cnt">${lineCount(t,l)}</span></th>`).join("")+`</tr>`;
+    // subencabezado: Puesto | P/E | Operario por cada línea
+    html += `<tr>`+LINEAS.map(()=>`<th class="colh">Puesto</th><th class="colh pe-h" title="P = propio · E = eventual">P/E</th><th class="colh">Operario</th>`).join("")+`</tr>`;
+    html += `</thead><tbody>`;
+    const seen={};
+    PUESTOS.forEach(pu=>{
+      const dup = pu==="PALETIZADO";
+      const occ = dup ? (seen[pu]=(seen[pu]||0)+1) : 0;
+      const opCell = `<td class="op" title="${esc(pu)}">${esc(pu)}${dup?` <span style="color:var(--muted)">#${occ}</span>`:""}</td>`;
+      html+=`<tr>`+LINEAS.map(l=>{
+        const matches = slotsLinea(t,l).filter(a=>a.puesto.toUpperCase()===pu);
+        const a = dup ? matches[occ-1] : matches[0];
+        return opCell+cellHtml(t,l,pu,occ,a);
+      }).join("")+`</tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+  $("#turnos").innerHTML = html;
+  renderAddTurno();
+}
+function renderAddTurno(){
+  const el=$("#addTurnoRow"); if(!el) return;
+  const nocheVisible = forceNoche || ASIG.some(a=>a.semana===curWeek()&&a.turno==="NOCHE"&&a.nombre);
+  el.innerHTML = (!curWeek()||nocheVisible) ? "" : `<button class="btn ghost" onclick="agregarTurnoNoche()">➕ Agregar turno noche</button>`;
+}
+function agregarTurnoNoche(){ forceNoche=true; renderTurnos(); }
+function cellHtml(turno,linea,puesto,occ,a){
+  const key=b64(`${turno}|${linea}|${puesto}|${occ}`);
+  let pe="", name="<span class='vac'>—</span>", cls="", drag="";
+  if(a&&a.nombre){
+    const tp=tipoDe(a.nombre);
+    pe=tp; name=esc(a.nombre);
+    if(tp==="E") cls+=" ev";
+    if(esBrigada(a.nombre)) cls+=" brig";
+    if(isSel(a.nombre)) cls+=" selected";
+    drag=`draggable="true" ondragstart="dragStartSlot(event,'${key}')" ondragend="dragEndAny(event)"`;
+  }
+  const ttl = a&&a.nombre ? ` title="${esc(a.nombre)}"` : "";
+  return `<td class="pe${cls}">${pe}</td><td class="nm${cls}"${ttl} ${drag} ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropSlot(event,'${key}')" onclick="cellClick(event,'${key}')">${name}</td>`;
+}
+
+const AUX_ORDEN=["Declaraciones","Filtreros","Filtro:23:00 a 07:00","Filtro:06:00 a 15:00","Filtro:14:00 a 23:00","Filtro:05:00 a 14:00","Destajo","Destajo 05:00 a 14:00","Destajo 14:00 a 23:00","Vacaciones","Licencias","Randstad","Bayton"];
+const AUX_FORZADAS=["Vacaciones","Licencias"];  // bloques que se muestran siempre, aunque estén vacíos
+// Recuadros derivados del ROSTER (fuente de verdad). Clave = etiqueta del recuadro, valor = estado en PERS.
+const ESTADO_BLOCKS={"Vacaciones":"vacaciones","Licencias":"licencia"};
+function setEstadoByName(n,estado){ const p=persByName(n); if(p) p.estado=estado; }
+function reactivarSiInactivo(n){ const p=persByName(n); if(p&&(p.estado==="vacaciones"||p.estado==="licencia")) p.estado="activo"; }
+// ¿la persona está de vacaciones DURANTE la semana visible? (si no cargó fechas, se muestra siempre)
+function fechaDMY(s){ const m=String(s||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m?new Date(+m[3],+m[2]-1,+m[1]):null; }
+function weekRangeDates(){ const w=curWeek(); if(!w)return null; const p=w.split(/\s+al\s+/i); const s=fechaDMY(p[0]); const e=fechaDMY(p[1]||p[0]); return (s&&e)?[s,e]:null; }
+function vacOverlapsWeek(p){
+  if(!p.vac_desde&&!p.vac_hasta) return true;
+  const wr=weekRangeDates(); if(!wr) return true;
+  const d=p.vac_desde?new Date(p.vac_desde+"T00:00:00"):null;
+  const h=p.vac_hasta?new Date(p.vac_hasta+"T23:59:59"):null;
+  if(d&&h) return d<=wr[1]&&h>=wr[0];
+  if(d) return d<=wr[1];
+  if(h) return h>=wr[0];
+  return true;
+}
+function personasEnEstado(estado){
+  return PERS.filter(p=>p.estado===estado && (estado!=="vacaciones"||vacOverlapsWeek(p))).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+}
+// Migra datos viejos: filas aux "Vacaciones"/"Licencias" en ASIG → estado en el roster (una sola vez)
+function migrarEstadoBlocks(){
+  ASIG.filter(a=>a.nombre&&!a.turno&&!a.linea&&ESTADO_BLOCKS[a.puesto]).forEach(a=>{ const p=persByName(a.nombre); if(p&&p.estado==="activo") p.estado=ESTADO_BLOCKS[a.puesto]; });
+  ASIG=ASIG.filter(a=>!(!a.turno&&!a.linea&&ESTADO_BLOCKS[a.puesto]));
+}
+function renderAux(){
+  const aux = ASIG.filter(a=>a.semana===curWeek()&&!a.turno&&!a.linea&&!a.puesto.startsWith("__")&&!ESTADO_BLOCKS[a.puesto]);
+  const groups={};
+  aux.forEach(a=>{ const k=a.puesto||"OTROS"; (groups[k]=groups[k]||[]).push(a); });
+  let keys=Object.keys(groups);
+  keys.sort((a,b)=>{ let ia=AUX_ORDEN.indexOf(a),ib=AUX_ORDEN.indexOf(b); if(ia<0)ia=99; if(ib<0)ib=99; return ia-ib||a.localeCompare(b); });
+  const blocks = keys.map(k=>auxBlockHtml(k, groups[k]||[])).join("");
+  const estadoBlocks = Object.keys(ESTADO_BLOCKS).map(c=>estadoBlockHtml(c)).join("");
+  $("#aux").innerHTML = blocks + `<button class="btn ghost aux-newgrp" onclick="agregarGrupoAux()">➕ Agregar grupo</button>` + estadoBlocks;
+}
+// ----- Recuadros derivados del roster (Vacaciones / Licencias) -----
+function estadoBlockHtml(cat){
+  const estado=ESTADO_BLOCKS[cat];
+  const people=personasEnEstado(estado);
+  const slots=people.map(p=>estadoSlotHtml(cat,p)).join("");
+  return `<div class="aux-block estado-block" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropEstado(event,'${estado}')">
+    <div class="aux-h"><span class="aux-title estado-title">${esc(cat)} <span class="aux-count">${people.length}</span></span></div>
+    <div class="estado-hint">Arrastrá personas aquí (o usá los botones en Personal). Las fechas y el detalle se cargan en la pestaña Personal.</div>
+    ${slots || `<div class="aux-empty">— nadie ${estado==='vacaciones'?'de vacaciones':'con licencia'} esta semana —</div>`}
+  </div>`;
+}
+function estadoSlotHtml(cat,p){
+  const estado=ESTADO_BLOCKS[cat];
+  const tp=p.tipo, br=p.brigada==="SI";
+  let cls=""; if(tp==="E")cls+=" ev"; if(br)cls+=" brig"; if(isSel(p.nombre))cls+=" selected";
+  let det="";
+  if(estado==="vacaciones" && (p.vac_desde||p.vac_hasta)) det=`${fmtFecha(p.vac_desde)||'?'} → ${fmtFecha(p.vac_hasta)||'?'}`;
+  else if(p.motivo) det=esc(p.motivo);
+  const bn=b64(p.nombre);
+  return `<div class="aux-row"><span class="pe">${tp}</span>
+    <span class="nm${cls}" draggable="true" ondragstart="dragStartPers(event,'${bn}')" ondragend="dragEndAny(event)" onclick="persNmClick(event,'${bn}')" title="${esc(p.nombre)}">${esc(p.nombre)}${det?`<small class="estado-detail">${det}</small>`:""}</span>
+    <span class="del" title="Sacar (vuelve a activo)" onclick="quitarEstado('${bn}')">✕</span></div>`;
+}
+function dragStartPers(e,b){ const nm=d64(b); if(sel.size>1&&isSel(nm)){ dragData={kind:'multi',names:selNames()}; e.dataTransfer.effectAllowed='move'; e.target.classList.add('dragging'); return; } dragData={kind:'pers',name:nm}; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',nm);}catch(_){} e.target.classList.add('dragging'); }
+function persNmClick(e,b){ if(e.ctrlKey||e.metaKey||e.shiftKey){ e.preventDefault(); toggleSel(d64(b)); } }
+function dropEstado(e,estado){
+  e.preventDefault(); clearDropMarks();
+  if(!dragData) return;
+  const names = dragData.kind==='multi'?dragData.names.slice():[dragData.name];
+  pushUndo();
+  names.forEach(n=>{ removeNameFromWeek(n); setEstadoByName(n,estado); });
+  sel.clear(); dragData=null; markDirty(); render(); if(!$("#tab-roster").classList.contains("hidden")) renderRoster();
+}
+function quitarEstado(b){ const n=d64(b); pushUndo(); setEstadoByName(n,'activo'); markDirty(); render(); if(!$("#tab-roster").classList.contains("hidden")) renderRoster(); }
+function auxIndex(a){ return ASIG.indexOf(a); }
+function auxHorOf(cat){ const r=ASIG.find(a=>a.semana===curWeek()&&!a.turno&&!a.linea&&a.puesto===cat&&a.horario); return r?r.horario:""; }
+function auxBlockHtml(cat, rows){
+  const b=b64(cat);
+  const hor=(rows.find(r=>r.horario)||{}).horario||"";
+  const slots = rows.map(a=>auxSlotHtml(cat,a)).join("");
+  return `<div class="aux-block" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropAux(event,'${b}')">
+    <div class="aux-h">
+      <input class="aux-title" value="${esc(cat)}" title="Renombrar grupo" onchange="renameAux('${b}',this.value)">
+      <span class="del-block" title="Eliminar grupo" onclick="borrarGrupoAux('${b}')">🗑</span>
+    </div>
+    <input class="aux-hor" placeholder="horario (ej. 23:00 a 07:00)" value="${esc(hor)}" onchange="setAuxHorario('${b}',this.value)">
+    ${slots}
+    <div class="aux-add" onclick="agregarSlotAux('${b}')">➕ agregar casillero</div>
+  </div>`;
+}
+function auxSlotHtml(cat,a){
+  const idx=auxIndex(a);
+  if(a.nombre){
+    const tp=tipoDe(a.nombre),br=esBrigada(a.nombre);
+    let cls=""; if(tp==="E")cls+=" ev"; if(br)cls+=" brig"; if(isSel(a.nombre))cls+=" selected";
+    return `<div class="aux-row"><span class="pe">${tp}</span>
+      <span class="nm${cls}" draggable="true" ondragstart="dragStartAux(event,${idx})" ondragend="dragEndAny(event)" onclick="auxNmClick(event,${idx})" title="${esc(a.nombre)}">${esc(a.nombre)}</span>
+      <span class="del" title="Quitar" onclick="quitarAux(${idx})">✕</span></div>`;
+  }
+  return `<div class="aux-row"><span class="pe">—</span>
+    <span class="nm vac" onclick="openPopAux(event,${idx})">vacante</span>
+    <span class="del" title="Quitar casillero" onclick="quitarAux(${idx})">✕</span></div>`;
+}
+function agregarSlotAux(b){ const cat=d64(b); pushUndo(); ASIG.push({semana:curWeek(),turno:"",linea:"",puesto:cat,nombre:"",horario:auxHorOf(cat),supervisor:"",orden:0}); markDirty(); render(); }
+function renameAux(b,v){ const cat=d64(b); v=String(v||"").trim(); if(!v||v===cat){ render(); return; } pushUndo(); ASIG.filter(a=>a.semana===curWeek()&&!a.turno&&!a.linea&&a.puesto===cat).forEach(a=>a.puesto=v); markDirty(); render(); }
+function setAuxHorario(b,v){ const cat=d64(b); v=String(v||"").trim(); pushUndo(); const rows=ASIG.filter(a=>a.semana===curWeek()&&!a.turno&&!a.linea&&a.puesto===cat); if(rows.length) rows.forEach(a=>a.horario=v); else ASIG.push({semana:curWeek(),turno:"",linea:"",puesto:cat,nombre:"",horario:v,supervisor:"",orden:0}); markDirty(); render(); }
+function borrarGrupoAux(b){ const cat=d64(b); if(!confirm(`¿Eliminar el grupo "${cat}" y todos sus casilleros de esta semana?`)) return; pushUndo(); ASIG=ASIG.filter(a=>!(a.semana===curWeek()&&!a.turno&&!a.linea&&a.puesto===cat)); markDirty(); render(); }
+function agregarGrupoAux(){ const n=prompt("Nombre del grupo (ej. Filtreros, Destajo):"); if(!n)return; const cat=n.trim(); if(!cat)return; const h=(prompt("Horario (opcional, ej. 05:00 a 14:00):","")||"").trim(); pushUndo(); ASIG.push({semana:curWeek(),turno:"",linea:"",puesto:cat,nombre:"",horario:h,supervisor:"",orden:0}); markDirty(); render(); }
+
+// ---------- Horarios particulares por día ----------
+const DIAS_SEMANA=["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+function horDiaRows(){ return ASIG.filter(a=>a.semana===curWeek()&&a.puesto&&a.puesto.startsWith("__dia__")); }
+function renderHorDia(){
+  const el=$("#horDia"); if(!el) return;
+  if(!curWeek()){ el.innerHTML=`<p class="hd-empty">No hay semana cargada.</p>`; return; }
+  const rows=horDiaRows();
+  const body = rows.map(a=>{
+    const idx=ASIG.indexOf(a); const p=a.puesto.split("|"); const turno=p[1]||"", dia=p[2]||"";
+    return `<tr>
+      <td><select onchange="setHorDia(${idx},'turno',this.value)">${TURNOS.map(t=>`<option ${t===turno?'selected':''}>${t}</option>`).join("")}</select></td>
+      <td><select onchange="setHorDia(${idx},'dia',this.value)">${DIAS_SEMANA.map(d=>`<option ${d===dia?'selected':''}>${esc(d)}</option>`).join("")}</select></td>
+      <td><input type="text" style="width:100%" value="${esc(a.horario)}" placeholder="ej. 11:00 a 20:00" onchange="setHorDia(${idx},'horario',this.value)"></td>
+      <td class="del" title="Quitar" onclick="delHorDia(${idx})">✕</td></tr>`;
+  }).join("");
+  el.innerHTML = `<table class="hd-table"><thead><tr><th style="width:130px">Turno</th><th style="width:140px">Día</th><th>Horario especial</th><th></th></tr></thead><tbody>${body||`<tr><td colspan="4" class="hd-empty">Sin excepciones. Agregá una si un día puntual cambia el horario de un turno.</td></tr>`}</tbody></table>
+    <button class="btn ghost" style="margin-top:8px" onclick="addHorDia()">➕ Agregar excepción</button>`;
+}
+function addHorDia(){ if(!curWeek())return; pushUndo(); ASIG.push({semana:curWeek(),turno:"",linea:"",puesto:`__dia__|${TURNOS[0]}|${DIAS_SEMANA[0]}`,nombre:"",horario:"",supervisor:"",orden:0}); markDirty(); renderHorDia(); }
+function setHorDia(idx,campo,val){ const a=ASIG[idx]; if(!a)return; pushUndo(); if(campo==='horario'){ a.horario=String(val||"").trim(); } else { const p=a.puesto.split("|"); const turno=campo==='turno'?val:(p[1]||""); const dia=campo==='dia'?val:(p[2]||""); a.puesto=`__dia__|${turno}|${dia}`; } markDirty(); renderHorDia(); }
+function delHorDia(idx){ pushUndo(); ASIG.splice(idx,1); markDirty(); renderHorDia(); }
+
+// ---------- KPIs ----------
+function renderKpis(){
+  const wk=curWeek();
+  const asg = ASIG.filter(a=>a.semana===wk&&a.nombre);
+  const enLinea = asg.filter(a=>a.turno&&a.linea);
+  const nombres = new Set(asg.map(a=>a.nombre.toUpperCase()));
+  let propios=0,event=0,brig=0;
+  nombres.forEach(n=>{ const p=PERS.find(x=>x.nombre.toUpperCase()===n); if(!p)return; if(p.tipo==="P")propios++; else if(p.tipo==="E")event++; if(p.brigada==="SI")brig++; });
+  // vacantes: puestos canónicos por línea staffeada
+  let vac=0;
+  TURNOS.forEach(t=>LINEAS.forEach(l=>{
+    const s=slotsLinea(t,l); if(!s.length) return; // línea no usada este turno
+    const ocupados=new Set(s.map(x=>x.puesto.toUpperCase()+"#"+x.orden));
+    const need=PUESTOS.length; const have=s.filter(x=>x.nombre).length;
+    vac += Math.max(0, need-have);
+  }));
+  const bajas=PERS.filter(p=>p.estado==="baja").length;
+  const lic=PERS.filter(p=>p.estado==="licencia"||p.estado==="vacaciones").length;
+  const k=[
+    ["Dotación semana",nombres.size,"personas asignadas","amber"],
+    ["En línea",enLinea.length,"puestos cubiertos","wine"],
+    ["Propios / Eventuales",`${propios} / ${event}`,"P vs E","olive"],
+    ["Brigada",brig,"integrantes ★","red"],
+    ["Vacantes",vac,"puestos sin cubrir","orange"],
+    ["Roster activo",activos().length,`${bajas} bajas · ${lic} lic/vac`,"wine"],
+  ];
+  $("#kpis").innerHTML=k.map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="v">${v}</div><div class="l">${l}</div><small>${s}</small></div>`).join("");
+}
+
+// ---------- popover de asignación ----------
+let popKey=null, popAuxIdx=null;
+function openPop(ev,b){ popAuxIdx=null; popKey=d64(b); showPop(ev); }
+function openPopAux(ev,idx){ popKey=null; popAuxIdx=idx; showPop(ev); }
+function showPop(ev){
+  ev.stopPropagation();
+  const pop=$("#pop");
+  const taken=asignadosEnSemana();
+  let opts, extra="";
+  if(popSup){
+    // candidatos a supervisor: Fuera de Convenio (o todos si se incluye DC)
+    opts = activos().filter(p=> popInclDC ? true : p.convenio==="FC");
+    extra = `<label class="pop-chk"><input type="checkbox" ${popInclDC?'checked':''} onchange="togglePopDC(this.checked)"> Incluir Dentro de Convenio (DC)</label>`;
+  } else if(popAuxIdx!=null && ASIG[popAuxIdx] && grupoSoloFC(ASIG[popAuxIdx].puesto)){
+    opts = activos().filter(p=>p.convenio==="FC");
+  } else {
+    opts = activos().slice();
+  }
+  opts = opts.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  pop.innerHTML = `<input type="text" id="popSearch" placeholder="Buscar / filtrar…" oninput="filterPop()">
+    ${extra}
+    <div class="opt clear" onclick="assign(null)">— Quitar / dejar vacante —</div>
+    <div id="popList"></div>`;
+  window._popOpts = opts.map(p=>({n:p.nombre,t:p.tipo,a:p.agencia,conv:p.convenio,used:taken.has(p.nombre.toUpperCase())}));
+  renderPopList("");
+  const r=ev.target.getBoundingClientRect();
+  pop.style.display="block";
+  pop.style.left=Math.min(window.scrollX+r.left, window.scrollX+window.innerWidth-300)+"px";
+  pop.style.top=(window.scrollY+r.bottom+4)+"px";
+  setTimeout(()=>$("#popSearch").focus(),0);
+}
+function filterPop(){ renderPopList($("#popSearch").value.toLowerCase()); }
+function renderPopList(q){
+  const list=window._popOpts.filter(o=>o.n.toLowerCase().includes(q));
+  $("#popList").innerHTML = list.map(o=>`<div class="opt" onclick="assign('${b64(o.n)}')">
+    <span>${o.t?`<span class="badge ${o.t}">${o.t}</span> `:""}${o.conv?`<span class="conv-badge ${o.conv}">${o.conv}</span> `:""}${esc(o.n)}</span>
+    <span style="color:var(--muted);font-size:10px">${o.a||""}${o.used?" • ya asignado":""}</span></div>`).join("") || `<div class="opt" style="color:var(--muted)">Sin resultados</div>`;
+}
+function assign(b){
+  pushUndo();
+  const nombre = b?d64(b):"";
+  if(popSup){
+    const t=popSup.t, l=popSup.l;
+    if(nombre) limpiarSupervisor(nombre,t,l);
+    ASIG.filter(a=>a.semana===curWeek()&&a.turno===t&&a.linea===l).forEach(a=>a.supervisor=nombre);
+    closePop(); markDirty(); render(); return;
+  }
+  if(popAuxIdx!=null){
+    const target=ASIG[popAuxIdx];
+    if(target){
+      if(nombre){ quitarNombreSemana(nombre,target); target.nombre=nombre; }
+      else { const i=ASIG.indexOf(target); if(i>=0) ASIG.splice(i,1); }
+    }
+  } else if(popKey){
+    const [turno,linea,puesto,occ]=popKey.split("|");
+    let matches=slotsLinea(turno,linea).filter(a=>a.puesto.toUpperCase()===puesto);
+    let slot = puesto==="PALETIZADO"? matches[Number(occ)-1] : matches[0];
+    if(slot){
+      if(nombre){ quitarNombreSemana(nombre,slot); slot.nombre=nombre; }
+      else { const i=ASIG.indexOf(slot); if(i>=0) ASIG.splice(i,1); }
+    } else if(nombre){
+      quitarNombreSemana(nombre,null);
+      const ref=slotsLinea(turno,linea)[0]||ASIG.find(a=>a.semana===curWeek()&&a.turno===turno)||{};
+      ASIG.push({semana:curWeek(),turno,linea,puesto,nombre,horario:ref.horario||"",supervisor:ref.supervisor||"",orden:nextOrden()});
+    }
+  }
+  closePop(); markDirty(); render();
+}
+function nextOrden(){ return Math.max(0,...ASIG.filter(a=>a.semana===curWeek()).map(a=>a.orden))+1; }
+function closePop(){ $("#pop").style.display="none"; popKey=popAuxIdx=null; popSup=null; }
+document.addEventListener("click",e=>{ if(!e.target.closest("#pop")&&!e.target.closest(".slot")) closePop(); });
+
+function quitarAux(idx){ const a=ASIG[idx]; if(a&&a.nombre&&!confirm("¿Quitar de la asignación?")) return; pushUndo(); ASIG.splice(idx,1); markDirty(); render(); }
+
+// ---------- Drag & drop ----------
+let dragData=null;
+function slotByKey(key){
+  const [t,l,pu,occ]=key.split("|");
+  const matches=ASIG.filter(a=>a.semana===curWeek()&&a.turno===t&&a.linea===l&&a.puesto.toUpperCase()===pu);
+  return pu==="PALETIZADO"?matches[Number(occ)-1]:matches[0];
+}
+function createSlot(t,l,pu){
+  const ref=slotsLinea(t,l)[0]||ASIG.find(a=>a.semana===curWeek()&&a.turno===t)||{};
+  const row={semana:curWeek(),turno:t,linea:l,puesto:pu,nombre:"",horario:ref.horario||"",supervisor:ref.supervisor||"",orden:nextOrden()};
+  ASIG.push(row); return row;
+}
+function removeRow(row){ const i=ASIG.indexOf(row); if(i>=0) ASIG.splice(i,1); }
+function removeFromSource(){
+  if(!dragData) return;
+  if(dragData.kind==='slot'){ const s=slotByKey(dragData.key); if(s) removeRow(s); }
+  else if(dragData.kind==='aux'){ if(ASIG[dragData.auxIdx]) ASIG.splice(dragData.auxIdx,1); }
+  else if(dragData.kind==='pers'){ reactivarSiInactivo(dragData.name); } // sale de vacaciones/licencia al volver a operar
+}
+function dragStartSlot(e,b){ const key=d64(b); const s=slotByKey(key); if(!s||!s.nombre){e.preventDefault();return;} if(sel.size>1&&isSel(s.nombre)){ dragData={kind:'multi',names:selNames()}; e.dataTransfer.effectAllowed='move'; e.target.classList.add('dragging'); return; } dragData={kind:'slot',name:s.nombre,key}; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',s.nombre);}catch(_){} e.target.classList.add('dragging'); }
+function dragStartPalette(e,b){ const nm=d64(b); if(sel.size>1&&isSel(nm)){ dragData={kind:'multi',names:selNames()}; e.dataTransfer.effectAllowed='move'; e.target.classList.add('dragging'); return; } dragData={kind:'palette',name:nm}; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',dragData.name);}catch(_){} e.target.classList.add('dragging'); }
+function dragStartAux(e,idx){ const s=ASIG[idx]; if(!s||!s.nombre){e.preventDefault();return;} if(sel.size>1&&isSel(s.nombre)){ dragData={kind:'multi',names:selNames()}; e.dataTransfer.effectAllowed='move'; e.target.classList.add('dragging'); return; } dragData={kind:'aux',name:s.nombre,auxIdx:idx}; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',s.nombre);}catch(_){} e.target.classList.add('dragging'); }
+function dragEndAny(e){ if(e&&e.target)e.target.classList.remove('dragging'); clearDropMarks(); }
+function dragOver(e,el){ if(!dragData)return; e.preventDefault(); e.dataTransfer.dropEffect='move'; el.classList.add('drop-ok'); }
+function dragLeave(el){ el.classList.remove('drop-ok'); }
+function clearDropMarks(){ document.querySelectorAll('.drop-ok').forEach(el=>el.classList.remove('drop-ok')); document.querySelectorAll('.dragging').forEach(el=>el.classList.remove('dragging')); }
+
+function dropSlot(e,b){
+  e.preventDefault(); clearDropMarks();
+  if(!dragData) return;
+  const key=d64(b);
+  if(dragData.kind==='multi'){ const p=key.split("|"); moverGrupoALinea(dragData.names,p[0],p[1]); dragData=null; return; }
+  if(dragData.kind==='slot' && dragData.key===key){ dragData=null; return; }
+  pushUndo();
+  const [t,l,pu,occ]=key.split("|");
+  let target=slotByKey(key);
+  const srcName=dragData.name;
+  const oldTarget=target?target.nombre:"";
+  if(!target) target=createSlot(t,l,pu);
+  target.nombre=srcName;
+  if(dragData.kind==='slot'){
+    const src=slotByKey(dragData.key);
+    if(src){ if(oldTarget) src.nombre=oldTarget; else removeRow(src); } // intercambio o vacante
+  } else {
+    removeFromSource(); // aux→puesto: saca de aux. palette: nada. (oldTarget desplazado queda libre)
+  }
+  dragData=null; markDirty(); render();
+}
+function dropAux(e,b){
+  e.preventDefault(); clearDropMarks();
+  if(!dragData) return;
+  const cat=d64(b), name=dragData.name;
+  if(grupoSoloFC(cat)){
+    const names = dragData.kind==='multi'? (dragData.names||[]) : [name];
+    const noFC = names.filter(n=>!esFC(n));
+    if(noFC.length){ setStatus(`"${cat}" solo admite Fuera de Convenio (FC): ${noFC.join(", ")} no lo es.`,"err"); dragData=null; return; }
+  }
+  if(dragData.kind==='multi'){ grupoAAux(dragData.names,cat); dragData=null; return; }
+  // evitar duplicar si ya está en esa misma categoría
+  pushUndo();
+  removeFromSource();
+  const empty=ASIG.find(a=>a.semana===curWeek()&&!a.turno&&!a.linea&&a.puesto===cat&&!a.nombre);
+  if(empty){ empty.nombre=name; } else { ASIG.push({semana:curWeek(),turno:"",linea:"",puesto:cat,nombre:name,horario:auxHorOf(cat),supervisor:"",orden:0}); }
+  dragData=null; markDirty(); render();
+}
+function dropPalette(e){
+  e.preventDefault(); clearDropMarks();
+  if(!dragData) return;
+  if(dragData.kind==='palette'){ dragData=null; return; }
+  if(dragData.kind==='multi'){ liberarGrupo(dragData.names); dragData=null; return; }
+  pushUndo(); removeFromSource(); dragData=null; markDirty(); render();
+}
+
+// ---------- Asistente (comandos + voz) ----------
+function setAsistStatus(msg,err){ const el=$("#asist-status"); if(el){ el.textContent=msg||""; el.className=err?"err":""; } }
+function _numLinea(s){ const map={uno:"1",dos:"2",tres:"3",una:"1"}; return map[s]||s; }
+function extraerLT(s){
+  let linea=null,turno=null;
+  const ml=s.match(/l[íi]nea\s*(\d|uno|dos|tres|una)/);
+  if(ml) linea=_numLinea(ml[1]);
+  if(/ma(ñ|n)ana/.test(s)) turno="MAÑANA";
+  else if(/tarde/.test(s)) turno="TARDE";
+  else if(/noche/.test(s)) turno="NOCHE";
+  return {linea,turno};
+}
+function parseComandoLocal(texto){
+  const t=texto.toLowerCase().trim();
+  // intercambiar L con L
+  if(/(intercambi|swap|permut)/.test(t) && /\bcon\b/.test(t)){
+    const partes=t.split(/\bcon\b/);
+    const a=extraerLT(partes[0]||""), b=extraerLT(partes[1]||"");
+    if(a.linea&&b.linea){
+      const turnoComun=a.turno||b.turno||"MAÑANA";
+      return {tipo:"swap", aT:a.turno||turnoComun, aL:a.linea, bT:b.turno||turnoComun, bL:b.linea};
+    }
+  }
+  // mover/pasar/asignar/llevar de ... a ...
+  if(/(mover|pasar|asignar|llevar|trasladar|mand)/.test(t) && /\s+a\s+|hacia/.test(t)){
+    const partes=t.split(/\s+a\s+|\s+hacia\s+/);
+    if(partes.length>=2){
+      const src=extraerLT(partes[0]);
+      const dst=extraerLT(partes[partes.length-1]);
+      if(src.linea&&dst.linea){
+        return {tipo:"mover", srcT:src.turno||"MAÑANA", srcL:src.linea, dstT:dst.turno||src.turno||"MAÑANA", dstL:dst.linea};
+      }
+    }
+  }
+  // vaciar/limpiar/liberar línea
+  if(/(vaciar|limpiar|liberar|sacar)/.test(t)){
+    const lt=extraerLT(t);
+    if(lt.linea) return {tipo:"vaciar", t:lt.turno||"MAÑANA", l:lt.linea};
+  }
+  return null;
+}
+function _refHorSup(turno,linea){
+  const ref=slotsLinea(turno,linea)[0]||ASIG.find(a=>a.semana===curWeek()&&a.turno===turno)||{};
+  return {horario:ref.horario||"", supervisor:ref.supervisor||""};
+}
+function aplicarAccionAsistente(act){
+  if(act.tipo==="mover"){
+    const src=ASIG.filter(a=>a.semana===curWeek()&&a.turno===act.srcT&&a.linea===act.srcL&&a.nombre);
+    if(!src.length){ setAsistStatus(`No hay personal en línea ${act.srcL} turno ${act.srcT.toLowerCase()}.`,true); return; }
+    pushUndo();
+    const rf=_refHorSup(act.dstT,act.dstL);
+    src.forEach(s=>{ s.turno=act.dstT; s.linea=act.dstL; if(rf.horario)s.horario=rf.horario; if(rf.supervisor)s.supervisor=rf.supervisor; });
+    markDirty(); render();
+    setAsistStatus(`✓ Moví ${src.length} persona(s) de L${act.srcL} ${act.srcT.toLowerCase()} → L${act.dstL} ${act.dstT.toLowerCase()}.`);
+  } else if(act.tipo==="swap"){
+    const A=ASIG.filter(a=>a.semana===curWeek()&&a.turno===act.aT&&a.linea===act.aL);
+    const B=ASIG.filter(a=>a.semana===curWeek()&&a.turno===act.bT&&a.linea===act.bL);
+    if(!A.length&&!B.length){ setAsistStatus("Ambas líneas están vacías.",true); return; }
+    pushUndo();
+    const hA=(A[0]||{}).horario, sA=(A[0]||{}).supervisor, hB=(B[0]||{}).horario, sB=(B[0]||{}).supervisor;
+    A.forEach(x=>{ x.turno=act.bT; x.linea=act.bL; if(hB)x.horario=hB; if(sB)x.supervisor=sB; });
+    B.forEach(x=>{ x.turno=act.aT; x.linea=act.aL; if(hA)x.horario=hA; if(sA)x.supervisor=sA; });
+    markDirty(); render();
+    setAsistStatus(`✓ Intercambié L${act.aL} ${act.aT.toLowerCase()} ↔ L${act.bL} ${act.bT.toLowerCase()} (${A.length}/${B.length}).`);
+  } else if(act.tipo==="vaciar"){
+    const before=ASIG.length;
+    pushUndo();
+    ASIG=ASIG.filter(a=>!(a.semana===curWeek()&&a.turno===act.t&&a.linea===act.l));
+    markDirty(); render();
+    setAsistStatus(`✓ Vacié línea ${act.l} turno ${act.t.toLowerCase()} (${before-ASIG.length} quitados).`);
+  } else {
+    setAsistStatus("No pude interpretar esa acción.",true);
+  }
+}
+function asistEjecutar(){
+  const inp=$("#asist-input"); const texto=((inp&&inp.value)||"").trim();
+  if(!texto) return;
+  const act=parseComandoLocal(texto);
+  if(act){ aplicarAccionAsistente(act); }
+  else setAsistStatus('No entendí. Probá: "mover personal de línea 2 turno mañana a línea 3 turno tarde", "intercambiar línea 1 con línea 3 turno mañana" o "vaciar línea 2 turno tarde".', true);
+}
+let _asistRec=null;
+function asistVoz(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const btn=$("#asist-mic");
+  if(!SR){ setAsistStatus("Tu navegador no soporta dictado por voz (usá Chrome o Edge).",true); return; }
+  if(_asistRec){ try{_asistRec.stop();}catch(e){} _asistRec=null; if(btn)btn.classList.remove("rec"); return; }
+  const rec=new SR(); _asistRec=rec; rec.lang="es-AR"; rec.interimResults=false; rec.maxAlternatives=1; rec.continuous=false;
+  rec.onstart=()=>{ if(btn)btn.classList.add("rec"); setAsistStatus("Escuchando… hablá ahora"); };
+  rec.onerror=(ev)=>{ setAsistStatus(ev.error==="not-allowed"?"Permiso de micrófono denegado (habilitalo en el candado del navegador).":"Error de voz: "+ev.error,true); };
+  rec.onend=()=>{ if(btn)btn.classList.remove("rec"); _asistRec=null; };
+  rec.onresult=(ev)=>{ const texto=ev.results[0][0].transcript.trim(); if($("#asist-input"))$("#asist-input").value=texto; setAsistStatus('🗣 "'+texto+'"'); asistEjecutar(); };
+  try{ rec.start(); }catch(e){ setAsistStatus("No pude iniciar el micrófono.",true); _asistRec=null; if(btn)btn.classList.remove("rec"); }
+}
+
+// ---------- tabs ----------
+function setTab(t){
+  document.querySelectorAll(".tab2").forEach(b=>b.classList.toggle("active",b.dataset.t===t));
+  $("#tab-grid").classList.toggle("hidden",t!=="grid");
+  $("#tab-roster").classList.toggle("hidden",t!=="roster");
+  $("#tab-he").classList.toggle("hidden",t!=="he");
+  $("#tab-ind").classList.toggle("hidden",t!=="ind");
+  if(t==="roster") renderRoster();
+  if(t==="he") renderHE();
+  if(t==="ind") renderIndicadores();
+}
+
+// ===== Indicadores (gráficos): equipos y eventuales por semana =====
+let _chEquipos=null, _chEvent=null;
+function _keyNomInd(n){ return _normNombre(n).toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim().split(" ").sort().join(" "); }
+function _semFecha(s){ const m=String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m?new Date(+m[3],+m[2]-1,+m[1]):null; }
+function renderIndicadores(){
+  const yEl=$("#indYear"); if(!yEl) return;
+  if(!yEl.options.length){
+    const years=[...new Set(ASIG.map(a=>{const m=String(a.semana).match(/\/(\d{4})/);return m?+m[1]:0;}).filter(Boolean))].sort((a,b)=>b-a);
+    yEl.innerHTML = years.map(y=>`<option value="${y}">${y}</option>`).join("");
+    yEl.value = years.includes(2026) ? 2026 : (years[0]||"");
+  }
+  const year=Number(yEl.value)||new Date().getFullYear();
+  const PU=PUESTOS.map(p=>p.toUpperCase());
+  const tipo={}; PERS.forEach(p=>{ tipo[_keyNomInd(p.nombre)]=String(p.tipo||"").toUpperCase(); });
+  const sems=[...new Set(ASIG.map(a=>a.semana).filter(Boolean))]
+    .map(s=>({s,d:_semFecha(s)})).filter(x=>x.d && x.d.getFullYear()===year)
+    .sort((a,b)=>a.d-b.d).map(x=>x.s);
+  const labels=[], equipos=[], eventuales=[];
+  sems.forEach(s=>{
+    const lin=ASIG.filter(a=>a.semana===s && a.turno && a.linea && a.nombre && PU.includes(String(a.puesto).toUpperCase()));
+    const combos=new Set(lin.map(a=>a.turno+"|"+a.linea));
+    let e=0; lin.forEach(a=>{ if(tipo[_keyNomInd(a.nombre)]==="E") e++; });
+    labels.push(s.slice(0,5)); equipos.push(combos.size); eventuales.push(e);
+  });
+  _chEquipos=_lineChart("chEquipos",_chEquipos,labels,equipos,"Equipos (líneas-turno)","#4a86e8");
+  _chEvent  =_lineChart("chEvent",  _chEvent,  labels,eventuales,"Eventuales en línea","#E8710A");
+}
+function _lineChart(canvasId, prev, labels, data, titleY, color){
+  if(typeof Chart==="undefined") return prev;
+  const cv=document.getElementById(canvasId); if(!cv) return prev;
+  if(prev) prev.destroy();
+  const css=getComputedStyle(document.body);
+  const fg=(css.getPropertyValue("--text")||"#eee").trim()||"#eee";
+  const grid=(css.getPropertyValue("--border")||"rgba(255,255,255,.12)").trim();
+  return new Chart(cv.getContext("2d"),{
+    type:"line",
+    data:{labels,datasets:[{data,borderColor:color,backgroundColor:color+"33",
+      pointRadius:3,pointBackgroundColor:color,tension:.25,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{intersect:false,mode:"index"}},
+      scales:{
+        x:{ticks:{color:fg,maxRotation:60,minRotation:45,autoSkip:true,maxTicksLimit:26},grid:{color:grid}},
+        y:{beginAtZero:true,title:{display:true,text:titleY,color:fg},ticks:{color:fg,precision:0},grid:{color:grid}}
+      }}
+  });
+}
+
+// ---------- indicador Horas Extra ----------
+let heSort={col:"fecha",dir:-1};
+function heOrdenar(col){ heSort = (heSort.col===col)? {col,dir:-heSort.dir} : {col,dir:1}; renderHE(); }
+function fmtFecha(s){
+  if(!s) return "";
+  const m=String(s).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+  const d=new Date(s); if(!isNaN(d)) return `${("0"+d.getDate()).slice(-2)}/${("0"+(d.getMonth()+1)).slice(-2)}/${d.getFullYear()}`;
+  return s;
+}
+function lineColor(l){ const m={"L1":"var(--l1)","L2":"var(--l2)","L3":"var(--l3)","1":"var(--l1)","2":"var(--l2)","3":"var(--l3)"}; return m[String(l).toUpperCase()]||"var(--vspt-crimson)"; }
+const MES_ABR=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+function renderHE(){
+  const sel=$("#heYear");
+  if(!sel.options.length){
+    const years=[...new Set(HE.map(h=>h.anio).filter(Boolean))].sort((a,b)=>b-a);
+    sel.innerHTML = `<option value="0">Todos</option>` + years.map(y=>`<option>${y}</option>`).join("");
+    // arrancar sincronizado con el filtro de año de la barra superior
+    const my=$("#yearSel")&&$("#yearSel").value;
+    if(my&&[...sel.options].some(o=>o.value===String(my))) sel.value=my;
+  }
+  if(!HE.length){ $("#heKpis").innerHTML=`<p class="hint">Todavía no hay datos de HE. Se generan cuando corre el ETL (hoja HE_DIARIO).</p>`; $("#heMeses").innerHTML=""; $("#heBody").innerHTML=""; return; }
+  const yf=Number(sel.value||0), show=$("#heBanda").value;
+  const rows=HE.filter(h=>!yf||h.anio===yf);
+  // KPIs (sobre todo el año)
+  const conHE=rows.filter(h=>h.he>0);
+  const totalHE=conHE.reduce((a,h)=>a+h.he,0);
+  const normales=rows.filter(h=>h.banda==="normal").length;
+  const sinEq=rows.filter(h=>h.banda==="sin equipos").length;
+  const k=[
+    ["Días con HE",conHE.length,"superaron el total de equipos","red"],
+    ["Horas extra",totalHE.toFixed(1)+" h","acumuladas en el período","amber"],
+    ["Días normales",normales,"dentro de la referencia","olive"],
+    ["Sin referencia",sinEq,"días sin plan de equipos","wine"],
+  ];
+  $("#heKpis").innerHTML=k.map(([l,v,s,c])=>`<div class="kpi ${c}"><div class="v">${v}</div><div class="l">${l}</div><small>${s}</small></div>`).join("");
+  // HE por mes
+  const porM={}; conHE.forEach(h=>{ const m=Number(String(h.fecha).slice(5,7))||0; porM[m]=(porM[m]||0)+h.he; });
+  const ms=Object.keys(porM).map(Number).sort((a,b)=>a-b);
+  const maxM=Math.max(1,...Object.values(porM));
+  $("#heMeses").innerHTML= ms.length? ms.map(m=>`<div class="he-bar"><span class="lbl">${MES_ABR[m]||m}</span><span class="track"><span class="fill" style="width:${Math.max(2,porM[m]/maxM*100).toFixed(0)}%;background:linear-gradient(90deg,var(--vspt-orange),var(--vspt-crimson))"></span></span><span class="val">${porM[m].toFixed(1)} h</span></div>`).join("") : `<p class="hint">Sin horas extra en el período.</p>`;
+  // tabla
+  let det=rows;
+  if(show==="con") det=rows.filter(h=>h.he>0);
+  else if(show==="HE (finde)") det=rows.filter(h=>h.banda==="HE (finde)");
+  else if(show==="sin equipos") det=rows.filter(h=>h.banda==="sin equipos");
+  const sc=heSort.col, dir=heSort.dir;
+  det=det.slice().sort((a,b)=>{ let x=a[sc],y=b[sc]; if(typeof x==="number"&&typeof y==="number") return (x-y)*dir; return String(x).localeCompare(String(y))*dir; });
+  const cls={"HE":"banda-2","HE (finde)":"banda-finde","normal":"banda-gris","sin equipos":"banda-gris"};
+  $("#heBody").innerHTML = det.slice(0,400).map(h=>`<tr>
+    <td>${fmtFecha(h.fecha)}</td><td>${esc(h.dia)}</td><td>${esc(h.equipos)}</td>
+    <td>${h.tpers.toFixed(2)}</td><td>${h.ref===""?"—":h.ref}</td><td>${h.he?("<b>"+h.he.toFixed(2)+"</b>"):"—"}</td>
+    <td class="${cls[h.banda]||''}">${esc(h.banda)}</td>
+    <td style="color:var(--muted);font-size:11px">${esc(h.detalle)}</td></tr>`).join("") || `<tr><td colspan="8" style="color:var(--muted)">Sin registros</td></tr>`;
+  // marcar columna ordenada
+  document.querySelectorAll("#tab-he table.sortable th").forEach((th,i)=>{
+    const cols=["fecha","dia","equipos","tpers","ref","he","banda",""];
+    th.classList.toggle("sorted", !!cols[i] && cols[i]===sc);
+    th.dataset.dir = cols[i]===sc ? (dir>0?"▲":"▼") : "";
+  });
+}
+
+// ---------- roster ----------
+function rosterOrdenar(col){ if(!col)return; rosterSort = rosterSort.col===col?{col,dir:-rosterSort.dir}:{col,dir:1}; renderRoster(); }
+function rosterCmp(a,b){
+  const c=rosterSort.col, d=rosterSort.dir;
+  let va,vb;
+  if(c==='vac'){ va=a.vac_desde||""; vb=b.vac_desde||""; }
+  else { va=String(a[c]||"").toLowerCase(); vb=String(b[c]||"").toLowerCase(); }
+  if(va<vb) return -d; if(va>vb) return d; return a.nombre.localeCompare(b.nombre);
+}
+function renderRoster(){
+  const estados=["todos","activo","baja","licencia","vacaciones"];
+  $("#rpills").innerHTML=estados.map(e=>`<span class="pill ${rosterFilter===e?'active':''}" onclick="rosterFilter='${e}';renderRoster()">${e}</span>`).join(" ");
+  const cols=[["nombre","Nombre"],["tipo","Tipo"],["convenio","Convenio"],["agencia","Agencia"],["brigada","Brigada"],["estado","Estado"],["motivo","Motivo"],["vac","Vacaciones (desde / hasta)"],["","Acciones"]];
+  const head=$("#rosterHead"); if(head) head.innerHTML="<tr>"+cols.map(([k,lab])=>{ if(!k) return `<th>${lab}</th>`; const arr=rosterSort.col===k?(rosterSort.dir>0?" ▲":" ▼"):""; return `<th class="rsort" onclick="rosterOrdenar('${k}')">${lab}${arr}</th>`; }).join("")+"</tr>";
+  const q=($("#rosterSearch").value||"").toLowerCase();
+  const rows=PERS.filter(p=>(rosterFilter==="todos"||p.estado===rosterFilter)&&(rosterTipo==="todos"||p.tipo===rosterTipo)&&(rosterConv==="todos"||p.convenio===rosterConv)&&p.nombre.toLowerCase().includes(q))
+    .sort(rosterCmp);
+  $("#rosterBody").innerHTML=rows.map(p=>{
+    const i=PERS.indexOf(p);
+    return `<tr>
+      <td>${esc(p.nombre)}</td>
+      <td><select onchange="setField(${i},'tipo',this.value)"><option ${p.tipo==='P'?'selected':''}>P</option><option ${p.tipo==='E'?'selected':''}>E</option></select></td>
+      <td><select onchange="setField(${i},'convenio',this.value)" title="DC = Dentro de Convenio · FC = Fuera de Convenio"><option ${p.convenio==='DC'?'selected':''}>DC</option><option ${p.convenio==='FC'?'selected':''}>FC</option></select></td>
+      <td><input type="text" value="${esc(p.agencia)}" style="width:90px" onchange="setField(${i},'agencia',this.value)"></td>
+      <td><input type="checkbox" ${p.brigada==='SI'?'checked':''} onchange="setField(${i},'brigada',this.checked?'SI':'NO')"></td>
+      <td class="est-${p.estado}">${p.estado}</td>
+      <td><input type="text" value="${esc(p.motivo)}" style="width:140px" onchange="setField(${i},'motivo',this.value)"></td>
+      <td style="white-space:nowrap"><input type="date" value="${esc(p.vac_desde)}" title="Desde" onchange="setField(${i},'vac_desde',this.value)" style="width:128px"> <input type="date" value="${esc(p.vac_hasta)}" title="Hasta" onchange="setField(${i},'vac_hasta',this.value)" style="width:128px"></td>
+      <td style="white-space:nowrap">
+        ${p.estado!=='activo'?`<span class="act" onclick="setEstado(${i},'activo')">Alta</span>`:''}
+        ${p.estado!=='baja'?`<span class="act" onclick="setEstado(${i},'baja')">Baja</span>`:''}
+        ${p.estado!=='licencia'?`<span class="act" onclick="setEstado(${i},'licencia')">Lic.</span>`:''}
+        ${p.estado!=='vacaciones'?`<span class="act" onclick="setEstado(${i},'vacaciones')">Vac.</span>`:''}
+        <span class="act" onclick="borrarPersonal(${i})" style="color:#ff7a93">Borrar</span>
+      </td></tr>`;
+  }).join("") || `<tr><td colspan="9" style="color:var(--muted)">Sin resultados</td></tr>`;
+}
+function setField(i,f,v){ pushUndo(); PERS[i][f]=v; markDirty(); }
+function setEstado(i,e){ pushUndo(); const nombre=PERS[i].nombre; PERS[i].estado=e; if(e!=='activo') removeNameFromWeek(nombre); markDirty(); render(); renderRoster(); }
+function borrarPersonal(i){
+  const p=PERS[i];
+  const asg=ASIG.filter(a=>a.nombre.toUpperCase()===p.nombre.toUpperCase());
+  if(asg.length && !confirm(`${p.nombre} tiene ${asg.length} asignación(es). ¿Borrar de TODO (roster + asignaciones)?`)) return;
+  if(!asg.length && !confirm(`¿Borrar definitivamente a ${p.nombre} del roster?`)) return;
+  pushUndo();
+  ASIG=ASIG.filter(a=>a.nombre.toUpperCase()!==p.nombre.toUpperCase());
+  PERS.splice(i,1); markDirty(); renderRoster();
+}
+function nuevoPersonal(){
+  const nombre=prompt("Nombre del nuevo ingreso:"); if(!nombre) return;
+  if(persByName(nombre)){ alert("Ya existe esa persona."); return; }
+  const tipo=(prompt("Tipo: P (propio) o E (eventual)","E")||"E").toUpperCase().startsWith("P")?"P":"E";
+  let agencia=""; if(tipo==="E") agencia=prompt("Agencia (Randstad / Bayton / …):","")||"";
+  pushUndo();
+  PERS.push({nombre:nombre.trim(),tipo,agencia,brigada:"NO",convenio:"DC",estado:"activo",motivo:""});
+  markDirty(); setTab("roster"); renderRoster();
+  alert("Agregado. Ahora podés asignarlo a un puesto en la pestaña Distribución.");
+}
+
+// ---------- nueva semana (carry forward) ----------
+function nuevaSemana(){
+  const base=curWeek(); if(!base){ alert("No hay semana base."); return; }
+  const nueva=prompt("Etiqueta de la nueva semana (ej. 01/06/2026 al 05/06/2026):");
+  if(!nueva) return;
+  if(weeks().includes(nueva)){ alert("Esa semana ya existe."); return; }
+  pushUndo();
+  ASIG.filter(a=>a.semana===base).forEach(a=>ASIG.push(Object.assign({},a,{semana:nueva})));
+  populateWeeks();
+  $("#yearSel").value=semYear(nueva); fillWeekSel(false); $("#weekSel").value=nueva; updateRange();
+  markDirty(); render();
+}
+
+// ---------- guardar / exportar ----------
+async function guardar(){
+  setStatus("GUARDANDO…");
+  try{
+    const r1=await postJSON({accion:"guardar_asignacion",filas:ASIG});
+    const r2=await postJSON({accion:"guardar_personal",filas:PERS});
+    if(r1.status==="success"&&r2.status==="success"){
+      savedState=snap(); dirty=false; updateUI(); setStatus("GUARDADO ✓","ok");
+    } else setStatus("ERROR AL GUARDAR","err");
+  }catch(e){ setStatus("ERROR AL GUARDAR","err"); console.error(e); }
+}
+async function guardarConfig(){
+  CONFIG.emails_turno = $("#emails").value.trim();
+  CONFIG.emails_consultora = $("#emailsConsultora").value.trim();
+  try{ localStorage.setItem("vspt_emails_cons", CONFIG.emails_consultora); }catch(e){}
+  $("#cfgHint").textContent = "guardando…";
+  try{
+    const r=await postJSON({accion:"guardar_config",config:CONFIG});
+    $("#cfgHint").textContent = r.status==="success" ? "destinatarios guardados ✓" : "error al guardar";
+    setTimeout(()=>$("#cfgHint").textContent="",2500);
+  }catch(e){ $("#cfgHint").textContent="error"; }
+}
+async function generarTurno(){
+  if(dirty){ alert("Primero guardá los cambios.\nEl turno debe quedar registrado en la base de datos antes de enviarlo."); return; }
+  setStatus("GENERANDO…");
+  try{
+    const filas=ASIG.filter(a=>a.semana===curWeek());
+    const r=await postJSON({accion:"exportar_turno",semana:curWeek(),filas,jefe:CONFIG.jefe});
+    if(r.status==="success"&&r.url){
+      setStatus("TURNO GENERADO ✓","ok");
+      abrirGmail(r.url, r.compartido);
+    } else setStatus("ERROR AL GENERAR","err");
+  }catch(e){ setStatus("ERROR AL GENERAR","err"); console.error(e); }
+}
+function fechaLunes(){
+  const m=String(curWeek()).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  return m ? `${("0"+m[1]).slice(-2)}-${("0"+m[2]).slice(-2)}-${m[3].slice(2)}` : "";
+}
+function abrirGmail(url, compartido){
+  const dest=($("#emails").value||CONFIG.emails_turno||"").trim();
+  const f=fechaLunes();
+  const asunto=`Turno ${f}`;
+  let cuerpo=`Estimados adjunto turno próxima semana, revisar e informar de algún cambio.\n`;
+  cuerpo+=`DIA ${f}\n`;
+  cuerpo+=`\nPlanilla (Google Sheets): ${url}\n`;
+  if(!compartido) cuerpo+=`(Si no podés abrir el link, pedí acceso o avisá a Lucio.)\n`;
+  cuerpo+=`\nSaludos.`;
+  const gmail=`https://mail.google.com/mail/?view=cm&fs=1`
+    +`&to=${encodeURIComponent(dest)}`
+    +`&su=${encodeURIComponent(asunto)}`
+    +`&body=${encodeURIComponent(cuerpo)}`;
+  window.open(gmail,"_blank");
+  // abrir también el Sheets para revisión
+  window.open(url,"_blank");
+}
+
+// ---------- Mail para consultora (solo eventuales) ----------
+function capTurno(t){ t=String(t||"").toLowerCase(); return t.charAt(0).toUpperCase()+t.slice(1); }
+// eventuales (tipo "E") asignados a líneas en la semana actual, agrupados por turno
+function eventualesPorTurno(){
+  const wk=curWeek(), out=[];
+  TURNOS.forEach(t=>{
+    const filas=ASIG.filter(a=>a.semana===wk&&a.turno===t&&a.nombre&&tipoDe(a.nombre)==="E");
+    if(!filas.length) return;
+    const horario=(filas.find(f=>f.horario)||{}).horario||"";
+    const nombres=[...new Set(filas.map(f=>f.nombre.toUpperCase()))].sort();
+    out.push({titulo:`Turno ${capTurno(t)}`, horario, nombres});
+  });
+  return out;
+}
+// eventuales en grupos auxiliares (sin turno/línea: filtreros, destajo, etc.)
+function eventualesAux(){
+  const wk=curWeek(), groups={};
+  ASIG.filter(a=>a.semana===wk&&!a.turno&&!a.linea&&a.nombre&&tipoDe(a.nombre)==="E"&&!a.puesto.startsWith("__")).forEach(a=>{
+    const cat=a.puesto;
+    if(!groups[cat]) groups[cat]={titulo:cat, horario:a.horario||"", nombres:[]};
+    if(!groups[cat].horario&&a.horario) groups[cat].horario=a.horario;
+    const u=a.nombre.toUpperCase();
+    if(!groups[cat].nombres.includes(u)) groups[cat].nombres.push(u);
+  });
+  return Object.values(groups).map(g=>({...g,nombres:g.nombres.sort()}));
+}
+function gruposConsultora(){ return [...eventualesPorTurno(), ...eventualesAux()]; }
+
+function mailConsultora(){
+  if(!curWeek()){ alert("No hay semana seleccionada."); return; }
+  $("#consFecha").textContent = curWeek();
+  $("#notasConsultora").value = CONFIG.notas_consultora || localStorage.getItem("vspt_notas_cons") || NOTAS_CONS_DEFAULT;
+  renderConsCard();
+  setConsHint("");
+  $("#consModal").classList.add("open");
+}
+function cerrarConsultora(){ $("#consModal").classList.remove("open"); }
+function setConsHint(t){ const h=$("#consHint"); if(h) h.textContent=t; }
+function guardarNotasConsultora(){
+  CONFIG.notas_consultora = $("#notasConsultora").value;
+  try{ localStorage.setItem("vspt_notas_cons", CONFIG.notas_consultora); }catch(e){}
+}
+function renderConsCard(){
+  const grupos=gruposConsultora();
+  const total=grupos.reduce((s,g)=>s+g.nombres.length,0);
+  const card=$("#consCard");
+  const sub=`<div class="cc-sub">Semana del ${esc(curWeek())} · ${total} eventual${total===1?"":"es"}</div>`;
+  if(!total){ card.innerHTML=`<div class="cc-title">Randstad</div>${sub}<div class="cc-empty">No hay eventuales asignados en esta semana.</div>`; return; }
+  const blocks=grupos.map(g=>
+    `<div class="cc-block"><div class="cc-bh"><span>${esc(g.titulo)}</span>${g.horario?`<span class="cc-hor">${esc(g.horario)}</span>`:""}</div>`+
+    g.nombres.map(n=>`<div class="cc-name"><span class="cc-e">E</span><span>${esc(n)}</span></div>`).join("")+
+    `</div>`).join("");
+  card.innerHTML=`<div class="cc-title">Randstad</div>${sub}<div class="cc-grid">${blocks}</div>`;
+}
+function cuerpoConsultora(){
+  const notas=$("#notasConsultora").value.trim();
+  let c="Estimados envío horario para próxima semana, revisar e informar de algún cambio.\n";
+  if(notas) c+="\n"+notas+"\n";
+  c+="\nRandstad\n";
+  gruposConsultora().forEach(g=>{
+    c+=`\n${g.titulo}${g.horario?` ${g.horario}`:""}\n`;
+    g.nombres.forEach(n=>c+=`E ${n}\n`);
+  });
+  c+="\nCualquier consulta quedo a disposición. Saludos.";
+  return c;
+}
+async function imagenConsultoraBlob(){
+  const node=$("#consCard");
+  if(!window.htmlToImage) throw new Error("librería de imagen no disponible");
+  return await htmlToImage.toBlob(node,{pixelRatio:2,backgroundColor:"#ffffff",cacheBust:true});
+}
+async function copiarImagenConsultora(){
+  setConsHint("generando imagen…");
+  try{
+    const blob=await imagenConsultoraBlob();
+    if(navigator.clipboard&&window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+      setConsHint("✓ imagen copiada — pegala con Ctrl+V en el cuerpo del mail");
+      return true;
+    }
+    setConsHint("tu navegador no permite copiar imagen — usá «Descargar imagen»");
+    return false;
+  }catch(e){ console.error(e); setConsHint("no se pudo copiar — usá «Descargar imagen»"); return false; }
+}
+async function descargarImagenConsultora(){
+  setConsHint("generando imagen…");
+  try{
+    const blob=await imagenConsultoraBlob();
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=`Randstad-Turno-${fechaLunes()||"semana"}.png`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    setConsHint("✓ imagen descargada");
+  }catch(e){ console.error(e); setConsHint("error al generar la imagen"); }
+}
+async function abrirGmailConsultora(){
+  guardarNotasConsultora();
+  await copiarImagenConsultora();   // deja la imagen lista para pegar
+  const dest=($("#emailsConsultora").value||CONFIG.emails_consultora||"").trim();
+  const asunto=`Randstad - Turno ${fechaLunes()}`;
+  const gmail=`https://mail.google.com/mail/?view=cm&fs=1`
+    +`&to=${encodeURIComponent(dest)}`
+    +`&su=${encodeURIComponent(asunto)}`
+    +`&body=${encodeURIComponent(cuerpoConsultora())}`;
+  window.open(gmail,"_blank");
+}
+
+async function postJSON(body){
+  const r=await fetch(API_URL,{method:"POST",body:JSON.stringify(body),headers:{"Content-Type":"text/plain;charset=utf-8"}});
+  return r.json();
+}
+
+// ---------- util ----------
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function b64(s){ return btoa(unescape(encodeURIComponent(s))); }
+function d64(s){ return decodeURIComponent(escape(atob(s))); }
+window.addEventListener("beforeunload",e=>{ if(dirty){ e.preventDefault(); e.returnValue=""; } });
+// Sincronizar tema cuando está embebido en el dashboard principal
+window.addEventListener("message", e=>{
+  if(e.data && e.data.type==="vspt-theme"){
+    document.body.classList.toggle("light", !e.data.dark);
+    $("#themeIcon").textContent = e.data.dark ? "🌙" : "☀️";
+  }
+});
+load();
+</script>
+</body>
+</html>

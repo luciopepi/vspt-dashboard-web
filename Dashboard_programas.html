@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!-- Control de acceso VSPT — solo correos @vspt.com.ar (ver auth.js) -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VSPT Programas — San Juan/Graffigna</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Paleta VSPT */
+  --vspt-yellow:#F8C040;
+  --vspt-amber:#F8C040;
+  --vspt-orange:#F08808;
+  --vspt-crimson:#D81840;
+  --vspt-wine:#701F52;
+  --vspt-plum:#4E1742;
+  --vspt-deep-purple:#321032;
+  --vspt-olive:#98A040;
+  --vspt-cream:#F5EBD3;
+  --vspt-beige:#E0D0B8;
+  --vspt-beige-soft:#FAF5E8;
+
+  /* Dark mode — Claude.ai (marrones cálidos estratificados + arena/terracota) */
+  --bg:#1A1915;
+  --card:#222220;
+  --card2:#2A2A28;
+  --border:rgba(200,168,130,0.14);
+  --text:#F2EDE4;
+  --muted:#B8A898;
+  --th-bg:#2A2A28;
+  --tr-hover:rgba(212,112,90,0.06);
+  --td-border:rgba(255,255,255,0.05);
+
+  /* Turnos */
+  --turno-tm:#F8C040;
+  --turno-tt:#F08808;
+  --turno-tn:#4E1742;
+}
+body.light {
+  --bg:var(--vspt-beige-soft);
+  --card:#FFFFFF;
+  --card2:var(--vspt-cream);
+  --border:rgba(78,23,66,0.14);
+  --text:var(--vspt-plum);
+  --muted:#7a627a;
+  --th-bg:var(--vspt-beige-soft);
+  --tr-hover:rgba(78,23,66,0.05);
+  --td-border:rgba(78,23,66,0.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Montserrat',system-ui,sans-serif;font-size:14px;font-feature-settings:'tnum' 1;transition:background .3s,color .3s}
+
+/* Header compacto */
+.head{background:linear-gradient(135deg,var(--vspt-plum) 0%,var(--vspt-deep-purple) 55%,var(--vspt-wine) 100%);
+  border-bottom:3px solid var(--vspt-orange);padding:12px 22px;display:flex;align-items:center;
+  justify-content:space-between;gap:14px;flex-wrap:wrap}
+.head-title{color:#fff;font-weight:700;font-size:16px;letter-spacing:-0.2px}
+.head-title span{color:var(--vspt-beige);font-weight:600}
+.head-sub{font-size:9px;color:var(--vspt-beige);text-transform:uppercase;letter-spacing:0.22em;font-weight:600;margin-top:2px}
+.head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* Filtros barra horizontal */
+.filter-bar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 22px;
+  display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.16em;font-weight:700}
+.fg select,.fg input{background:var(--card2);border:1px solid var(--border);color:var(--text);
+  border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:inherit;min-width:120px}
+.fg select:focus,.fg input:focus{border-color:var(--vspt-amber)}
+.fg input[type=date]{color-scheme:light}
+body.dark .fg input[type=date]{color-scheme:dark}
+.btn-clear{background:linear-gradient(135deg,var(--vspt-deep-purple),var(--vspt-crimson));
+  border:none;color:#fff;border-radius:7px;padding:8px 16px;font-size:10px;font-weight:700;
+  cursor:pointer;text-transform:uppercase;letter-spacing:0.18em;font-family:inherit}
+.btn-clear:hover{opacity:.88}
+.btn-light{background:transparent;border:1px solid var(--border);color:var(--text);
+  border-radius:7px;padding:7px 12px;font-size:10px;font-weight:700;cursor:pointer;
+  font-family:inherit;text-transform:uppercase;letter-spacing:0.12em}
+.btn-light:hover{background:var(--card2)}
+
+.content{padding:18px 22px}
+
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:900px){.kpi-row{grid-template-columns:1fr 1fr}}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;
+  position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--vspt-crimson),var(--vspt-wine),var(--vspt-plum))}
+.kpi.amber::before{background:linear-gradient(90deg,var(--vspt-yellow),var(--vspt-orange))}
+.kpi.olive::before{background:linear-gradient(90deg,var(--vspt-olive),#6e7a2a)}
+.kpi.orange::before{background:linear-gradient(90deg,var(--vspt-orange),var(--vspt-crimson))}
+.kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:0.16em;
+  color:var(--muted);font-weight:700;margin-bottom:8px}
+.kpi-val{font-size:34px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1;font-family:'Inter',sans-serif}
+.kpi-val.amber{color:var(--vspt-amber)}
+.kpi-val.olive{color:var(--vspt-olive)}
+.kpi-val.orange{color:var(--vspt-orange)}
+.kpi-val.crimson{color:var(--vspt-crimson)}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:6px}
+.kpi-meta{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap}
+.kpi-meta span{font-size:10px;color:var(--muted)}
+.kpi-meta strong{color:var(--text);font-variant-numeric:tabular-nums}
+.kpi.hero .kpi-val{font-size:42px}
+
+/* OPI mini-strip */
+.opi-mini{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.opi-pill{flex:1;min-width:90px;background:var(--card2);border-radius:8px;padding:7px 11px;
+  border-left:3px solid var(--vspt-wine)}
+.opi-pill.l1{border-left-color:#701F52}
+.opi-pill.l2{border-left-color:#F08808}
+.opi-pill.l3{border-left-color:#98A040}
+.opi-pill .lbl{font-size:9px;color:var(--muted);font-weight:700;letter-spacing:0.14em;text-transform:uppercase}
+.opi-pill .vl{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text);font-family:'Inter',sans-serif;letter-spacing:-0.5px}
+.opi-pill .vl.below{color:var(--vspt-crimson)}
+.opi-pill .vl.ok{color:var(--vspt-olive)}
+
+/* Sección por línea */
+.line-sec{margin-top:22px}
+.line-title{display:flex;align-items:center;gap:10px;margin-bottom:12px;
+  font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text)}
+.line-title .dot{width:11px;height:11px;border-radius:50%}
+.line-title .meta{margin-left:auto;display:flex;gap:14px;font-size:11px;font-weight:600;
+  color:var(--muted);text-transform:none;letter-spacing:0.04em}
+.line-title .meta strong{color:var(--text);font-variant-numeric:tabular-nums}
+
+/* Mini-cards turno */
+.turno-row{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.turno-card{flex:1;min-width:140px;background:var(--card2);border-radius:8px;padding:10px 14px;
+  border-left:3px solid var(--turno-tm)}
+.turno-card.tt{border-left-color:var(--turno-tt)}
+.turno-card.tn{border-left-color:var(--turno-tn)}
+.turno-card.sd{border-left-color:#a89aa8}
+.turno-card .t-lbl{font-size:9px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:0.18em;margin-bottom:3px}
+.turno-card .t-val{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text);font-family:'Inter',sans-serif;letter-spacing:-0.3px}
+.turno-card .t-sub{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* Tabla */
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:14px;overflow:auto;border-top:3px solid var(--vspt-orange)}
+.tbl-wrap.l1{border-top-color:#701F52}
+.tbl-wrap.l2{border-top-color:#F08808}
+.tbl-wrap.l3{border-top-color:#98A040}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--th-bg);color:var(--text);text-align:left;padding:10px 11px;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;
+  border-bottom:2px solid var(--border);position:sticky;top:0}
+tbody td{padding:9px 11px;border-bottom:1px solid var(--td-border);font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--tr-hover)}
+.op-code{font-family:'Inter','Montserrat',monospace;font-weight:700}
+.right{text-align:right}
+.center{text-align:center}
+.muted{color:var(--muted)}
+.bold{font-weight:700}
+
+.t-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:9px;
+  font-size:9px;font-weight:800;letter-spacing:0.08em;margin-right:3px}
+.t-chip.tm{background:rgba(248,192,64,0.18);color:var(--vspt-amber);border:1px solid rgba(248,192,64,0.4)}
+.t-chip.tt{background:rgba(240,136,8,0.18);color:var(--vspt-orange);border:1px solid rgba(240,136,8,0.4)}
+.t-chip.tn{background:rgba(78,23,66,0.30);color:#c39ec0;border:1px solid rgba(78,23,66,0.6)}
+.t-chip.sd{background:rgba(127,127,127,0.15);color:var(--muted)}
+
+/* Loading / empty */
+.loading,.empty{text-align:center;padding:40px;color:var(--muted)}
+.loading .sp{display:inline-block;width:28px;height:28px;border:3px solid var(--border);
+  border-top-color:var(--vspt-amber);border-radius:50%;animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.empty-icon{font-size:32px;margin-bottom:8px}
+.empty-title{font-weight:700;color:var(--text);margin-bottom:4px}
+
+.section-empty{text-align:center;padding:18px;color:var(--muted);
+  font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;
+  background:var(--card2);border-radius:8px;border:1px dashed var(--border)}
+/* Tipo operación chips */
+.tipo-chip{display:inline-flex;align-items:center;justify-content:center;
+  padding:2px 9px;border-radius:9px;font-size:9px;font-weight:800;
+  letter-spacing:0.08em;min-width:38px}
+.tipo-chip.llv{background:rgba(240,136,8,0.18);color:var(--vspt-orange);
+  border:1px solid rgba(240,136,8,0.4)}
+.tipo-chip.ll{background:rgba(216,24,64,0.15);color:#f87171;
+  border:1px solid rgba(216,24,64,0.35)}
+.tipo-chip.v{background:rgba(152,160,64,0.18);color:var(--vspt-olive);
+  border:1px solid rgba(152,160,64,0.4)}
+.tipo-chip.nd{background:rgba(127,127,127,0.12);color:var(--muted);
+  border:1px solid rgba(127,127,127,0.2)}
+  /* Drag & drop */
+tr.dragging{opacity:0.35;background:var(--tr-hover)}
+tr.drag-over{outline:2px dashed var(--vspt-amber);outline-offset:-2px;background:rgba(248,192,64,0.08)}
+.alist-row.drag-over{outline:2px dashed var(--vspt-amber);background:rgba(248,192,64,0.08)}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <div>
+    <div class="head-title">VSPT <span>Wine Group</span> · Programas</div>
+    <div class="head-sub">San Juan / Graffigna · OPI por línea</div>
+  </div>
+  <div class="head-actions">
+    <button class="btn-light" id="btnTheme" onclick="toggleTheme()" style="display:none">☼ Modo</button>
+    <span id="status" class="head-sub" style="margin-left:8px"></span>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <div class="fg">
+    <label>Período</label>
+    <select id="f-periodo">
+      <option value="ALL">Todo</option>
+      <option value="MTD">MTD</option>
+      <option value="YTD" selected>YTD</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label>Año</label>
+    <select id="f-anio"></select>
+  </div>
+  <div class="fg">
+    <label>Desde</label>
+    <input type="date" id="f-desde">
+  </div>
+  <div class="fg">
+    <label>Hasta</label>
+    <input type="date" id="f-hasta">
+  </div>
+  <div class="fg">
+    <label>Semana</label>
+    <select id="f-semana"><option value="">Todas</option></select>
+  </div>
+  <div class="fg">
+    <label>Línea</label>
+    <select id="f-linea">
+      <option value="">Todas</option>
+      <option value="L1">L1</option>
+      <option value="L2">L2</option>
+      <option value="L3">L3</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label>Turno</label>
+    <select id="f-turno">
+      <option value="">Todos</option>
+      <option value="TM">TM</option>
+      <option value="TT">TT</option>
+      <option value="TN">TN</option>
+    </select>
+  </div>
+  <button class="btn-clear" onclick="clearFilters()">Limpiar</button>
+  <button class="btn-light" onclick="abrirSelectorColumnas()" title="Elegí qué columnas mostrar en la tabla (incluye columnas de la hoja Plan, ej. Pedido)">🧩 Columnas</button>
+  <button class="btn-light" id="btn-genplan" onclick="generarPlanEnSheets(this)" title="Genera un Google Sheets nuevo con el plan reordenado tal como lo dejaste. No modifica el plan maestro.">📋 Generar plan en Sheets</button>
+</div>
+
+<div style="background:var(--card);border-bottom:1px solid var(--border);padding:8px 22px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.14em">🤖 Asistente</span>
+  <input id="asistente-input" type="text" placeholder='Ej: "marcá con verde las órdenes del pedido 1589"  ·  "limpiar colores"'
+    style="flex:1;min-width:240px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:inherit"
+    onkeydown="if(event.key==='Enter')asistenteEjecutar()">
+  <button class="btn-light" id="asistente-mic" onclick="asistenteVoz()" title="Dictar por voz">🎤</button>
+  <button class="btn-clear" onclick="asistenteEjecutar()">Ejecutar</button>
+  <span id="asistente-status" style="font-size:11px;color:var(--muted)"></span>
+</div>
+
+<div class="content" id="content">
+  <div class="loading"><div class="sp"></div><div style="margin-top:10px">Cargando programas y OPI…</div></div>
+</div>
+
+<script>
+// =========================================================
+// CONFIG — apuntar a la misma API que OPINONA/PLAN
+// =========================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbx8alYmoiwb5-z1nyvXfyCSLfELACGZ4qGGtIoS3j6lF1yS6SmFH0wYRbKfQPrq5P6N/exec';
+const META_OPI = 70; // umbral para semáforo
+
+// =========================================================
+// STATE
+// =========================================================
+let planData = [];
+let opinonaData = [];
+let velNomData = [];
+let formatoByOP = {};  // OP → formato (lookup desde OPINONA)
+let velNomLookup = {}; // "SKU||LINEA||TipoEtiq" → NOMINAL (bph)
+let planRowMap = {};   // "L1|OP123" → raw planData row (para export)
+let planRowFull = {};  // rid único → fila original completa (44 cols del PLAN)
+let planCargado = false;
+let listenersAdded = false;
+
+// =========================================================
+// HELPERS
+// =========================================================
+const get = (r, ...keys) => {
+  for (const k of keys) {
+    if (r && r[k] !== undefined && r[k] !== null && r[k] !== '') return r[k];
+  }
+  return null;
+};
+const num = v => {
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'number') return v;
+  const s = String(v).replace(/\./g,'').replace(',','.');
+  const n = parseFloat(s);
+  return isFinite(n) ? n : 0;
+};
+const parseFecha = v => {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  const s = String(v);
+  // ISO: 2026-04-21
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+  // dd/mm/yyyy
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+};
+const fmtFecha = d => d ? d.toLocaleDateString('es-AR') : '—';
+const fmtNum = (n, d=0) => n.toLocaleString('es-AR', {maximumFractionDigits:d, minimumFractionDigits:d});
+
+// Normalizar turno a TM/TT/TN
+const normTurno = v => {
+  const t = String(v||'').toUpperCase().trim();
+  if (!t) return 'S/D';
+  if (t === 'TM' || t.startsWith('MAÑ') || t.startsWith('MAN')) return 'TM';
+  if (t === 'TT' || t.startsWith('TAR')) return 'TT';
+  if (t === 'TN' || t.startsWith('NOC')) return 'TN';
+  return t;
+};
+
+// Línea
+const getLinea = r => {
+  const v = String(get(r,'LINEA','linea','Linea')||'').toUpperCase().trim();
+  if (!v) return null;
+  if (v === '1' || v === 'L1') return 'L1';
+  if (v === '2' || v === 'L2') return 'L2';
+  if (v === '3' || v === 'L3') return 'L3';
+  return v;
+};
+
+// Categorías OPINONA
+const CATS = {
+  NO_USO:'Tiempos de No Uso', NONA:'NoNa', CAMBIO:'Tiempos de Cambio',
+  PLANEADO:'Tiempos Planeados', EXTERNA:'Paradas Externas',
+  FALLA:'Fallas de Equipos', PRODUCCION:'Tiempo de Producción'
+};
+const matchCat = raw => {
+  const t = String(raw||'').toLowerCase().trim();
+  if (!t) return null;
+  if (t.startsWith('tiempos de no uso')) return CATS.NO_USO;
+  if (t.startsWith('nona')) return CATS.NONA;
+  if (t.startsWith('tiempos de cambio')) return CATS.CAMBIO;
+  if (t.startsWith('tiempos planeados') || t.startsWith('paradas planeadas')) return CATS.PLANEADO;
+  if (t.startsWith('paradas externas')) return CATS.EXTERNA;
+  if (t.startsWith('fallas de equipos')) return CATS.FALLA;
+  if (t.startsWith('tiempo de producción') || t.startsWith('tiempo de produccion')) return CATS.PRODUCCION;
+  return null;
+};
+
+// =========================================================
+// FETCH — carga en 2 fases + Stale-While-Revalidate 15 min
+// =========================================================
+const CACHE_KEY        = 'vspt_prog_cache_v2';
+const CACHE_SEMANA_KEY = 'vspt_prog_semana_v2';
+const TTL_MS = 15 * 60 * 1000;
+
+function readCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.ts || !obj.data) return null;
+    return { ts: obj.ts, data: obj.data, fresh: (Date.now() - obj.ts) < TTL_MS };
+  } catch(e) { return null; }
+}
+function writeCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch(e){}
+}
+function readCacheSemana() {
+  try {
+    const raw = localStorage.getItem(CACHE_SEMANA_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.ts || !obj.data) return null;
+    return { ts: obj.ts, data: obj.data, fresh: (Date.now() - obj.ts) < TTL_MS };
+  } catch(e) { return null; }
+}
+function writeCacheSemana(data) {
+  try { localStorage.setItem(CACHE_SEMANA_KEY, JSON.stringify({ ts: Date.now(), data })); } catch(e){}
+}
+
+function applyPayload(payload) {
+  planData    = payload.plan    || [];
+  opinonaData = payload.opinona || [];
+  velNomData  = payload.vel     || [];
+  planCargado = true;
+  buildFormatoLookup();
+  buildVelLookup();
+  setupFilters(false);
+  render();
+}
+
+async function fetchFresh(silent) {
+  if (!silent) setStatus('Cargando datos completos…');
+  else setStatus('Actualizando…');
+  const [rPlan, rOpi, rVel] = await Promise.all([
+    fetch(API_URL + '?tabla=plan'),
+    fetch(API_URL + '?tabla=opinona'),
+    fetch(API_URL + '?tabla=velnominales')
+  ]);
+  const jPlan = await rPlan.json();
+  const jOpi  = await rOpi.json();
+  const jVel  = await rVel.json();
+  const payload = {
+    plan:    jPlan.plan    || jPlan.data || [],
+    opinona: jOpi.opinona  || jOpi.data  || [],
+    vel:     jVel.velnominales || []
+  };
+  writeCache(payload);
+  applyPayload(payload);
+  setStatus(`${payload.plan.length} programas · ${payload.opinona.length} registros OPI`);
+}
+
+async function fetchFase2() {
+  const cached = readCache();
+  if (cached) {
+    applyPayload(cached.data);
+    const ageMin = Math.round((Date.now() - cached.ts) / 60000);
+    setStatus(`${cached.data.plan.length} programas · ${cached.data.opinona.length} registros OPI · cache ${ageMin}m`);
+    if (!cached.fresh) fetchFresh(true).catch(e => console.error('Refresh bg falló:', e));
+    return;
+  }
+  await fetchFresh(false);
+}
+
+async function fetchFreshSemana(silent) {
+  if (!silent) setStatus('Cargando semana actual…');
+  const r1 = await fetch(API_URL + '?tabla=programa_semana');
+  const j1 = await r1.json();
+  planData = j1.programa_semana || j1.data || [];
+  writeCacheSemana(planData);
+  buildFormatoLookup();
+  buildVelLookup();
+  setupFilters(true);
+  render();
+  setStatus(`Sem ${getISOWeek(new Date())} · ${planData.length} OPs · cargando OPI…`);
+}
+
+async function loadAll() {
+  try {
+    // ── Fase 1: programa_semana (arranque rápido) ─────────
+    const cachedSem = readCacheSemana();
+    if (cachedSem) {
+      planData = cachedSem.data || [];
+      buildFormatoLookup();
+      buildVelLookup();
+      setupFilters(true);
+      render();
+      const ageMin = Math.round((Date.now() - cachedSem.ts) / 60000);
+      setStatus(`Sem ${getISOWeek(new Date())} · ${planData.length} OPs · cache ${ageMin}m · cargando OPI…`);
+      // Stale-while-revalidate: si el cache venció, refrescar en background
+      if (!cachedSem.fresh) fetchFreshSemana(true).catch(e => console.error('Refresh semana bg falló:', e));
+    } else {
+      await fetchFreshSemana(false);
+    }
+    // ── Fase 2: plan completo + opinona + velnominales ─────
+    fetchFase2().catch(e => {
+      console.error('Fase 2 falló:', e);
+      setStatus('⚠ Error cargando datos completos');
+    });
+  } catch(e) {
+    console.error(e);
+    document.getElementById('content').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div>
+       <div class="empty-title">Error cargando datos</div>
+       <div>${e.message||e}</div></div>`;
+  }
+}
+
+function setStatus(t){ document.getElementById('status').textContent = t; }
+
+function buildFormatoLookup() {
+  formatoByOP = {};
+  opinonaData.forEach(r => {
+    const op = String(get(r,'Id. Producción','Id. Produccion','id_produccion','OP','op')||'').trim();
+    const fmt = get(r,'Formato_1','Formato','FORMATO','formato');
+    if (op && fmt && !formatoByOP[op]) formatoByOP[op] = fmt;
+  });
+}
+
+// Normaliza Tipo Etiquetado / OPERACION para que coincidan como key del lookup.
+// Elimina espacios extra y unifica la variante sin espacio "LLENADO+VESTIDO"
+// → "LLENADO + VESTIDO".
+function normTipoEtiq(v) {
+  return String(v || '').trim().toUpperCase()
+    .replace(/\s*\+\s*/g, ' + ');
+}
+
+function tipoOpChip(operacion) {
+  const op = String(operacion || '').trim().toUpperCase().replace(/\s*\+\s*/g, '+');
+  const esLV = op.includes('LLENADO') && op.includes('VESTIDO');
+  const esLL = !esLV && op.includes('LLENADO');
+  const esV  = !esLV && !esLL && op.includes('VESTIDO');
+  if (esLV) return `<span class="tipo-chip llv">LL+V</span>`;
+  if (esLL) return `<span class="tipo-chip ll">LL</span>`;
+  if (esV)  return `<span class="tipo-chip v">V</span>`;
+  return `<span class="tipo-chip nd">—</span>`;
+}
+
+function nominalGenerico(linea, operacion, formato) {
+  const op  = String(operacion || '').toUpperCase();
+  const fmt = String(formato   || '').toUpperCase();
+  const esLV  = op.includes('LLENADO') && op.includes('VESTIDO');
+  const esV   = !esLV && op.includes('VESTIDO');
+  const es1500 = fmt.includes('1500');
+  const es750  = fmt.includes('750');
+
+  if (linea === 'L1') {
+    if (es1500)      return 2500;
+    if (esV  && es750) return 4500;
+    if (esLV && es750) return 6000;
+  }
+  if (linea === 'L2') {
+    if (esLV) return 6000;
+    if (esV)  return 4500;
+  }
+  if (linea === 'L3') {
+    if (esV)  return 4500;
+    if (esLV) return 5000;
+  }
+  return 0;
+}
+
+function buildVelLookup() {
+  velNomLookup = {};
+  velNomData.forEach(r => {
+    const sku   = String(get(r,'CODIGO CCU','Codigo CCU','codigo_ccu')||'').trim();
+    const linea = String(get(r,'LINEA','Linea','linea')||'').trim().toUpperCase();
+    const tipo  = normTipoEtiq(get(r,'Tipo Etiquetado','tipo_etiquetado','TIPO ETIQUETADO'));
+    const nom   = parseFloat(get(r,'NOMINAL','Nominal','nominal')||0);
+    if (!sku || !linea || !tipo || !nom) return;
+    const key = sku + '||' + linea + '||' + tipo;
+    velNomLookup[key] = nom;
+  });
+}
+
+function getISOWeek(d) {
+  const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+  const week1 = new Date(date.getFullYear(), 0, 4);
+  return 1 + Math.round(((date - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+// Formatea minutos decimales → "Xh YYmin"
+function fmtTiempo(minutos) {
+  if (!isFinite(minutos) || minutos <= 0) return '—';
+  const h = Math.floor(minutos / 60);
+  const m = Math.round(minutos % 60);
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${String(m).padStart(2,'0')}min`;
+}
+
+// =========================================================
+// FILTROS
+// =========================================================
+function setupFilters(autoSemana) {
+  // Guardar selección actual antes de reconstruir
+  const prevSemana = document.getElementById('f-semana').value;
+  const prevAnio   = document.getElementById('f-anio').value;
+
+  // Año
+  const anios = [...new Set(planData.map(r => {
+    const f = parseFecha(get(r,'FECHA','Fecha','fecha'));
+    return f ? f.getFullYear() : null;
+  }).filter(Boolean))].sort((a,b)=>b-a);
+  const selAnio = document.getElementById('f-anio');
+  selAnio.innerHTML = '<option value="">Todos</option>' +
+    anios.map(a => `<option value="${a}">${a}</option>`).join('');
+
+  // Semana
+  const semanas = [...new Set(planData.map(r => {
+    const s = parseInt(get(r,'Semana','semana','SEMANA'));
+    return isFinite(s) && s>=1 && s<=53 ? s : null;
+  }).filter(Boolean))].sort((a,b)=>a-b);
+  document.getElementById('f-semana').innerHTML = '<option value="">Todas</option>' +
+    semanas.map(s => `<option value="${s}">Sem ${s}</option>`).join('');
+
+  // Auto-seleccionar semana actual (fase 1) o restaurar selección previa (fase 2)
+  if (autoSemana) {
+    const semActual = getISOWeek(new Date());
+    document.getElementById('f-semana').value  = String(semActual);
+    document.getElementById('f-anio').value    = String(new Date().getFullYear());
+    document.getElementById('f-periodo').value = 'ALL';
+  } else {
+    if (prevSemana) document.getElementById('f-semana').value = prevSemana;
+    if (prevAnio)   document.getElementById('f-anio').value   = prevAnio;
+  }
+
+  // Listeners (solo una vez)
+  if (!listenersAdded) {
+    ['f-periodo','f-anio','f-desde','f-hasta','f-semana','f-linea','f-turno'].forEach(id => {
+      document.getElementById(id).addEventListener('change', render);
+    });
+    listenersAdded = true;
+  }
+}
+
+function clearFilters() {
+  document.getElementById('f-periodo').value = 'YTD';
+  document.getElementById('f-desde').value = '';
+  document.getElementById('f-hasta').value = '';
+  document.getElementById('f-semana').value = '';
+  document.getElementById('f-linea').value = '';
+  document.getElementById('f-turno').value = '';
+  render();
+}
+
+// Aplica los mismos filtros a un array de filas (sirve para PLAN y OPINONA)
+function applyFilters(arr, opts={}) {
+  const periodo = document.getElementById('f-periodo').value;
+  const anio    = document.getElementById('f-anio').value;
+  const desde   = document.getElementById('f-desde').value;
+  const hasta   = document.getElementById('f-hasta').value;
+  const semana  = document.getElementById('f-semana').value;
+  const linea   = document.getElementById('f-linea').value;
+  const turno   = document.getElementById('f-turno').value;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ytdStart = new Date(today.getFullYear(),0,1);
+  const mtdStart = new Date(today.getFullYear(),today.getMonth(),1);
+  const dDesde = desde ? new Date(desde + 'T00:00:00') : null;
+  const dHasta = hasta ? new Date(hasta + 'T23:59:59') : null;
+
+  return arr.filter(r => {
+    const f = parseFecha(get(r,'FECHA','Fecha','fecha'));
+    if (anio && f && f.getFullYear() !== +anio) return false;
+    if (periodo === 'YTD' && f && f < ytdStart) return false;
+    if (periodo === 'MTD' && f && f < mtdStart) return false;
+    if (dDesde && f && f < dDesde) return false;
+    if (dHasta && f && f > dHasta) return false;
+    if (semana) {
+      const s = parseInt(get(r,'Semana','semana','SEMANA'));
+      if (String(s) !== String(semana)) return false;
+    }
+    if (linea) {
+      const L = getLinea(r);
+      if (L !== linea) return false;
+    }
+    if (turno && !opts.skipTurno) {
+      const t = normTurno(get(r,'TURNO','Turno','turno','turno_plan'));
+      if (t !== turno) return false;
+    }
+    return true;
+  });
+}
+
+// =========================================================
+// CÁLCULO OPI
+// =========================================================
+function calcOPI(rows) {
+  const tPor = { [CATS.NO_USO]:0, [CATS.NONA]:0, [CATS.CAMBIO]:0, [CATS.PLANEADO]:0,
+                 [CATS.EXTERNA]:0, [CATS.FALLA]:0, [CATS.PRODUCCION]:0 };
+  let perdidasVel = 0;
+  let tot = 0;
+
+  rows.forEach(r => {
+    const v = num(get(r,'Var. Tiempo','var_tiempo','VAR_TIEMPO','Var Tiempo'));
+    const cls = matchCat(get(r,'Clasificación_1','Clasificacion_1','clasificacion_1','CLASIFICACION_1'));
+    if (!cls) return;
+    tot += v;
+    tPor[cls] += v;
+    // Pérdidas de velocidad: dentro de Tiempo de Producción cuando Clasificación_2 indica 'pérdida'
+    if (cls === CATS.PRODUCCION) {
+      const c2 = String(get(r,'Clasificación_2','Clasificacion_2','clasificacion_2','CLASIFICACION_2')||'').toLowerCase();
+      if (c2.includes('pérdid') || c2.includes('perdid') || c2.includes('velocidad')) perdidasVel += v;
+    }
+  });
+
+  const tConPersonal = tot - tPor[CATS.NO_USO];
+  const tEfectivo    = tConPersonal - tPor[CATS.NONA];
+  const tProdDisp    = tEfectivo - tPor[CATS.CAMBIO] - tPor[CATS.PLANEADO];
+  const tActualProd  = tProdDisp - tPor[CATS.EXTERNA];
+  const tOperacion   = tActualProd - tPor[CATS.FALLA];
+  const tTeorico     = tOperacion - perdidasVel;
+
+  // OPI verdadero (vs Tiempo con Personal)
+  const opi = tConPersonal > 0 ? (tTeorico / tConPersonal) * 100 : 0;
+  return { tot, tConPersonal, tTeorico, opi };
+}
+
+// =========================================================
+// RENDER
+// =========================================================
+function render() {
+  if (!planData.length) return;
+  const planF = applyFilters(planData);
+  const opiAll = applyFilters(opinonaData, {skipTurno:true});
+
+  // OPI por línea + planta
+  const opiPlanta = calcOPI(opiAll);
+  const opiPorLinea = {
+    L1: calcOPI(opiAll.filter(r => getLinea(r)==='L1')),
+    L2: calcOPI(opiAll.filter(r => getLinea(r)==='L2')),
+    L3: calcOPI(opiAll.filter(r => getLinea(r)==='L3'))
+  };
+
+  // Filtro turno aplicado al PLAN (si está)
+  const turnoSel = document.getElementById('f-turno').value;
+
+  // Programas por línea
+  const lineas = ['L1','L2','L3'];
+  const lineaColors = { L1:'#701F52', L2:'#F08808', L3:'#98A040' };
+  const lineaData = {};
+  lineas.forEach(L => lineaData[L] = { rows:[], turnos:{} });
+
+  planRowMap = {};
+  planRowFull = {};
+  let __rid = 0;
+  planF.forEach(r => {
+    const L = getLinea(r);
+    if (!lineaData[L]) return;
+    const turno = normTurno(get(r,'TURNO','Turno','turno','turno_plan'));
+    if (turnoSel && turno !== turnoSel) return;
+    const fecha = parseFecha(get(r,'FECHA','Fecha','fecha'));
+    const op = String(get(r,'ORDEN SAP','Orden SAP','orden_sap','OP','Id. Producción')||'').trim();
+    const articulo = get(r,'ARTICULO','Articulo','articulo') || '—';
+    const formato = formatoByOP[op] || derivarFormato(r) || '—';
+    const _cajasRaw = get(r,'FINAL CAJAS','Final Cajas','final_cajas');
+    const cajas = (_cajasRaw !== null && _cajasRaw !== '' && num(_cajasRaw) > 0) ? num(_cajasRaw) : null;
+    const _botRaw = get(r,'FINAL BOTELLAS','Final Botellas','final_botellas');
+    const botellas = (_botRaw !== null && _botRaw !== '' && num(_botRaw) > 0) ? num(_botRaw) : null;
+    const litros = num(get(r,'FINAL LITROS','Final Litros','final_litros','LITROS','Litros','litros'));
+
+    // Columnas nuevas: botellas programadas + tiempo estimado
+    const sku      = String(get(r,'CODIGO CCU','Codigo CCU','codigo_ccu')||'').trim();
+    const operacion = normTipoEtiq(get(r,'OPERACION','Operacion','operacion'));
+    const botsProg = num(get(r,'BOTELLAS','Botellas','botellas'));
+    const velKey   = sku + '||' + (L||'') + '||' + operacion;
+    let nominal  = velNomLookup[velKey] || 0;
+    if (nominal <= 0) nominal = nominalGenerico(L, operacion, formato);
+    const tiempoMin = nominal > 0 ? (botsProg / nominal) * 60 : null;
+
+    const destino = get(r,'Destino','DESTINO','destino') || '—';
+    const tipoOpRaw = get(r,'OPERACION','Operacion','operacion') || '';
+    const semana = get(r,'Semana','semana','SEMANA') || '';
+    const rid = ++__rid;
+    lineaData[L].rows.push({ rid, op, articulo, formato, destino, fecha, turno, litros, cajas, botellas, botsProg, tiempoMin, nominal, tipoOpRaw, semana, sku });
+    planRowMap[L + '|' + op] = r;
+    planRowFull[rid] = r;
+
+    if (!lineaData[L].turnos[turno]) lineaData[L].turnos[turno] = { litros:0, cajas:0, count:0 };
+    lineaData[L].turnos[turno].litros += litros;
+    lineaData[L].turnos[turno].cajas += cajas;
+    lineaData[L].turnos[turno].count++;
+  });
+
+  // Totales
+  const totalProg = lineas.reduce((a,L)=>a+lineaData[L].rows.length,0);
+  const totalLitros = lineas.reduce((a,L)=>
+    a + lineaData[L].rows.reduce((b,r)=>b+r.litros,0), 0);
+  const litrosPorLinea = {
+    L1: lineaData.L1.rows.reduce((a,r)=>a+r.litros,0),
+    L2: lineaData.L2.rows.reduce((a,r)=>a+r.litros,0),
+    L3: lineaData.L3.rows.reduce((a,r)=>a+r.litros,0)
+  };
+
+  // Filtro descriptivo
+  const filtroLabels = [];
+  const fPer = document.getElementById('f-periodo').value;
+  if (fPer && fPer !== 'ALL') filtroLabels.push(fPer);
+  const fDes = document.getElementById('f-desde').value;
+  const fHas = document.getElementById('f-hasta').value;
+  if (fDes || fHas) filtroLabels.push((fDes||'…')+' → '+(fHas||'…'));
+  const fSem = document.getElementById('f-semana').value;
+  if (fSem) filtroLabels.push('Sem '+fSem);
+  const fLin = document.getElementById('f-linea').value;
+  if (fLin) filtroLabels.push(fLin);
+  if (turnoSel) filtroLabels.push(turnoSel);
+  const filtroTxt = filtroLabels.length ? filtroLabels.join(' · ') : 'Vista YTD';
+
+  // === HTML ===
+  const opiCls = opi => opi >= META_OPI ? 'olive' : 'crimson';
+  const sinOPI  = opinonaData.length === 0;
+  const opiHero = sinOPI ? '—' : opiPlanta.opi.toFixed(1);
+
+  const html = `
+    <div class="kpi-row">
+      <div class="kpi hero">
+        <div class="kpi-label">OPI Planta</div>
+        <div class="kpi-val ${sinOPI ? 'muted' : opiCls(opiPlanta.opi)}">${opiHero}${sinOPI ? '' : '<span style="font-size:18px;opacity:.6;font-weight:600"> %</span>'}</div>
+        <div class="kpi-sub">${sinOPI ? '⏳ Cargando OPI…' : `Tiempo Teórico / Tiempo c/ Personal · meta ${META_OPI}%`}</div>
+        <div class="opi-mini">
+          ${lineas.map(L => `
+            <div class="opi-pill ${L.toLowerCase()}">
+              <div class="lbl">${L}</div>
+              <div class="vl ${sinOPI ? '' : (opiPorLinea[L].opi >= META_OPI ? 'ok':'below')}">${sinOPI ? '—' : opiPorLinea[L].opi.toFixed(1)+'%'}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="kpi olive">
+        <div class="kpi-label">Litros totales</div>
+        <div class="kpi-val olive">${fmtNum(totalLitros)}</div>
+        <div class="kpi-meta">
+          <span><strong>L1</strong> ${fmtNum(litrosPorLinea.L1)}</span>
+          <span><strong>L2</strong> ${fmtNum(litrosPorLinea.L2)}</span>
+          <span><strong>L3</strong> ${fmtNum(litrosPorLinea.L3)}</span>
+        </div>
+      </div>
+      <div class="kpi amber">
+        <div class="kpi-label">Programas en período</div>
+        <div class="kpi-val amber">${totalProg}</div>
+        <div class="kpi-sub">${filtroTxt}</div>
+      </div>
+      <div class="kpi orange">
+        <div class="kpi-label">Programas por línea</div>
+        <div class="kpi-meta" style="margin-top:14px">
+          <span><strong>L1</strong> ${lineaData.L1.rows.length}</span>
+          <span><strong>L2</strong> ${lineaData.L2.rows.length}</span>
+          <span><strong>L3</strong> ${lineaData.L3.rows.length}</span>
+        </div>
+        <div class="kpi-sub" style="margin-top:8px">Filas en hoja PLAN tras filtros</div>
+      </div>
+    </div>
+
+    ${lineas.map(L => renderLinea(L, lineaData[L], lineaColors[L])).join('')}
+
+    ${totalProg === 0 ? `
+      <div class="tbl-wrap" style="text-align:center;padding:32px">
+        <div class="empty-icon">🗓️</div>
+        <div class="empty-title">Sin programas en el período seleccionado</div>
+        <div class="muted" style="font-size:12px">Ajustá los filtros para ver programas.</div>
+      </div>` : ''}
+  `;
+  document.getElementById('content').innerHTML = html;
+  // Calcular horarios iniciales con valores default de Tpo Camb
+  ['L1','L2','L3'].forEach(L => recalcHorarios(L));
+}
+
+// Formatea minutos totales → "HH:MM"
+function minToHHMM(totalMin) {
+  const h = Math.floor(totalMin / 60) % 24;
+  const m = Math.round(totalMin % 60);
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+// Clave de fecha para agrupar por día
+function fechaKey(d) {
+  if (!d) return 'sin-fecha';
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// =========================================================
+// SELECTOR DE COLUMNAS (configurable + columnas de la hoja Plan)
+// =========================================================
+function turnoChip(t){
+  const cls = t==='TM'?'tm':t==='TT'?'tt':t==='TN'?'tn':'sd';
+  return `<span class="t-chip ${cls}">${t||'—'}</span>`;
+}
+function _planVal(r, header){
+  const src = (typeof planRowFull!=='undefined' && planRowFull[r.rid]) || {};
+  const v = get(src, header, header.toUpperCase(), header.toLowerCase());
+  if (v === null || v === undefined || v === '') return '—';
+  const s = String(v).trim();
+  if (!s) return '—';
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const d = parseFecha(s); if (d) return fmtFecha(d); }
+  return s;
+}
+
+const COLS_INFO = [
+  { key:'articulo', label:'Artículo',         align:'',       cell:r=>`<td>${r.articulo}</td>` },
+  { key:'formato',  label:'Formato',          align:'',       cell:r=>`<td>${r.formato}</td>` },
+  { key:'tipo',     label:'Tipo',             align:'center', cell:r=>`<td class="center">${tipoOpChip(r.tipoOpRaw)}</td>` },
+  { key:'destino',  label:'Destino',          align:'',       cell:r=>`<td>${r.destino}</td>` },
+  { key:'fecha',    label:'Fecha',            align:'',       cell:r=>`<td>${fmtFecha(r.fecha)}</td>` },
+  { key:'turno',    label:'Turno',            align:'center', cell:r=>`<td class="center">${turnoChip(r.turno)}</td>` },
+  { key:'litros',   label:'Litros (FINAL)',   align:'right',  cell:r=>`<td class="right bold">${fmtNum(r.litros)}</td>` },
+  { key:'cajas',    label:'Cajas (FINAL)',    align:'right',  cell:r=>`<td class="right">${r.cajas!==null?fmtNum(r.cajas):'—'}</td>` },
+  { key:'botellas', label:'Botellas (FINAL)', align:'right',  cell:r=>`<td class="right">${r.botellas!==null?fmtNum(r.botellas):'—'}</td>` },
+  { key:'botsProg', label:'Botellas (Prog.)', align:'right',  cell:r=>`<td class="right">${fmtNum(r.botsProg)}</td>` }
+];
+
+const COLS_EXTRA = [
+  ['PEDIDO','Pedido'], ['FECHA LIMITE','Fecha límite'], ['COSECHA - GRADO','Cosecha-Grado'],
+  ['CONTROL','Control'], ['ADICIONAL','Adicional'], ['Unidades x caja','Unid. x caja'],
+  ['CODIGO CCU','Código CCU'], ['CODIGO VINO','Código vino'], ['SEMIELABORADO','Semielaborado'],
+  ['DISPONIBILIDAD DE VINOS','Dispon. vinos'], ['OBSERVACIONES','Observaciones'],
+  ['SUSTITUTO','Sustituto'], ['ORDEN SUSTITUTO','Orden sustituto']
+].map(([h,l]) => ({ key:'x:'+h, label:l, align:'', cell:r=>`<td>${_planVal(r,h)}</td>` }));
+
+const COLS_PLAN = [
+  { key:'vel', label:'Vel. Nom.', align:'center', cell:(r,c)=>`<td class="center"><select class="vel-select" data-bots="${r.botsProg}" style="width:68px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" onchange="recalcTiempo(this,'${c.L}')">${c.velOpts.map(v=>`<option value="${v}" ${v===c.velSel?'selected':''}>${v}</option>`).join('')}</select></td>` },
+  { key:'tiempo', label:'Tiempo est.', align:'right', cell:(r,c)=>`<td class="right tiempo-cell">${c.tiempoDisplay}</td>` },
+  { key:'tpocamb', label:'Tpo Camb', align:'center', cell:(r,c)=>`<td class="center"><input type="number" class="tc-input" id="${c.inputId}" value="${c.defCamb}" min="0" max="999" style="width:52px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" oninput="recalcHorarios('${c.L}')"></td>` },
+  { key:'horario', label:'Horario', align:'right', cell:(r,c)=>`<td class="right horario-cell">—</td>` }
+];
+
+const COL_SEL_KEY = 'vspt_prog_cols_v1';
+let colSel = (function(){
+  const def = {};
+  COLS_INFO.forEach(c=>def[c.key]=true);
+  COLS_EXTRA.forEach(c=>def[c.key]=false);
+  try {
+    const s = JSON.parse(localStorage.getItem(COL_SEL_KEY)||'null');
+    if (s && typeof s==='object') Object.keys(def).forEach(k=>{ if(k in s) def[k]=!!s[k]; });
+  } catch(e){}
+  return def;
+})();
+
+function buildColDefs(){
+  const defs = [{ header:'<th>OP</th>', cell:r=>`<td class="op-code">${r.op||'—'}</td>` }];
+  COLS_INFO.forEach(c=>{ if(colSel[c.key]) defs.push({ header:`<th class="${c.align}">${c.label}</th>`, cell:c.cell }); });
+  COLS_EXTRA.forEach(c=>{ if(colSel[c.key]) defs.push({ header:`<th class="${c.align}">${c.label}</th>`, cell:c.cell }); });
+  COLS_PLAN.forEach(c=>{ defs.push({ header:`<th class="${c.align}">${c.label}</th>`, cell:c.cell }); });
+  window.__PROG_COLS = defs.length;
+  return defs;
+}
+
+function abrirSelectorColumnas(){
+  cerrarSelectorColumnas();
+  const mkChk = c => `<label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:12px;cursor:pointer"><input type="checkbox" data-colkey="${c.key}" ${colSel[c.key]?'checked':''}> ${c.label}</label>`;
+  const ov = document.createElement('div');
+  ov.id = 'cols-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = `
+    <div style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;max-width:560px;width:100%;max-height:85vh;overflow:auto;padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:800;letter-spacing:.04em">🧩 Columnas de la tabla</div>
+        <button onclick="cerrarSelectorColumnas()" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">OP y las columnas de planificación (Vel. Nom., Tiempo est., Tpo Camb, Horario) son fijas.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+        <div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:6px">Columnas</div>${COLS_INFO.map(mkChk).join('')}</div>
+        <div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:6px">Columnas de la hoja Plan</div>${COLS_EXTRA.map(mkChk).join('')}</div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+        <button class="btn-light" onclick="restablecerColumnas()">Restablecer</button>
+        <button class="btn-clear" onclick="aplicarColumnas()">Aplicar</button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', e=>{ if(e.target===ov) cerrarSelectorColumnas(); });
+  document.body.appendChild(ov);
+}
+function cerrarSelectorColumnas(){ const m=document.getElementById('cols-modal'); if(m) m.remove(); }
+function aplicarColumnas(){
+  document.querySelectorAll('#cols-modal input[data-colkey]').forEach(chk=>{ colSel[chk.dataset.colkey] = chk.checked; });
+  try { localStorage.setItem(COL_SEL_KEY, JSON.stringify(colSel)); } catch(e){}
+  cerrarSelectorColumnas();
+  render();
+}
+function restablecerColumnas(){
+  COLS_INFO.forEach(c=>colSel[c.key]=true);
+  COLS_EXTRA.forEach(c=>colSel[c.key]=false);
+  try { localStorage.setItem(COL_SEL_KEY, JSON.stringify(colSel)); } catch(e){}
+  cerrarSelectorColumnas();
+  render();
+}
+
+// =========================================================
+// ASISTENTE (parser local + fallback Gemini vía proxy)
+// =========================================================
+const ASIST_COLORS = {
+  amarillo:'#F8C040', verde:'#98A040', rojo:'#D81840', azul:'#3b82f6',
+  naranja:'#F08808', violeta:'#701F52', morado:'#701F52', celeste:'#5DC7D1'
+};
+function _norm(s){ return String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); }
+function setAsistStatus(t, err){
+  const el=document.getElementById('asistente-status');
+  if(el){ el.textContent=t||''; el.style.color = err?'var(--vspt-crimson)':'var(--muted)'; }
+}
+function _valorCampoFila(tr, campo){
+  const c=_norm(campo);
+  if(c==='orden sap'||c==='op'||c==='orden') return String(tr.dataset.op||'');
+  if(c==='linea') return String(tr.dataset.linea||'');
+  const src=(typeof planRowFull!=='undefined' && planRowFull[tr.dataset.rowid])||{};
+  return String(get(src, campo, campo.toUpperCase(), campo.toLowerCase())||'');
+}
+function limpiarColoresAsist(){
+  document.querySelectorAll('#content tr[data-hl]').forEach(tr=>{
+    tr.removeAttribute('data-hl');
+    tr.querySelectorAll('td').forEach(td=>{ td.style.background=''; td.style.color=''; });
+  });
+}
+// Resuelve un nombre hablado de columna → clave de colSel
+function _resolverColumna(t){
+  const ALIAS={ pedido:'x:PEDIDO', destino:'destino', articulo:'articulo', producto:'articulo',
+    formato:'formato', fecha:'fecha', turno:'turno', litros:'litros', cajas:'cajas',
+    'tipo':'tipo', observacion:'x:OBSERVACIONES', cosecha:'x:COSECHA - GRADO',
+    grado:'x:COSECHA - GRADO', control:'x:CONTROL', sustituto:'x:ORDEN SUSTITUTO',
+    ccu:'x:CODIGO CCU', sku:'x:CODIGO CCU', vino:'x:CODIGO VINO',
+    semielaborado:'x:SEMIELABORADO', adicional:'x:ADICIONAL' };
+  for(const k in ALIAS){ if(t.includes(k)) return ALIAS[k]; }
+  let best=null,bl=0;
+  [...COLS_INFO,...COLS_EXTRA].forEach(c=>{
+    const lab=_norm(c.label).replace(/\(.*?\)/g,'').trim();
+    const ws=lab.split(/\s+/).filter(w=>w.length>2);
+    if(ws.length && ws.every(w=>t.includes(w)) && lab.length>bl){ best=c.key; bl=lab.length; }
+  });
+  return best;
+}
+function _extraerFiltros(t){
+  const f={};
+  let m=t.match(/sem(?:ana)?\s*0*(\d{1,2})/);     if(m) f.semana=String(parseInt(m[1],10));
+  m=t.match(/l(?:inea)?\s*0*([123])\b/);           if(m) f.linea='L'+m[1];
+  m=t.match(/turno\s*(tm|tt|tn)/);                  if(!m && /turno/.test(t)){ const x=t.match(/\b(tm|tt|tn)\b/); if(x) m=x; }
+  if(m && m[1]) f.turno=String(m[1]).toUpperCase();
+  return f;
+}
+function _labelColumna(key){
+  const c=[...COLS_INFO,...COLS_EXTRA].find(x=>x.key===key);
+  return c?c.label:key;
+}
+const _MESES_ASIST={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,
+  septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12,
+  ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,set:9,oct:10,nov:11,dic:12};
+function _anioAsist(){ const e=document.getElementById('f-anio'); const y=e&&parseInt(e.value,10); return (y&&y>2000)?y:new Date().getFullYear(); }
+function _isoAsist(y,m,d){ return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+// Devuelve fechas ISO encontradas en el texto normalizado, en orden
+function _buscarFechas(t){
+  const out=[]; const seen={}; let m;
+  const push=(i,iso)=>{ if(!seen[iso]){seen[iso]=1;out.push({i,iso});} };
+  // "del 20 al 25 de marzo [de 2026]" → dos días, mismo mes
+  let rng=t.match(/(\d{1,2})\s+al\s+(\d{1,2})\s*(?:de\s+)?([a-z]{3,12})(?:\s+(?:de\s+)?(\d{4}))?/);
+  if(rng){ const mo=_MESES_ASIST[rng[3]]; if(mo){ let y=rng[4]?+rng[4]:_anioAsist();
+    const d1=+rng[1], d2=+rng[2];
+    if(d1>=1&&d1<=31) push(rng.index, _isoAsist(y,mo,d1));
+    if(d2>=1&&d2<=31) push(rng.index+1, _isoAsist(y,mo,d2)); } }
+  let re=/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/g;
+  while((m=re.exec(t))){ const d=+m[1],mo=+m[2]; let y=m[3]?+m[3]:_anioAsist(); if(y<100)y+=2000;
+    if(d>=1&&d<=31&&mo>=1&&mo<=12){ const iso=_isoAsist(y,mo,d); if(!seen[iso]){seen[iso]=1;out.push({i:m.index,iso});} } }
+  re=/\b(\d{1,2})\s*(?:de\s+)?([a-z]{3,12})(?:\s+(?:de\s+)?(\d{4}))?\b/g;
+  while((m=re.exec(t))){ const mo=_MESES_ASIST[m[2]]; if(!mo)continue; const d=+m[1]; let y=m[3]?+m[3]:_anioAsist();
+    if(d>=1&&d<=31){ const iso=_isoAsist(y,mo,d); if(!seen[iso]){seen[iso]=1;out.push({i:m.index,iso});} } }
+  return out.sort((a,b)=>a.i-b.i).map(x=>x.iso);
+}
+
+function aplicarAccionAsistente(act){
+  if(!act||!act.accion){ setAsistStatus('No entendí el comando.', true); return; }
+
+  if(act.accion==='limpiar'){ limpiarColoresAsist();
+    document.querySelectorAll('#content tbody tr').forEach(tr=>tr.style.display='');
+    setAsistStatus('✓ Colores limpiados'); return; }
+
+  if(act.accion==='limpiarFiltros'){
+    if(typeof clearFilters==='function') clearFilters();
+    setAsistStatus('✓ Filtros restablecidos'); return; }
+
+  if(act.accion==='filtros'){
+    const set=(id,v)=>{ const el=document.getElementById(id); if(el!=null&&v!=null&&v!==''){ el.value=v; } };
+    const partes=[];
+    if(act.semana){ set('f-periodo','ALL'); set('f-semana',String(act.semana)); partes.push('Sem '+act.semana); }
+    if(act.linea){ set('f-linea',String(act.linea).toUpperCase()); partes.push(String(act.linea).toUpperCase()); }
+    if(act.turno){ set('f-turno',String(act.turno).toUpperCase()); partes.push(String(act.turno).toUpperCase()); }
+    if(!partes.length){ setAsistStatus('No reconocí semana/línea/turno.', true); return; }
+    if(typeof render==='function') render();
+    setAsistStatus('✓ Filtro aplicado: '+partes.join(' · ')); return;
+  }
+
+  if(act.accion==='fechas'){
+    if(!act.desde){ setAsistStatus('No reconocí la fecha.', true); return; }
+    const set=(id,v)=>{ const el=document.getElementById(id); if(el&&v) el.value=v; };
+    const hasta=act.hasta||act.desde;
+    const d1=(act.desde<=hasta?act.desde:hasta), d2=(act.desde<=hasta?hasta:act.desde);
+    set('f-periodo','ALL');
+    set('f-anio', String(parseInt(d1.slice(0,4),10)));
+    set('f-desde', d1); set('f-hasta', d2);
+    if(typeof render==='function') render();
+    setAsistStatus('✓ Filtro por fecha: '+d1+(d2!==d1?(' → '+d2):''));
+    return;
+  }
+
+  if(act.accion==='columna'){
+    const key = act.col || _resolverColumna(_norm(act.columna||''));
+    if(!key || !(key in colSel)){ setAsistStatus('No identifiqué qué columna.', true); return; }
+    colSel[key] = (act.op!=='del');
+    try{ localStorage.setItem(COL_SEL_KEY, JSON.stringify(colSel)); }catch(e){}
+    if(typeof render==='function') render();
+    setAsistStatus('✓ Columna "'+_labelColumna(key)+'" '+(act.op==='del'?'quitada':'agregada')); return;
+  }
+
+  // resaltar / filtrar por campo+valor
+  const color=ASIST_COLORS[_norm(act.color)]||act.color||'#F8C040';
+  const val=_norm(act.valor);
+  if(!act.campo||!val){ setAsistStatus('Falta el campo o el valor.', true); return; }
+  let n=0;
+  document.querySelectorAll('#content tbody tr[data-rowid]').forEach(tr=>{
+    const v=_norm(_valorCampoFila(tr, act.campo));
+    const match=v.includes(val);
+    if(act.accion==='filtrar'){ tr.style.display=match?'':'none'; if(match)n++; }
+    else { if(match){ tr.setAttribute('data-hl',color);
+      tr.querySelectorAll('td').forEach(td=>{ td.style.background=color; td.style.color='#1a1915'; }); n++; } }
+  });
+  setAsistStatus(n?`✓ ${n} fila(s) ${act.accion==='filtrar'?'filtradas':'resaltadas'}`:'Sin coincidencias.', n===0);
+}
+
+function parseComandoLocal(texto){
+  const t=_norm(texto);
+  if(!t) return null;
+
+  // limpiar filtros
+  if(/(limpi|borr|quit|saca|reset).*(filtro)/.test(t) || /^limpiar filtros/.test(t))
+    return { accion:'limpiarFiltros' };
+  // limpiar colores
+  if(/(limpi|borr|quit|saca).*(color|resalt|marca)|^limpiar$|^reset/.test(t))
+    return { accion:'limpiar' };
+
+  // agregar / quitar columna
+  if(/\bcolumnas?\b/.test(t)){
+    const op = /(saca|quit|elimin|ocult|borra|sin )/.test(t) ? 'del' : 'add';
+    const col = _resolverColumna(t);
+    if(col) return { accion:'columna', op, col };
+  }
+
+  // filtros por semana / línea / turno
+  if(/filtr|mostrar|ver |deja|^solo |dejar solo/.test(t)){
+    const f=_extraerFiltros(t);
+    if(f.semana||f.linea||f.turno) return Object.assign({ accion:'filtros' }, f);
+  }
+
+  // filtro por fecha o rango de fechas
+  if(/filtr|mostrar|\bver\b|fecha|desde|hasta|entre|\bdel\b|\bel \d/.test(t)){
+    const fs=_buscarFechas(t);
+    if(fs.length) return { accion:'fechas', desde:fs[0], hasta:(fs[1]||fs[0]) };
+  }
+
+  // resaltar / filtrar por campo+valor
+  let accion=null;
+  if(/resalt|marc|pint|color/.test(t)) accion='resaltar';
+  else if(/filtr|deja solo|mostrar solo|solo (las|los)/.test(t)) accion='filtrar';
+  if(!accion) return null;
+  let color=null;
+  for(const k in ASIST_COLORS){ if(t.includes(k)){ color=k; break; } }
+  const campos=[
+    [/pedido/, 'PEDIDO'], [/articulo|producto/, 'ARTICULO'], [/destino/, 'Destino'],
+    [/\blinea\b|\bl[123]\b/, 'LINEA'], [/turno/, 'TURNO'],
+    [/\bop\b|orden sap|\borden\b|\bsap\b/, 'ORDEN SAP'],
+    [/ccu|sku/, 'CODIGO CCU'], [/cosecha|grado/, 'COSECHA - GRADO'],
+    [/observa/, 'OBSERVACIONES'], [/sustituto/, 'ORDEN SUSTITUTO']
+  ];
+  let campo=null;
+  for(const [re,name] of campos){ if(re.test(t)){ campo=name; break; } }
+  if(!campo) return null;
+  let valor=null;
+  const mNum=t.match(/(\d{2,})/);
+  if(mNum) valor=mNum[1];
+  if(!valor){ const mq=texto.match(/"([^"]+)"|'([^']+)'/); if(mq) valor=mq[1]||mq[2]; }
+  if(!valor) return null;
+  return { accion, campo, valor, color };
+}
+async function asistenteEjecutar(){
+  const inp=document.getElementById('asistente-input');
+  const texto=((inp&&inp.value)||'').trim();
+  if(!texto) return;
+  setAsistStatus('Procesando…');
+  const local=parseComandoLocal(texto);
+  if(local){ aplicarAccionAsistente(local); return; }
+  try{
+    setAsistStatus('Consultando asistente IA…');
+    const res=await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:'asistente', texto }) });
+    let j;
+    const raw = await res.text();
+    try { j = JSON.parse(raw); }
+    catch(_){ throw new Error('Respuesta no-JSON (HTTP '+res.status+'): '+raw.slice(0,160)); }
+    if(j.status!=='success'||!j.act) throw new Error(j.msg || ('sin respuesta ('+(j.status||res.status)+')'));
+    aplicarAccionAsistente(j.act);
+  }catch(e){
+    console.error(e);
+    setAsistStatus('IA: '+(e.message||e), true);
+  }
+}
+
+let _asistRec = null;
+function asistenteVoz(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ setAsistStatus('Tu navegador no soporta dictado por voz (usá Chrome o Edge).', true); return; }
+  const btn = document.getElementById('asistente-mic');
+  // Si ya está escuchando, cortar
+  if(_asistRec){ try{ _asistRec.stop(); }catch(e){} _asistRec=null; if(btn) btn.textContent='🎤'; return; }
+
+  const rec = new SR();
+  _asistRec = rec;
+  rec.lang = 'es-AR';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  rec.continuous = false;
+
+  rec.onstart = () => { if(btn) btn.textContent='🔴'; setAsistStatus('Escuchando… hablá ahora'); };
+  rec.onerror = (ev) => {
+    setAsistStatus(ev.error==='not-allowed'
+      ? 'Permiso de micrófono denegado. Habilitalo en el candado de la barra del navegador.'
+      : 'Error de voz: '+ev.error, true);
+  };
+  rec.onend = () => { if(btn) btn.textContent='🎤'; _asistRec=null; };
+  rec.onresult = (ev) => {
+    const texto = ev.results[0][0].transcript.trim();
+    const inp = document.getElementById('asistente-input');
+    if(inp) inp.value = texto;
+    setAsistStatus('🗣 "'+texto+'"');
+    asistenteEjecutar();
+  };
+
+  try { rec.start(); }
+  catch(e){ setAsistStatus('No pude iniciar el micrófono.', true); _asistRec=null; if(btn) btn.textContent='🎤'; }
+}
+
+function renderLinea(L, D, color) {
+  const rows = D.rows.sort((a,b) => (a.fecha||0) - (b.fecha||0));
+  const colDefs = buildColDefs();
+  const totalL = rows.reduce((a,r)=>a+r.litros,0);
+  const totalC = rows.reduce((a,r)=>a+(r.cajas||0),0);
+  const totalB = rows.reduce((a,r)=>a+(r.botellas||0),0);
+
+  if (rows.length === 0) {
+    return `
+      <div class="line-sec">
+        <div class="line-title">
+          <span class="dot" style="background:${color}"></span>
+          Línea ${L.replace('L','')}
+          <span class="meta"><span style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700">Sin programas</span></span>
+        </div>
+        <div class="section-empty">— sin datos en el período —</div>
+      </div>`;
+  }
+
+  const turnoOrder = { TM:1, TT:2, TN:3, 'S/D':9 };
+  const turnos = Object.entries(D.turnos)
+    .filter(([,v])=>v.count>0)
+    .sort((a,b)=>(turnoOrder[a[0]]||5)-(turnoOrder[b[0]]||5));
+
+  const turnoCards = turnos.map(([t,v]) => `
+    <div class="turno-card ${t.toLowerCase()==='tm'?'':t.toLowerCase()==='tt'?'tt':t.toLowerCase()==='tn'?'tn':'sd'}">
+      <div class="t-lbl">Turno ${t}</div>
+      <div class="t-val">${fmtNum(v.litros)} <span style="font-size:10px;font-weight:500;color:var(--muted)">L</span></div>
+      <div class="t-sub">${v.count} programa${v.count!==1?'s':''} · ${fmtNum(v.cajas)} cajas</div>
+    </div>`).join('');
+
+  // ── Detectar turno predominante por día (para hora de inicio) ──────────
+  const turnosPorDia = {};
+  rows.forEach(r => {
+    const k = fechaKey(r.fecha);
+    if (!turnosPorDia[k]) turnosPorDia[k] = new Set();
+    turnosPorDia[k].add(r.turno);
+  });
+
+  // ── Construir filas con alistamiento intercalado ───────────────────────
+  const ALIST_MIN = 30;
+  const DEF_CAMB  = 20;
+  const COLS      = colDefs.length; // total columnas (dinámico)
+
+  let tableRows = '';
+  let diaActual = null;
+  let opIdx = 0;
+  let primeraOpDia = {};
+
+  rows.forEach(r => {
+    const fk = fechaKey(r.fecha);
+
+    // Cambio de día → fila de alistamiento
+    if (fk !== diaActual) {
+      diaActual = fk;
+      const tSet      = turnosPorDia[fk];
+      const hayTM     = tSet.has('TM') || tSet.has('S/D');
+      const inicioMin = (!hayTM && tSet.has('TT')) ? 14*60 : 5*60;
+      const alistFin  = inicioMin + ALIST_MIN;
+
+      tableRows += `
+        <tr class="alist-row" data-dia-alist="${fk}" data-inicio="${inicioMin}"
+            data-linea-alist="${L}"
+            ondragover="onAlistDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onAlistDrop(event,this,'${L}')">
+          <td colspan="${COLS}" style="
+            background:rgba(59,130,246,0.13);
+            border-left:3px solid #3b82f6;
+            color:#93c5fd;
+            font-size:10px;font-weight:700;letter-spacing:0.14em;
+            text-transform:uppercase;padding:7px 14px;text-align:left">
+            ⚙&nbsp; Alistamiento &nbsp;·&nbsp; ${fmtFecha(r.fecha)}
+            &nbsp;·&nbsp; Inicio: ${minToHHMM(inicioMin)}
+            &nbsp;·&nbsp; Tiempo est.: 30min
+            &nbsp;·&nbsp; Horario: ${minToHHMM(alistFin)}
+          </td>
+        </tr>`;
+
+      
+    }
+
+    // Fila OP
+    const tiempoDisplay = r.tiempoMin !== null ? fmtTiempo(r.tiempoMin) : '—';
+    const inputId = `tc_${L}_${opIdx++}`;
+    const esPrimeraOp = !primeraOpDia[fk];
+    if (esPrimeraOp) primeraOpDia[fk] = true;
+    const defCamb = esPrimeraOp ? 0 : DEF_CAMB;
+
+    const velOpts = [6000,5500,5000,4500,3200,2500,2000,1000];
+    const velDefault = r.nominal > 0 ? r.nominal : 0;
+    const velSel = velOpts.includes(velDefault) ? velDefault
+                 : velOpts.reduce((a,b) => Math.abs(b-velDefault)<Math.abs(a-velDefault)?b:a, velOpts[0]);
+
+    const ctx = { L, velOpts, velSel, inputId, defCamb, tiempoDisplay };
+    tableRows += `
+      <tr data-linea="${L}" data-dia="${fk}" data-rowid="${r.rid}" data-tiempo="${r.tiempoMin !== null ? r.tiempoMin : ''}"
+          data-bots="${r.botsProg}" data-op="${r.op}" draggable="true"
+          ondragstart="onDragStart(event,this)" ondragend="onDragEnd(this)"
+          ondragover="onRowDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onRowDrop(event,this)">
+        ${colDefs.map(c => c.cell(r, ctx)).join('')}
+      </tr>`;
+  });
+
+  const tbodyId = `tbody_${L}`;
+
+  return `
+    <div class="line-sec">
+      <div class="line-title">
+        <span class="dot" style="background:${color}"></span>
+        Línea ${L.replace('L','')}
+        <span class="meta">
+          <span><strong>${rows.length}</strong> programa${rows.length!==1?'s':''}</span>
+          <span><strong>${fmtNum(totalL)}</strong> L</span>
+          <span><strong>${fmtNum(totalC)}</strong> cajas</span>
+          <span><strong>${fmtNum(totalB)}</strong> botellas</span>
+        </span>
+      </div>
+      ${turnoCards ? `<div class="turno-row">${turnoCards}</div>` : ''}
+      <div class="tbl-wrap ${L.toLowerCase()}">
+        <table>
+          <thead><tr>${colDefs.map(c => c.header).join('')}</tr></thead>
+          <tbody id="${tbodyId}">${tableRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+function recalcTiempo(selectEl, L) {
+  const vel = parseFloat(selectEl.value) || 0;
+  const bots = parseFloat(selectEl.dataset.bots) || 0;
+  const tiempoMin = vel > 0 && bots > 0 ? (bots / vel) * 60 : null;
+  const tr = selectEl.closest('tr');
+  if (tr) {
+    tr.dataset.tiempo = tiempoMin !== null ? tiempoMin : '';
+    const tiempoCell = tr.querySelector('.tiempo-cell');
+    if (tiempoCell) tiempoCell.textContent = tiempoMin !== null ? fmtTiempo(tiempoMin) : '—';
+  }
+  recalcHorarios(L);
+}
+// ── Recalcula columna Horario para una línea tras cambio en Tpo Camb ──────
+function recalcHorarios(L) {
+  const tbody = document.getElementById('tbody_' + L);
+  if (!tbody) return;
+
+  const ALIST_MIN   = 30;
+  const COMEDOR_MIN = 45;
+  const COLS        = window.__PROG_COLS || 15;
+  const C_TM        = 11 * 60; // 11:00
+  const C_TT        = 19 * 60; // 19:00
+
+  // Limpiar comedores previos
+  Array.from(tbody.querySelectorAll('.comedor-row')).forEach(tr => tr.remove());
+
+  let cursorMin = 0;
+  let diaActual = null;
+  const primeraOpDia = {};
+  // Por día: Set de índices de comedor ya insertados (0=TM, 1=TT)
+  const comedoresInsertados = {};
+  // Por día: última fila OP procesada (para insertar comedor al final si no cruzó)
+  const ultimaOpDia = {};
+
+  const filas = Array.from(tbody.rows);
+
+  const insertarComedor = (cMin, despuesDeTr) => {
+    const cFin = cMin + COMEDOR_MIN;
+    const cRow = document.createElement('tr');
+    cRow.className = 'comedor-row';
+    cRow.innerHTML = `
+      <td colspan="${COLS}" style="
+        background:rgba(251,146,60,0.13);
+        border-left:3px solid #fb923c;
+        color:#fdba74;
+        font-size:10px;font-weight:700;letter-spacing:0.14em;
+        text-transform:uppercase;padding:7px 14px;text-align:left">
+        🍽&nbsp; Comedor &nbsp;·&nbsp; Inicio: ${minToHHMM(cMin)}
+        &nbsp;·&nbsp; Tiempo: 45min
+        &nbsp;·&nbsp; Horario: ${minToHHMM(cFin)}
+      </td>`;
+    despuesDeTr.after(cRow);
+  };
+
+  // Al cerrar un día: insertar comedores que no se cruzaron
+  const cerrarDia = (fk) => {
+    if (!fk) return;
+    const ins = comedoresInsertados[fk] || new Set();
+    const ultima = ultimaOpDia[fk];
+    if (!ultima) return;
+
+    // Comedor TM: siempre si no fue insertado
+    if (!ins.has(0)) {
+      insertarComedor(C_TM, ultima);
+      ins.add(0);
+      // Si el cursor final del día supera 15:00, agregar TT también
+    }
+    // Comedor TT: si el cursor del día (después de todas las OPs) supera 15:00
+    if (!ins.has(1) && cursorMin >= 15 * 60) {
+      // Buscar la fila comedor TM recién insertada para poner TT después
+      let ref = ultima.nextSibling;
+      while (ref && ref.classList && ref.classList.contains('comedor-row')) ref = ref.nextSibling;
+      const lastComedor = ultima.parentNode.querySelector(`tr.comedor-row[data-c="${fk}-0"]`) || ultima;
+      insertarComedor(C_TT, lastComedor);
+      ins.add(1);
+    }
+  };
+
+  filas.forEach((tr, idx) => {
+    if (tr.classList.contains('alist-row')) {
+      // Cerrar día anterior
+      cerrarDia(diaActual);
+
+      const inicioMin = parseFloat(tr.dataset.inicio);
+      cursorMin = (isFinite(inicioMin) ? inicioMin : 5*60) + ALIST_MIN;
+      diaActual = tr.dataset.diaAlist;
+      comedoresInsertados[diaActual] = new Set();
+      return;
+    }
+
+    if (tr.classList.contains('comedor-row')) return;
+    if (!tr.dataset.linea) return;
+
+    const fk        = tr.dataset.dia || diaActual;
+    const tiempoRaw = tr.dataset.tiempo;
+    const tiempoMin = tiempoRaw !== '' ? parseFloat(tiempoRaw) : null;
+    const inputEl   = tr.querySelector('.tc-input');
+    const horCell   = tr.querySelector('.horario-cell');
+
+    if (!comedoresInsertados[fk]) comedoresInsertados[fk] = new Set();
+
+    const esPrimera = !primeraOpDia[fk];
+    if (esPrimera) primeraOpDia[fk] = true;
+    const cambMin = inputEl ? (parseFloat(inputEl.value) || 0) : 0;
+    cursorMin += cambMin;
+
+    let finOP = tiempoMin !== null && isFinite(tiempoMin) ? cursorMin + tiempoMin : null;
+
+    // ¿La OP cruza comedor TM?
+    if (finOP !== null && !comedoresInsertados[fk].has(0) && cursorMin < C_TM && finOP > C_TM) {
+      finOP += COMEDOR_MIN;
+      comedoresInsertados[fk].add(0);
+      insertarComedor(C_TM, tr);
+    }
+    // ¿La OP cruza comedor TT?
+    if (finOP !== null && !comedoresInsertados[fk].has(1) && cursorMin < C_TT && finOP > C_TT) {
+      finOP += COMEDOR_MIN;
+      comedoresInsertados[fk].add(1);
+      insertarComedor(C_TT, tr);
+    }
+
+    if (finOP !== null) {
+      if (horCell) horCell.textContent = minToHHMM(finOP);
+      cursorMin = finOP;
+    } else {
+      if (horCell) horCell.textContent = '—';
+    }
+
+    ultimaOpDia[fk] = tr;
+  });
+
+  // Cerrar último día
+  cerrarDia(diaActual);
+}
+// =========================================================
+// EXPORTAR (CSV / Portapapeles)
+// =========================================================
+function fmtFechaExport(d) {
+  if (!d) return '';
+  return String(d.getDate()).padStart(2,'0') + '/' +
+         String(d.getMonth()+1).padStart(2,'0') + '/' +
+         d.getFullYear();
+}
+
+const MESES_PLAN_ES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO',
+  'AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+
+// Genera un Google Sheets NUEVO (no toca el plan maestro protegido) con todas
+// las columnas originales del PLAN, pero con las OPs en el orden / día / línea
+// que el usuario dejó arrastrando. Lo único que cambia es la secuencia, FECHA
+// (día) y LINEA; el resto de columnas se clonan verbatim del registro original.
+async function generarPlanEnSheets(btn) {
+  const lineas = ['L1','L2','L3'];
+  const filas = [];
+  let headers = null;
+
+  lineas.forEach(L => {
+    const tbody = document.getElementById('tbody_' + L);
+    if (!tbody) return;
+    Array.from(tbody.rows).forEach(tr => {
+      if (tr.classList.contains('alist-row') || tr.classList.contains('comedor-row')) return;
+      if (!tr.dataset.linea) return;
+      const orig = planRowFull[tr.dataset.rowid];
+      if (!orig) return;
+      if (!headers) headers = Object.keys(orig); // orden de columnas del PLAN original
+
+      const fila = Object.assign({}, orig);      // clon verbatim de las 44 columnas
+
+      // Único cambio permitido: día (FECHA), línea (LINEA) y la secuencia (orden de filas)
+      const mIso = String(tr.dataset.dia || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (mIso) {
+        const yy = +mIso[1], mm = +mIso[2], dd = +mIso[3];
+        fila['FECHA'] = dd + '/' + mm + '/' + yy; // d/m/yyyy como el programa original
+        if ('anio' in fila) fila['anio'] = yy;
+        if ('mes'  in fila) fila['mes']  = MESES_PLAN_ES[mm-1] || fila['mes'];
+      }
+      if ('LINEA' in fila) fila['LINEA'] = String(tr.dataset.linea || '').replace(/^L/i,'');
+
+      filas.push(fila);
+    });
+  });
+
+  if (!filas.length || !headers) {
+    alert('No hay programas para generar con los filtros actuales.');
+    return;
+  }
+
+  const txtOrig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generando…'; }
+  setStatus(`Generando Sheets con ${filas.length} OPs…`);
+
+  try {
+    const nombre = 'VSPT Programa Sem ' + getISOWeek(new Date()) +
+                   ' — ' + new Date().toLocaleString('es-AR');
+    // Sin Content-Type custom → request simple, evita preflight CORS de Apps Script
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ accion: 'crear_plan', nombre, headers, filas })
+    });
+    const j = await res.json();
+    if (j.status !== 'success' || !j.url) throw new Error(j.msg || 'respuesta inválida del servidor');
+    window.open(j.url, '_blank', 'noopener');
+    setStatus(`✓ Plan generado (${filas.length} OPs) — se abrió en una pestaña nueva`);
+    setTimeout(() => setStatus(''), 6000);
+  } catch (e) {
+    console.error(e);
+    alert('No se pudo generar el Sheets: ' + (e.message || e));
+    setStatus('⚠ Error al generar el plan');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = txtOrig || '📋 Generar plan en Sheets'; }
+  }
+}
+
+// Derivar formato del PLAN si no hay match en OPINONA
+function derivarFormato(r) {
+  const ux = String(get(r,'Unidades x caja','unidades_x_caja','UNIDADES_X_CAJA')||'').trim();
+  const cb = String(get(r,'CODIGO BOTELLA','Codigo Botella','codigo_botella')||'').trim();
+  const partes = [];
+  if (ux) partes.push(ux);
+  if (cb) partes.push(cb);
+  return partes.join(' · ') || null;
+}
+// =========================================================
+// DRAG & DROP
+// =========================================================
+let dragSrc = null; // tr que se está arrastrando
+
+function onDragStart(e, tr) {
+  dragSrc = tr;
+  tr.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', ''); // necesario Firefox
+}
+
+function onDragEnd(tr) {
+  tr.classList.remove('dragging');
+  // Limpiar todos los drag-over
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  dragSrc = null;
+}
+
+function onDragLeave(el) {
+  el.classList.remove('drag-over');
+}
+
+// Drop sobre una fila OP existente → insertar antes de ella
+function onRowDragOver(e, tr) {
+  if (!dragSrc || tr === dragSrc) return;
+  if (tr.classList.contains('alist-row') || tr.classList.contains('comedor-row')) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  tr.classList.add('drag-over');
+}
+
+function onRowDrop(e, tr) {
+  e.preventDefault();
+  if (!dragSrc || tr === dragSrc) return;
+  if (tr.classList.contains('alist-row') || tr.classList.contains('comedor-row')) return;
+  tr.classList.remove('drag-over');
+  moverOP(dragSrc, tr.dataset.dia, tr.closest('tbody'), tr);
+}
+
+// Drop sobre fila de alistamiento → insertar como primera OP del día
+function onAlistDragOver(e, tr) {
+  if (!dragSrc) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  tr.classList.add('drag-over');
+}
+
+function onAlistDrop(e, alistTr, L) {
+  e.preventDefault();
+  if (!dragSrc) return;
+  alistTr.classList.remove('drag-over');
+  const dia = alistTr.dataset.diaAlist;
+  const tbody = alistTr.closest('tbody');
+  // Insertar después del alist-row (primera posición del día)
+  moverOP(dragSrc, dia, tbody, alistTr.nextSibling);
+}
+
+function moverOP(srcTr, nuevoDia, tbody, refTr) {
+  const lineaSrc = srcTr.dataset.linea;
+
+  // Determinar línea destino desde el tbody
+  const tbodyId = tbody.id; // formato: tbody_L1 / tbody_L2 / tbody_L3
+  const lineaDst = tbodyId ? tbodyId.replace('tbody_', '') : lineaSrc;
+
+  // Verificar que el día destino existe en ese tbody
+  const diasEnDst = new Set(
+    Array.from(tbody.querySelectorAll('tr.alist-row')).map(tr => tr.dataset.diaAlist)
+  );
+  if (!diasEnDst.has(nuevoDia)) return; // día no existe en destino → no permitir
+
+  // Actualizar data del tr
+  srcTr.dataset.dia   = nuevoDia;
+  srcTr.dataset.linea = lineaDst;
+
+  // Mover el nodo
+  if (refTr) {
+    tbody.insertBefore(srcTr, refTr);
+  } else {
+    tbody.appendChild(srcTr);
+  }
+
+  // Recalcular línea origen y destino
+  if (lineaSrc !== lineaDst) recalcHorarios(lineaSrc);
+  recalcHorarios(lineaDst);
+}
+// =========================================================
+// THEME
+// =========================================================
+function toggleTheme() {
+  document.body.classList.toggle('light');
+  localStorage.setItem('vspt_prog_theme', document.body.classList.contains('light') ? 'light' : 'dark');
+}
+function applyTheme(dark) {
+  document.body.classList.toggle('light', !dark);
+}
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'vspt-theme') applyTheme(!!e.data.dark);
+});
+(function initTheme(){
+  // Si está embebido en iframe, esperar mensaje del padre (default light hasta entonces)
+  const saved = localStorage.getItem('vspt_prog_theme');
+  if (saved === 'dark') document.body.classList.remove('light');
+  else document.body.classList.add('light'); // default light
+})();
+
+// =========================================================
+// INIT
+// =========================================================
+loadAll();
+</script>
+</body>
+</html>
