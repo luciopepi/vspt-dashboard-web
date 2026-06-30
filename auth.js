@@ -31,6 +31,25 @@
   var apiReady = new Promise(function (res) { releaseApi = res; });
   var refreshIv = null;
 
+  // -------- persistencia de sesión (para no re-loguear al cambiar de página) --------
+  var LS_TOK = "vspt_idtoken", LS_EXP = "vspt_idtoken_exp";
+  function saveToken() {
+    try { localStorage.setItem(LS_TOK, idToken || ""); localStorage.setItem(LS_EXP, String(tokenExp || 0)); } catch (e) {}
+  }
+  function clearToken() {
+    try { localStorage.removeItem(LS_TOK); localStorage.removeItem(LS_EXP); } catch (e) {}
+  }
+  function restoreToken() {
+    try {
+      var t = localStorage.getItem(LS_TOK), e = Number(localStorage.getItem(LS_EXP)) || 0;
+      if (t && (e - Date.now()) > 2 * 60 * 1000) {   // queda >2 min de vida
+        idToken = t; tokenExp = e; return true;
+      }
+    } catch (e) {}
+    clearToken();
+    return false;
+  }
+
   // ---------------------------------------------------------- utils
   function decodeJwt(t) {
     try {
@@ -95,6 +114,7 @@
     // cuenta válida del dominio
     idToken  = jwt;
     tokenExp = Number(claims.exp) * 1000;
+    saveToken();            // recordar la sesión para no re-loguear al cambiar de página
     clearError();
     removeOverlay();
     releaseApi();           // deja correr los pedidos a la API que estaban en espera
@@ -113,9 +133,9 @@
   }
 
   // --------------------------------------------------------- init GIS
-  function initGis() {
+  function initGis(silent) {
     if (!(window.google && google.accounts && google.accounts.id)) {
-      return setTimeout(initGis, 120);   // todavía no cargó https://accounts.google.com/gsi/client
+      return setTimeout(function () { initGis(silent); }, 120);   // todavía no cargó el gsi/client
     }
     if (CLIENT_ID.indexOf("PEGAR_AQUI") === 0) {
       showError("Configuraci&oacute;n pendiente: falta el CLIENT_ID en <b>auth.js</b>.");
@@ -130,7 +150,10 @@
       itp_support: true,
       hd: ALLOWED_DOMAIN            // pista para limitar el selector de cuentas al dominio
     });
-    google.accounts.id.renderButton(document.getElementById("vspt-gsi-btn"), {
+    if (silent) return;            // ya hay sesión guardada: GIS queda listo para refrescar, sin pedir nada
+
+    var btnEl = document.getElementById("vspt-gsi-btn");
+    if (btnEl) google.accounts.id.renderButton(btnEl, {
       theme: "filled_black", size: "large", text: "signin_with",
       shape: "pill", logo_alignment: "center", width: 280
     });
@@ -154,7 +177,16 @@
   }
 
   // ------------------------------------------------------------ arranque
-  function boot() { buildOverlay(); initGis(); }
+  function boot() {
+    if (restoreToken()) {        // ya hay sesión válida guardada → entra directo, sin login
+      releaseApi();
+      startRefreshLoop();
+      initGis(true);             // GIS en segundo plano (para refrescar el token cuando venza)
+    } else {
+      buildOverlay();
+      initGis(false);
+    }
+  }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
   } else { boot(); }
