@@ -7,7 +7,7 @@
      • Adjunta el id_token de Google a CADA pedido a la API (script.google.com)
        y RETIENE esos pedidos hasta que haya sesión iniciada.
      • Renueva el token solo (sin molestar) en pantallas que quedan prendidas.
-
+ 
    IMPORTANTE: esto es la PUERTA + la experiencia de usuario. La verificación
    REAL la hace el Apps Script (01_API.gs): sin un id_token válido de un correo
    @vspt.com.ar, la API no devuelve datos. Por eso este archivo no es "salteable".
