@@ -610,7 +610,9 @@ function cargarDemo(){
   savedState=snap(); undoStack=[]; dirty=false; updateUI();
   setStatus("DATOS DE EJEMPLO (demo)","ok");
 }
-function normAsig(o){ return {semana:str(o.semana),turno:str(o.turno).toUpperCase(),linea:str(o.linea),puesto:str(o.puesto),nombre:str(o.nombre),horario:str(o.horario),supervisor:str(o.supervisor),orden:Number(o.orden)||0}; }
+// LINEA → "1"|"2"|"3"|"" — tolera basura heredada ("L1.0","L3.0","3.0", etc.)
+function normLinea(v){ const s=str(v); const m=s.match(/\d+/); if(!m) return ""; const n=parseInt(m[0],10); return (n===1||n===2||n===3)?String(n):""; }
+function normAsig(o){ return {semana:str(o.semana),turno:str(o.turno).toUpperCase(),linea:normLinea(o.linea),puesto:str(o.puesto),nombre:str(o.nombre).replace(/\s*\.\s*$/,""),horario:str(o.horario),supervisor:str(o.supervisor),orden:Number(o.orden)||0}; }
 function normPers(o){ return {nombre:str(o.nombre),tipo:str(o.tipo).toUpperCase(),agencia:str(o.agencia),brigada:str(o.brigada).toUpperCase()==="SI"?"SI":"NO",convenio:str(o.convenio).toUpperCase()==="FC"?"FC":"DC",estado:(str(o.estado)||"activo").toLowerCase(),motivo:str(o.motivo),vac_desde:str(o.vac_desde),vac_hasta:str(o.vac_hasta)}; }
 function str(v){ return v==null?"":String(v).trim(); }
 
