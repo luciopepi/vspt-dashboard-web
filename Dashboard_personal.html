@@ -302,22 +302,8 @@
   <span style="flex:1"></span>
   <button class="btn ghost" id="btnUndo" onclick="deshacer()" disabled>↶ Deshacer</button>
   <button class="btn olive" onclick="guardar()">💾 Guardar cambios</button>
-  <button class="btn primary" id="btnGenerar" onclick="generarTurno()" title="Guardá los cambios antes de enviar">📤 Generar turno + Gmail</button>
+  <button class="btn primary" id="btnGenerar" onclick="abrirModalTurno()" title="Elegí destinatarios antes de enviar">📤 Generar turno + Gmail</button>
   <button class="btn accent" id="btnConsultora" onclick="mailConsultora()" title="Mail con los eventuales y su turno para la consultora">📋 Mail para consultora</button>
-</div>
-<div class="toolbar" style="border-top:none;padding-top:0">
-  <div class="cfg-rows" style="flex:1">
-    <div class="cfg-row">
-      <label>✉️ Turno a</label>
-      <input type="text" id="emails" placeholder="correo1@empresa.com, correo2@empresa.com" style="flex:1;min-width:280px" onchange="guardarConfig()">
-      <span class="hint" id="cfgHint" style="margin:0"></span>
-    </div>
-    <div class="cfg-row">
-      <label>📋 Consultora a</label>
-      <input type="text" id="emailsConsultora" placeholder="correos de la consultora (Randstad)" style="flex:1;min-width:280px" onchange="guardarConfig()">
-      <span class="hint" id="cfgHintCons" style="margin:0"></span>
-    </div>
-  </div>
 </div>
 
 <div class="tab-nav2">
@@ -424,6 +410,11 @@
       <button class="cons-close" onclick="cerrarConsultora()" title="Cerrar">✕</button>
     </div>
     <div class="cons-body">
+      <div class="cfg-row" style="margin-bottom:14px">
+        <label>📋 Consultora a</label>
+        <input type="text" id="emailsConsultora" placeholder="correos de la consultora (Randstad)" style="flex:1;min-width:280px" onchange="guardarConfig()">
+        <span class="hint" id="cfgHintCons" style="margin:0"></span>
+      </div>
       <label class="cons-lab">Notas (feriados, bajas, cambios de horario) — se incluyen arriba del listado en el mail</label>
       <textarea id="notasConsultora" class="cons-notas" rows="4" oninput="guardarNotasConsultora()"></textarea>
       <div class="cons-prev-lab">Listado de eventuales (esta imagen es la que se pega en el mail)</div>
@@ -434,6 +425,28 @@
       <button class="btn olive" onclick="copiarImagenConsultora()">📋 Copiar imagen</button>
       <button class="btn ghost" onclick="descargarImagenConsultora()">⬇️ Descargar imagen</button>
       <span class="hint" id="consHint" style="margin-left:auto"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Generar turno + Gmail ===== -->
+<div class="cons-overlay" id="turnoModal">
+  <div class="cons-dialog" style="max-width:560px">
+    <div class="ch">
+      <h3>📤 Generar <span>turno</span> — semana <span id="turnoSemana"></span></h3>
+      <button class="cons-close" onclick="cerrarModalTurno()" title="Cerrar">✕</button>
+    </div>
+    <div class="cons-body">
+      <div class="cfg-row">
+        <label>✉️ Turno a</label>
+        <input type="text" id="emails" placeholder="correo1@empresa.com, correo2@empresa.com" style="flex:1;min-width:280px" onchange="guardarConfig()">
+        <span class="hint" id="cfgHint" style="margin:0"></span>
+      </div>
+      <p class="hint" style="margin-top:10px">Se genera la planilla en Sheets y se abre Gmail con estos destinatarios y el link.</p>
+    </div>
+    <div class="cons-actions">
+      <button class="btn primary" onclick="generarTurnoDesdeModal()">📤 Generar y enviar</button>
+      <button class="btn ghost" onclick="cerrarModalTurno()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1414,6 +1427,17 @@ async function guardarConfig(){
     $("#cfgHint").textContent = r.status==="success" ? "destinatarios guardados ✓" : "error al guardar";
     setTimeout(()=>$("#cfgHint").textContent="",2500);
   }catch(e){ $("#cfgHint").textContent="error"; }
+}
+function abrirModalTurno(){
+  if(!curWeek()){ alert("No hay semana seleccionada."); return; }
+  $("#turnoSemana").textContent = curWeek();
+  $("#cfgHint").textContent = "";
+  $("#turnoModal").classList.add("open");
+}
+function cerrarModalTurno(){ $("#turnoModal").classList.remove("open"); }
+function generarTurnoDesdeModal(){
+  cerrarModalTurno();
+  generarTurno();
 }
 async function generarTurno(){
   if(dirty){ alert("Primero guardá los cambios.\nEl turno debe quedar registrado en la base de datos antes de enviarlo."); return; }
