@@ -784,6 +784,8 @@ const getMTO       = r => String(get(r,'MTO/OP','mto/op','MTO_OP','mto_op')||'')
 const getFecha     = r => toDate(get(r,'Fecha','fecha'));
 const getPTA       = r => String(get(r,'Cambio Formato PT A','Cambio_Formato_PT_A','cambio_formato_pt_a')||'').trim();
 const getPTB       = r => String(get(r,'Cambio Formato PT B','Cambio_Formato_PT_B','cambio_formato_pt_b')||'').trim();
+const getUnidades  = r => parseNum(get(r,'N° Unidades','N°_Unidades','N Unidades','n_unidades','unidades','Unidades','UNIDADES'));
+const getCodBotella= r => String(get(r,'codigo_botella','codigo botella','Codigo_Botella','CODIGO_BOTELLA','codigo botella')||'').trim();
 
 window.addEventListener('load', init);
 
@@ -1121,6 +1123,7 @@ function procesarMetricas(data) {
   const hlPorTipo = {};
   const fallasPorSemana = {}; // { semana: horas }
   const lotesPorSemana = {}; // { semana: { suma, count } }
+  const botellasUnid = {}; // { codigo_botella: N° unidades producidas }
 
   data.forEach(r => {
     const v = getVarTiempo(r);
@@ -1131,6 +1134,14 @@ function procesarMetricas(data) {
     const isSemielab = te === 'LLENADO'; // solo "LLENADO" puro (no "LLENADO+VESTIDO")
     const cajasFila = getCajas(r);
     const c9l = getC9L(r);
+
+    // Botellas producidas por código (en N° de unidades). Se excluyen filas sin
+    // código real ('', '-', '0') para no ensuciar el Pareto.
+    const codBot = getCodBotella(r);
+    const uBot = getUnidades(r);
+    if (uBot > 0 && codBot && codBot !== '-' && codBot !== '0') {
+      botellasUnid[codBot] = (botellasUnid[codBot] || 0) + uBot;
+    }
 
     tot += v;
     if (tPor[cls] !== undefined) tPor[cls] += v;
@@ -1218,7 +1229,7 @@ function procesarMetricas(data) {
   return {
     tot, tConPersonal, tEfectivo, tProdDisp, tActualProd, tOperacion, tTeorico, perdidasVel,
     tiempoPorClasif: tPor, opi,
-    cajas, semielaborado, pni, pctPNI, lotePromedio, cajasList, lotesPorSemana,
+    cajas, semielaborado, pni, pctPNI, lotePromedio, cajasList, lotesPorSemana, botellasUnid,
     c9lTotal, hlTotal, hlPorFecha, hlPorFechaTurno, hlPorFechaTipo, hlPorTipo, fallasPorSemana,
     paros, fallasOrg, fallasEqMTO, fallasEqOP, paradasExtEq, lineas
   };
@@ -1561,6 +1572,12 @@ function renderTab(tabId, data) {
       <div class="chart-title">${tabBadge} Histograma de Tamaño de Lote <span class="hint">bins fijos de 150 cajas</span></div>
       <div id="chart-${tabId}-hist" style="height:260px;"></div>
     </div>
+
+    <div class="section-title">Botellas Producidas — Pareto (N° de unidades)</div>
+    <div class="chart-card full">
+      <div class="chart-title">${tabBadge} Producción por Código de Botella <span class="hint">de mayor a menor · línea de acumulado con corte al 80% del volumen</span></div>
+      <div id="chart-${tabId}-botellas" style="height:360px;"></div>
+    </div>
     <button class="collapse-btn" onclick="toggleCollapse('collapse-${tabId}-lotesem', this)" aria-expanded="false">
       <span class="collapse-label">Evolución del Tamaño de Lote Promedio por Semana</span>
       <span class="collapse-arrow">▼</span>
@@ -1614,6 +1631,7 @@ function renderTab(tabId, data) {
   drawFallaPareto(tabId);
 
   drawHistograma(`chart-${tabId}-hist`, m.cajasList, themeColor);
+  drawBotellasPareto(`chart-${tabId}-botellas`, m.botellasUnid, themeColor);
 
   // Colapsables: dibujar solo si están visibles (o se dibujan al abrir)
   pendingCharts[`chart-${tabId}-fallasem`] = () => drawFallaSemana(`chart-${tabId}-fallasem`, m.fallasPorSemana, '#D81840');
@@ -1974,6 +1992,83 @@ function drawHistograma(id, cajasList, color) {
     colors: [color],
     plotOptions: { bar:{ borderRadius:4, columnWidth:'70%', dataLabels:{position:'top'} } },
     dataLabels: { enabled:true, offsetY:-18, style:{fontSize:'10px',colors:[getTextColor()]} },
+    grid: { borderColor:getGridColor(), strokeDashArray:4 }
+  });
+}
+
+// Pareto de botellas producidas (N° de unidades), de mayor a menor, con línea
+// de % acumulado y corte al 80% del volumen. Reacciona a los filtros porque se
+// alimenta de las métricas ya filtradas (m.botellasUnid) en cada renderTab.
+function drawBotellasPareto(id, botellasUnid, color) {
+  const el = document.querySelector('#'+id);
+  const sorted = Object.entries(botellasUnid || {}).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+  if (!sorted.length) { if (el) el.innerHTML = '<div class="no-data">Sin producción de botellas en el período</div>'; return; }
+
+  const MAX_BARS = 40;
+  const shown = sorted.slice(0, MAX_BARS);
+  const tot = sorted.reduce((a,[,v]) => a+v, 0);
+
+  const cats = [], barData = [], cumData = [];
+  let cum = 0, idx80 = -1;
+  shown.forEach(([k,v], i) => {
+    cum += v;
+    cats.push(k);
+    barData.push(v);
+    const cumPct = tot > 0 ? (cum/tot)*100 : 0;
+    cumData.push(Number(cumPct.toFixed(1)));
+    if (idx80 < 0 && cumPct >= 80) idx80 = i; // primer código que alcanza el 80%
+  });
+  if (idx80 < 0) idx80 = shown.length - 1;
+  const nVitales = idx80 + 1;
+
+  const fmt = v => v >= 1e6 ? (v/1e6).toFixed(2)+'M' : v >= 1e3 ? Math.round(v/1e3)+'k' : String(Math.round(v));
+
+  // Banda que resalta los códigos "pocos vitales" (hasta el 80%)
+  const xann = [{
+    x: cats[0], x2: cats[idx80],
+    fillColor: color, opacity: isDark ? 0.14 : 0.09, borderColor: 'transparent',
+    label: {
+      text: `${nVitales} código${nVitales>1?'s':''} = 80% del volumen`,
+      position: 'top', orientation: 'horizontal', offsetY: -2,
+      style: { color:'#fff', background: color, fontSize:'10px', fontWeight:700, padding:{left:6,right:6,top:3,bottom:3} }
+    }
+  }];
+  const yann = [{
+    y: 80, yAxisIndex: 1, borderColor: '#F08808', strokeDashArray: 6, borderWidth: 2,
+    label: { position:'right', text:'80%', style:{ color:'#fff', background:'#F08808', fontSize:'10px', fontWeight:700 } }
+  }];
+
+  drawChart(id, {
+    series: [
+      { name:'N° Unidades', type:'column', data: barData },
+      { name:'% Acumulado', type:'line',   data: cumData }
+    ],
+    chart: { type:'line', height:360, toolbar:{show:false}, foreColor:getTextColor(), fontFamily:'Montserrat', animations:{enabled:true} },
+    stroke: { width:[0,3], curve:'straight' },
+    markers: { size:[0,4], strokeWidth:0, hover:{size:6} },
+    colors: [color, '#F08808'],
+    plotOptions: { bar:{ borderRadius:4, columnWidth:'62%' } },
+    dataLabels: {
+      enabled:true, enabledOnSeries:[0],
+      formatter:(v,o) => o.seriesIndex === 0 ? fmt(v) : '',
+      offsetY:-18, style:{ fontSize:'9px', colors:[getTextColor()] }
+    },
+    xaxis: { categories: cats, labels:{ style:{fontSize:'9px'}, rotate:-45, rotateAlways:true, trim:true } },
+    yaxis: [
+      { seriesName:'N° Unidades',
+        title:{ text:'N° de unidades', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
+        labels:{ style:{fontSize:'10px'}, formatter:v => fmt(v) } },
+      { seriesName:'% Acumulado', opposite:true, min:0, max:100, tickAmount:5,
+        title:{ text:'% acumulado', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
+        labels:{ style:{fontSize:'10px'}, formatter:v => Math.round(v)+'%' } }
+    ],
+    annotations: { xaxis: xann, yaxis: yann },
+    tooltip: {
+      shared:true, intersect:false,
+      x: { formatter:v => 'Botella '+v },
+      y: { formatter:(v,o) => o.seriesIndex === 1 ? v.toFixed(1)+'% acumulado' : Math.round(v).toLocaleString('es-AR')+' unidades' }
+    },
+    legend: { position:'top', horizontalAlign:'right', fontSize:'11px', fontWeight:600, markers:{width:10,height:10} },
     grid: { borderColor:getGridColor(), strokeDashArray:4 }
   });
 }
