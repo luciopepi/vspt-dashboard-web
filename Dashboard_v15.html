@@ -1573,11 +1573,6 @@ function renderTab(tabId, data) {
       <div id="chart-${tabId}-hist" style="height:260px;"></div>
     </div>
 
-    <div class="section-title">Botellas Producidas — Pareto (N° de unidades)</div>
-    <div class="chart-card full">
-      <div class="chart-title">${tabBadge} Producción por Código de Botella <span class="hint">de mayor a menor · línea de acumulado con corte al 80% del volumen</span></div>
-      <div id="chart-${tabId}-botellas" style="height:360px;"></div>
-    </div>
     <button class="collapse-btn" onclick="toggleCollapse('collapse-${tabId}-lotesem', this)" aria-expanded="false">
       <span class="collapse-label">Evolución del Tamaño de Lote Promedio por Semana</span>
       <span class="collapse-arrow">▼</span>
@@ -1586,6 +1581,16 @@ function renderTab(tabId, data) {
       <div class="chart-card full">
         <div class="chart-title">${tabBadge} Lote Promedio por Semana <span class="hint">con línea de tendencia</span></div>
         <div id="chart-${tabId}-lotesem" style="height:300px;"></div>
+      </div>
+    </div>
+    <button class="collapse-btn" onclick="toggleCollapse('collapse-${tabId}-botellas', this)" aria-expanded="false">
+      <span class="collapse-label">Botellas Producidas — Pareto (N° de unidades)</span>
+      <span class="collapse-arrow">▼</span>
+    </button>
+    <div class="collapsible" id="collapse-${tabId}-botellas" style="display:none;">
+      <div class="chart-card full">
+        <div class="chart-title">${tabBadge} Producción por Código de Botella <span class="hint">de mayor a menor · línea de acumulado con corte al 80% del volumen</span></div>
+        <div id="chart-${tabId}-botellas" style="height:360px;"></div>
       </div>
     </div>
   `;
@@ -1631,14 +1636,15 @@ function renderTab(tabId, data) {
   drawFallaPareto(tabId);
 
   drawHistograma(`chart-${tabId}-hist`, m.cajasList, themeColor);
-  drawBotellasPareto(`chart-${tabId}-botellas`, m.botellasUnid, themeColor);
 
   // Colapsables: dibujar solo si están visibles (o se dibujan al abrir)
   pendingCharts[`chart-${tabId}-fallasem`] = () => drawFallaSemana(`chart-${tabId}-fallasem`, m.fallasPorSemana, '#D81840');
   pendingCharts[`chart-${tabId}-lotesem`]  = () => drawLoteSemana(`chart-${tabId}-lotesem`, m.lotesPorSemana, themeColor);
+  pendingCharts[`chart-${tabId}-botellas`] = () => drawBotellasPareto(`chart-${tabId}-botellas`, m.botellasUnid, themeColor);
 
   if (document.getElementById(`collapse-${tabId}-fallasem`)?.style.display === 'block') pendingCharts[`chart-${tabId}-fallasem`]();
   if (document.getElementById(`collapse-${tabId}-lotesem`)?.style.display === 'block')  pendingCharts[`chart-${tabId}-lotesem`]();
+  if (document.getElementById(`collapse-${tabId}-botellas`)?.style.display === 'block') pendingCharts[`chart-${tabId}-botellas`]();
 }
 
 function getTextColor() { return isDark ? '#c9b8c4' : '#7a627a'; }
@@ -2008,11 +2014,15 @@ function drawBotellasPareto(id, botellasUnid, color) {
   const shown = sorted.slice(0, MAX_BARS);
   const tot = sorted.reduce((a,[,v]) => a+v, 0);
 
+  // Muestra el código con un máximo de 3 ceros a la izquierda (recorta la
+  // "cola" de ceros de padding pero mantiene el resto del código intacto).
+  const shortCod = k => k.replace(/^0+/, m => '0'.repeat(Math.min(3, m.length)));
+
   const cats = [], barData = [], cumData = [];
   let cum = 0, idx80 = -1;
   shown.forEach(([k,v], i) => {
     cum += v;
-    cats.push(k);
+    cats.push(shortCod(k));
     barData.push(v);
     const cumPct = tot > 0 ? (cum/tot)*100 : 0;
     cumData.push(Number(cumPct.toFixed(1)));
@@ -2053,7 +2063,7 @@ function drawBotellasPareto(id, botellasUnid, color) {
       formatter:(v,o) => o.seriesIndex === 0 ? fmt(v) : '',
       offsetY:-18, style:{ fontSize:'9px', colors:[getTextColor()] }
     },
-    xaxis: { categories: cats, labels:{ style:{fontSize:'9px'}, rotate:-45, rotateAlways:true, trim:true } },
+    xaxis: { categories: cats, labels:{ style:{fontSize:'9px'}, rotate:-45, rotateAlways:true, trim:false, hideOverlappingLabels:false, maxHeight:120 } },
     yaxis: [
       { seriesName:'N° Unidades',
         title:{ text:'N° de unidades', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
