@@ -318,7 +318,7 @@
   <div id="tab-grid">
     <div class="asist-bar">
       <span class="ico">🤖</span>
-      <input id="asist-input" type="text" placeholder='Ej: "mover todo el personal de línea 2 turno mañana a línea 3 turno tarde"  ·  "intercambiar línea 1 con línea 3 turno mañana"  ·  "vaciar línea 2 turno tarde"' onkeydown="if(event.key==='Enter')asistEjecutar()">
+      <input id="asist-input" type="text" placeholder='Ej: "mover a roberto cataldo a la armadora de cajas de línea 2"  ·  "mover todo el personal de línea 2 turno mañana a línea 3 turno tarde"  ·  "intercambiar línea 1 con línea 3"  ·  "vaciar línea 2 turno tarde"' onkeydown="if(event.key==='Enter')asistEjecutar()">
       <button class="btn ghost" id="asist-mic" onclick="asistVoz()" title="Dictar por voz">🎤</button>
       <button class="btn accent" onclick="asistEjecutar()">Ejecutar</button>
       <span id="asist-status"></span>
@@ -389,6 +389,7 @@
         <option value="todos">Convenio: todos</option><option value="DC">Dentro (DC)</option><option value="FC">Fuera (FC)</option>
       </select>
       <span style="flex:1"></span>
+      <button class="btn accent" onclick="abrirImportRoster()">📥 Importar listado</button>
       <button class="btn primary" onclick="nuevoPersonal()">➕ Nuevo ingreso</button>
     </div>
     <div class="turno-card">
@@ -447,6 +448,35 @@
     <div class="cons-actions">
       <button class="btn primary" onclick="generarTurnoDesdeModal()">📤 Generar y enviar</button>
       <button class="btn ghost" onclick="cerrarModalTurno()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Importar personas al roster ===== -->
+<div class="cons-overlay" id="importModal">
+  <div class="cons-dialog" style="max-width:640px">
+    <div class="ch">
+      <h3>📥 Importar <span>personas</span> al roster</h3>
+      <button class="cons-close" onclick="cerrarImportRoster()" title="Cerrar">✕</button>
+    </div>
+    <div class="cons-body">
+      <p class="hint" style="margin-top:0">Pegá un listado (un nombre por línea) o subí un archivo <b>.txt / .csv</b>. Cada línea puede llevar opcionalmente tipo y agencia: <b>nombre; tipo (P/E); agencia</b> (separados por «;» o tabulación). Los nombres que ya están en el roster se omiten.</p>
+      <div class="cfg-row" style="margin-bottom:10px">
+        <label>Archivo</label>
+        <input type="file" id="importFile" accept=".txt,.csv,.tsv,text/plain,text/csv" onchange="leerArchivoImport(this)">
+      </div>
+      <div class="cfg-row" style="margin-bottom:10px">
+        <label>Tipo por defecto</label>
+        <select id="importTipo" onchange="previewImport()"><option value="P">P (propio)</option><option value="E" selected>E (eventual)</option></select>
+        <label>Agencia</label>
+        <input type="text" id="importAgencia" placeholder="Randstad / Bayton…" style="width:140px" oninput="previewImport()">
+      </div>
+      <textarea id="importTexto" class="cons-notas" rows="10" placeholder="Perez Juan&#10;Gomez Maria; P&#10;Lopez Carlos; E; Randstad" oninput="previewImport()"></textarea>
+      <p class="hint" id="importPreview" style="margin-bottom:0"></p>
+    </div>
+    <div class="cons-actions">
+      <button class="btn primary" onclick="importarRoster()">📥 Importar</button>
+      <button class="btn ghost" onclick="cerrarImportRoster()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1150,8 +1180,109 @@ function extraerLT(s){
   else if(/noche/.test(s)) turno="NOCHE";
   return {linea,turno};
 }
+// --- Personas por nombre ("mover a roberto cataldo a la armadora de cajas de línea 2") ---
+function _tokensNom(s){ return _normNombre(s).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean); }
+const _STOP_NOM=["a","al","la","el","lo","los","las","de","del","don","dona","sr","sra","senor","senora","turno","linea","lineas","manana","tarde","noche","operario","operaria"];
+// devuelve las personas del roster que mejor matchean el texto (tolera "Roberto Cataldo" ↔ "Cataldo Roberto")
+function buscarPersonas(texto){
+  const qt=_tokensNom(texto).filter(x=>!_STOP_NOM.includes(x)&&!/^\d+$/.test(x));
+  if(!qt.length) return [];
+  let best=[],bestScore=0;
+  PERS.filter(p=>p.estado!=="baja").forEach(p=>{
+    const nt=_tokensNom(p.nombre);
+    if(!qt.every(q=>nt.some(n=>n===q||(q.length>=3&&n.startsWith(q))))) return;
+    const score=qt.length/nt.length;   // prefiere el nombre que el texto cubre más completo
+    if(score>bestScore+1e-9){ bestScore=score; best=[p]; }
+    else if(Math.abs(score-bestScore)<1e-9) best.push(p);
+  });
+  return best;
+}
+// puesto de línea mencionado en el texto (ej. "armadora de cajas") o null
+function extraerPuesto(s){
+  const t=" "+_tokensNom(s).join(" ")+" ";
+  let best=null;
+  [...new Set(PUESTOS)].forEach(pu=>{
+    const k=" "+_tokensNom(pu).join(" ")+" ";
+    if(t.includes(k)&&(!best||k.length>best.k.length)) best={pu,k};
+  });
+  return best?best.pu:null;
+}
+// grupo auxiliar existente de la semana mencionado en el texto (ej. "destajo mañana") o null
+function extraerGrupoAux(s){
+  const st=_tokensNom(s);
+  const cats=[...new Set(ASIG.filter(a=>a.semana===curWeek()&&!a.turno&&!a.linea&&a.puesto&&!a.puesto.startsWith("__")&&!ESTADO_BLOCKS[a.puesto]).map(a=>a.puesto))];
+  let best=null,bl=0;
+  cats.forEach(c=>{
+    const ct=_tokensNom(c).filter(x=>!/^\d+$/.test(x)&&x!=="a");
+    if(ct.length&&ct.every(x=>st.includes(x))&&ct.length>bl){ bl=ct.length; best=c; }
+  });
+  return best;
+}
+function turnoDe(n){ const k=_normNombre(n); const a=ASIG.find(x=>x.semana===curWeek()&&x.turno&&x.nombre&&_normNombre(x.nombre)===k); return a?a.turno:""; }
+function lineaDe(n){ const k=_normNombre(n); const a=ASIG.find(x=>x.semana===curWeek()&&x.linea&&x.nombre&&_normNombre(x.nombre)===k); return a?a.linea:""; }
+function turnoConGente(l){ for(const t of TURNOS){ if(slotsLinea(t,l).some(a=>a.nombre)) return t; } return ""; }
+// "mover/pasar/... a PERSONA a DESTINO" → acción sobre UNA persona (o null si no es una persona)
+function parseMoverPersona(t){
+  const m=t.match(/^\s*(?:mover|pasar|asignar|llevar|trasladar|poner|mandar|cambiar)\s+(?:a\s+)?(.+)$/);
+  if(!m) return null;
+  const partes=m[1].split(/\s+(?:a|al|hacia|en|para)\s+/);
+  if(partes.length<2) return null;
+  const cand=buscarPersonas(partes[0]);
+  if(!cand.length) return null;                 // no nombra a una persona → reglas por línea
+  if(cand.length>1) return {tipo:"persona_ambigua", nombres:cand.map(p=>p.nombre)};
+  const nombre=cand[0].nombre;
+  const destTxt=partes.slice(1).join(" a ");
+  if(/vacacion/.test(destTxt)) return {tipo:"mover_persona",nombre,kind:"estado",estado:"vacaciones"};
+  if(/licencia/.test(destTxt)) return {tipo:"mover_persona",nombre,kind:"estado",estado:"licencia"};
+  if(/disponible|liberar|banca/.test(destTxt)) return {tipo:"mover_persona",nombre,kind:"libre"};
+  const puesto=extraerPuesto(destTxt);
+  const lt=extraerLT(destTxt);
+  if(puesto||lt.linea) return {tipo:"mover_persona",nombre,kind:"linea",puesto,linea:lt.linea,turno:lt.turno};
+  const grupo=extraerGrupoAux(destTxt);
+  if(grupo) return {tipo:"mover_persona",nombre,kind:"aux",grupo};
+  return {tipo:"persona_sin_destino",nombre,dest:destTxt};
+}
+function moverPersonaAsistente(act){
+  const n=act.nombre;
+  if(act.kind==="estado"){
+    pushUndo(); removeNameFromWeek(n); setEstadoByName(n,act.estado); markDirty(); render();
+    if(!$("#tab-roster").classList.contains("hidden")) renderRoster();
+    setAsistStatus(`✓ ${n} → ${act.estado} (fechas y detalle se cargan en la pestaña Personal).`); return;
+  }
+  if(act.kind==="libre"){
+    pushUndo(); removeNameFromWeek(n); reactivarSiInactivo(n); markDirty(); render();
+    setAsistStatus(`✓ ${n} quedó disponible (sin asignación esta semana).`); return;
+  }
+  if(act.kind==="aux"){
+    if(grupoSoloFC(act.grupo)&&!esFC(n)){ setAsistStatus(`"${act.grupo}" solo admite Fuera de Convenio (FC) y ${n} no lo es.`,true); return; }
+    pushUndo(); removeNameFromWeek(n); reactivarSiInactivo(n);
+    const empty=ASIG.find(a=>a.semana===curWeek()&&!a.turno&&!a.linea&&a.puesto===act.grupo&&!a.nombre);
+    if(empty) empty.nombre=n;
+    else ASIG.push({semana:curWeek(),turno:"",linea:"",puesto:act.grupo,nombre:n,horario:auxHorOf(act.grupo),supervisor:"",orden:0});
+    markDirty(); render();
+    setAsistStatus(`✓ ${n} → ${act.grupo}.`); return;
+  }
+  // kind "linea": puesto y/o línea, turno opcional
+  const l=act.linea||lineaDe(n);
+  if(!l){ setAsistStatus(`¿En qué línea? Ej: "mover a ${n.toLowerCase()} a la ${(act.puesto||"encajonadora").toLowerCase()} de línea 2".`,true); return; }
+  const t=act.turno||turnoDe(n)||turnoConGente(l)||"MAÑANA";
+  pushUndo();
+  const rf=_refHorSup(t,l);
+  removeNameFromWeek(n); reactivarSiInactivo(n);
+  const pu=act.puesto||primerPuestoLibre(t,l);
+  const matches=slotsLinea(t,l).filter(a=>a.puesto.toUpperCase()===pu.toUpperCase());
+  let slot=matches.find(a=>!a.nombre)||null, desplazado="";
+  if(!slot&&matches.length&&act.puesto){ slot=matches[0]; desplazado=slot.nombre; }
+  if(slot) slot.nombre=n;
+  else ASIG.push({semana:curWeek(),turno:t,linea:l,puesto:pu,nombre:n,horario:rf.horario||"",supervisor:rf.supervisor||"",orden:nextOrden()});
+  markDirty(); render();
+  setAsistStatus(`✓ ${n} → ${pu} · Línea ${l} · turno ${t.toLowerCase()}${desplazado?` (reemplaza a ${desplazado}, que quedó disponible)`:""}.`);
+}
 function parseComandoLocal(texto){
   const t=texto.toLowerCase().trim();
+  // mover a UNA persona por su nombre (va antes que las reglas por línea, para no mover toda la línea)
+  const mp=parseMoverPersona(t);
+  if(mp) return mp;
   // intercambiar L con L
   if(/(intercambi|swap|permut)/.test(t) && /\bcon\b/.test(t)){
     const partes=t.split(/\bcon\b/);
@@ -1208,6 +1339,12 @@ function aplicarAccionAsistente(act){
     ASIG=ASIG.filter(a=>!(a.semana===curWeek()&&a.turno===act.t&&a.linea===act.l));
     markDirty(); render();
     setAsistStatus(`✓ Vacié línea ${act.l} turno ${act.t.toLowerCase()} (${before-ASIG.length} quitados).`);
+  } else if(act.tipo==="mover_persona"){
+    moverPersonaAsistente(act);
+  } else if(act.tipo==="persona_ambigua"){
+    setAsistStatus(`Hay varias personas que coinciden: ${act.nombres.slice(0,4).join(" · ")}${act.nombres.length>4?"…":""}. Escribí nombre y apellido.`,true);
+  } else if(act.tipo==="persona_sin_destino"){
+    setAsistStatus(`Entendí mover a ${act.nombre}, pero no reconocí el destino "${act.dest}". Probá un puesto ("armadora de cajas de línea 2"), un grupo ("destajo mañana"), "vacaciones" o "disponible".`,true);
   } else {
     setAsistStatus("No pude interpretar esa acción.",true);
   }
@@ -1217,7 +1354,7 @@ function asistEjecutar(){
   if(!texto) return;
   const act=parseComandoLocal(texto);
   if(act){ aplicarAccionAsistente(act); }
-  else setAsistStatus('No entendí. Probá: "mover personal de línea 2 turno mañana a línea 3 turno tarde", "intercambiar línea 1 con línea 3 turno mañana" o "vaciar línea 2 turno tarde".', true);
+  else setAsistStatus('No entendí. Probá: "mover a roberto cataldo a la armadora de cajas de línea 2", "mover personal de línea 2 turno mañana a línea 3 turno tarde", "intercambiar línea 1 con línea 3" o "vaciar línea 2 turno tarde".', true);
 }
 let _asistRec=null;
 function asistVoz(){
@@ -1413,17 +1550,91 @@ function nuevoPersonal(){
   alert("Agregado. Ahora podés asignarlo a un puesto en la pestaña Distribución.");
 }
 
+// ---------- importar personas al roster (pegar listado o subir archivo) ----------
+function abrirImportRoster(){ $("#importTexto").value=""; $("#importFile").value=""; $("#importPreview").textContent=""; $("#importModal").classList.add("open"); }
+function cerrarImportRoster(){ $("#importModal").classList.remove("open"); }
+function leerArchivoImport(inp){
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ $("#importTexto").value=String(rd.result||""); previewImport(); };
+  rd.onerror=()=>{ $("#importPreview").textContent="No pude leer el archivo."; };
+  rd.readAsText(f,"utf-8");
+}
+// separa una línea en [nombre, tipo, agencia]; la coma solo separa si lo que sigue es un tipo
+// (así "Cataldo, Roberto" se toma como UN nombre y "Gomez Maria, P" como nombre + tipo)
+function _splitLineaImport(ln){
+  if(/[;\t]/.test(ln)) return ln.split(/[;\t]/);
+  if(ln.includes(",")){
+    const parts=ln.split(",");
+    if(parts.length>1 && /^\s*(p|e|propio|eventual)\s*$/i.test(parts[1])) return parts;
+  }
+  return [ln];
+}
+function parseImportRoster(){
+  const defTipo=($("#importTipo").value||"E").toUpperCase()==="P"?"P":"E";
+  const defAg=($("#importAgencia").value||"").trim();
+  const vistos=new Set(PERS.map(p=>_normNombre(p.nombre)));
+  const nuevos=[],dups=[];
+  $("#importTexto").value.split(/\r?\n/).forEach(ln=>{
+    ln=ln.trim(); if(!ln) return;
+    const c=_splitLineaImport(ln).map(s=>s.trim());
+    const nombre=c[0]; if(!nombre) return;
+    if(/^nombre$/i.test(nombre)) return;   // encabezado de un CSV exportado
+    const k=_normNombre(nombre);
+    if(vistos.has(k)){ dups.push(nombre); return; }
+    vistos.add(k);
+    const tipo=(c[1]||defTipo).toUpperCase().startsWith("P")?"P":"E";
+    const agencia=(c[2]!==undefined&&c[2]!=="")?c[2]:(tipo==="E"?defAg:"");
+    nuevos.push({nombre,tipo,agencia,brigada:"NO",convenio:"DC",estado:"activo",motivo:"",vac_desde:"",vac_hasta:""});
+  });
+  return {nuevos,dups};
+}
+function previewImport(){
+  const {nuevos,dups}=parseImportRoster();
+  $("#importPreview").textContent = (nuevos.length||dups.length)
+    ? `${nuevos.length} para agregar`+(dups.length?` · ${dups.length} ya en el roster (se omiten): ${dups.slice(0,5).join(", ")}${dups.length>5?"…":""}`:"")
+    : "";
+}
+function importarRoster(){
+  const {nuevos,dups}=parseImportRoster();
+  if(!nuevos.length){ $("#importPreview").textContent="No hay nombres nuevos para agregar."+(dups.length?` (${dups.length} ya estaban en el roster)`:""); return; }
+  pushUndo();
+  nuevos.forEach(p=>PERS.push(normPers(p)));
+  markDirty(); cerrarImportRoster(); setTab("roster"); renderRoster();
+  setStatus(`${nuevos.length} PERSONA(S) IMPORTADA(S)`+(dups.length?` · ${dups.length} OMITIDA(S)`:""),"ok");
+}
+
 // ---------- nueva semana (carry forward) ----------
+function _fmtDMY(d){ return `${("0"+d.getDate()).slice(-2)}/${("0"+(d.getMonth()+1)).slice(-2)}/${d.getFullYear()}`; }
+// próxima etiqueta libre a partir de la semana base: inicio+7 días → "lunes al viernes"
+function _proximaEtiquetaSemana(base){
+  const s=semStart(base); if(!s) return null;
+  const inicios=new Set(weeks().map(w=>{const d=semStart(w);return d?d.getTime():0;}));
+  const ini=new Date(s.getTime());
+  for(let i=0;i<104;i++){
+    ini.setDate(ini.getDate()+7);
+    if(!inicios.has(ini.getTime())){
+      const fin=new Date(ini.getTime()); fin.setDate(fin.getDate()+4);   // lunes → viernes
+      return `${_fmtDMY(ini)} al ${_fmtDMY(fin)}`;
+    }
+  }
+  return null;
+}
 function nuevaSemana(){
   const base=curWeek(); if(!base){ alert("No hay semana base."); return; }
-  const nueva=prompt("Etiqueta de la nueva semana (ej. 01/06/2026 al 05/06/2026):");
-  if(!nueva) return;
+  // el rango sale solo (semana siguiente a la base); el prompt queda solo como fallback
+  let nueva=_proximaEtiquetaSemana(base);
+  if(!nueva){
+    nueva=prompt("Etiqueta de la nueva semana (ej. 01/06/2026 al 05/06/2026):");
+    if(!nueva) return;
+  }
   if(weeks().includes(nueva)){ alert("Esa semana ya existe."); return; }
   pushUndo();
   ASIG.filter(a=>a.semana===base).forEach(a=>ASIG.push(Object.assign({},a,{semana:nueva})));
   populateWeeks();
   $("#yearSel").value=semYear(nueva); fillWeekSel(false); $("#weekSel").value=nueva; updateRange();
   markDirty(); render();
+  setStatus(`SEMANA ${nueva} CREADA (COPIA DE ${base})`,"ok");
 }
 
 // ---------- guardar / exportar ----------
