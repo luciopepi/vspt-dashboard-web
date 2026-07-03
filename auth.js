@@ -42,7 +42,7 @@
   function restoreToken() {
     try {
       var t = localStorage.getItem(LS_TOK), e = Number(localStorage.getItem(LS_EXP)) || 0;
-      if (t && (e - Date.now()) > 2 * 60 * 1000) {   // queda >2 min de vida
+      if (t && (e - Date.now()) > 10 * 60 * 1000) {  // queda >10 min de vida (un token casi vencido causaba "forbidden" → datos demo)
         idToken = t; tokenExp = e; return true;
       }
     } catch (e) {}
@@ -126,7 +126,7 @@
     if (refreshIv) return;
     refreshIv = setInterval(function () {
       if (!tokenExp) return;
-      if (tokenExp - Date.now() < 6 * 60 * 1000) {   // faltan <6 min para vencer
+      if (tokenExp - Date.now() < 12 * 60 * 1000) {  // faltan <12 min para vencer (3 intentos antes de que muera)
         try { google.accounts.id.prompt(); } catch (e) {}   // re-emite el token sin interacción
       }
     }, 4 * 60 * 1000);
