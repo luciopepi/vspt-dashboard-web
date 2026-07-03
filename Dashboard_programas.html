@@ -261,8 +261,13 @@ tr.drag-over{outline:2px dashed var(--vspt-amber);outline-offset:-2px;background
     style="flex:1;min-width:240px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:inherit"
     onkeydown="if(event.key==='Enter')asistenteEjecutar()">
   <button class="btn-light" id="asistente-mic" onclick="asistenteVoz()" title="Dictar por voz">🎤</button>
+  <button class="btn-light" id="asistP-voz" onclick="_toggleVoz()" title="Leer respuestas en voz alta">🔊</button>
   <button class="btn-clear" onclick="asistenteEjecutar()">Ejecutar</button>
   <span id="asistente-status" style="font-size:11px;color:var(--muted)"></span>
+</div>
+<div id="asistP-chatwrap" style="display:none;background:var(--card);border-bottom:1px solid var(--border);padding:6px 22px;position:relative">
+  <button id="asistP-chatx" title="Cerrar chat" onclick="document.getElementById('asistP-chatwrap').style.display='none'" style="position:absolute;right:14px;top:4px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1">×</button>
+  <div id="asistP-chat" style="max-height:280px;overflow-y:auto;font-size:12px"></div>
 </div>
 
 <div class="content" id="content">
@@ -1155,6 +1160,7 @@ async function asistenteEjecutar(){
   const texto=((inp&&inp.value)||'').trim();
   if(!texto) return;
   setAsistStatus('Procesando…');
+  if(esPregunta(texto)){ preguntarProg(texto); return; }
   const local=parseComandoLocal(texto);
   if(local){ aplicarAccionAsistente(local); return; }
   try{
@@ -1171,6 +1177,57 @@ async function asistenteEjecutar(){
     setAsistStatus('IA: '+(e.message||e), true);
   }
 }
+
+/* ===== Preguntas analíticas (digest + chat + voz de salida) ===== */
+function esPregunta(t){
+  const s=_norm(t); if(!s) return false;
+  if(s.includes('?')) return true;
+  if(/^(que|qué|cual|cuál|cuant|cuánt|cuando|cuándo|quien|quién|como|cómo|por que|por qué|hay |hubo |fue |es |son |dame|decime|mostrame un resumen|analiza|analizá|resumi|resumí|explica|explicá|compara|compará)/.test(s)) return true;
+  if(/\b(top|ranking|tendencia|promedio|comparar|mas alto|más alto|mas bajo|más bajo|peor|mejor|total de|cuanto|cuánto)\b/.test(s)) return true;
+  return false;
+}
+let _vozOn=(function(){try{return (localStorage.getItem('asist-voz')||'1')==='1';}catch(e){return true;}})();
+function _leer(txt){ if(!window.speechSynthesis||!_vozOn) return; try{ speechSynthesis.cancel(); const limpio=String(txt).replace(/[*#|]/g,'').replace(/^\s*[-–—]\s+/gm,'').replace(/-{2,}/g,' '); const u=new SpeechSynthesisUtterance(limpio); u.lang='es-AR'; u.rate=1.05; speechSynthesis.speak(u);}catch(e){} }
+function _toggleVoz(){ _vozOn=!_vozOn; try{localStorage.setItem('asist-voz',_vozOn?'1':'0');}catch(e){} const b=document.getElementById('asistP-voz'); if(b)b.textContent=_vozOn?'🔊':'🔇'; if(!_vozOn&&window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} }
+function _burbuja(who,txt){ const w=document.getElementById('asistP-chatwrap'), c=document.getElementById('asistP-chat'); if(!c) return; if(w)w.style.display='block';
+  const d=document.createElement('div'); const base='margin:5px 0;padding:6px 8px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-word;';
+  d.style.cssText=base+(who==='u'?'background:var(--card2);border:1px solid var(--border);':'background:var(--card2);border-left:3px solid #D81840;');
+  d.textContent=txt; c.appendChild(d); c.scrollTop=c.scrollHeight; }
+function _csvVal(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; }
+function _rowsCSV(h,rows){ return h.join(',')+'\n'+rows.map(r=>r.map(_csvVal).join(',')).join('\n'); }
+function resumenDatosProg(){
+  const P=applyFilters(planData);
+  const gv=(id)=>{const el=document.getElementById(id); return el?String(el.value||''):'';};
+  const fil=[(gv('f-periodo')&&gv('f-periodo')!=='ALL')?'periodo='+gv('f-periodo'):null, gv('f-anio')?'anio='+gv('f-anio'):null, gv('f-semana')?'semana='+gv('f-semana'):null, gv('f-linea')?'linea='+gv('f-linea'):null, gv('f-turno')?'turno='+gv('f-turno'):null].filter(Boolean);
+  let out='# Digest PROGRAMAS (plan de producción). Filtros activos: '+(fil.join(' · ')||'ninguno')+'\n\n';
+  const cajasProg=r=>{ const a=num(get(r,'CAJAS','Cajas','cajas')); return a>0?a:num(get(r,'FINAL CAJAS','Final Cajas','final_cajas')); };
+  const prog=P.slice(0,200).map(r=>[
+    get(r,'Semana','semana','SEMANA')||'', getLinea(r)||'', normTurno(get(r,'TURNO','Turno','turno','turno_plan'))||'',
+    String(get(r,'ORDEN SAP','Orden SAP','orden_sap','OP')||'').trim(),
+    get(r,'ARTICULO','Articulo','articulo')||'', String(get(r,'CODIGO CCU','Codigo CCU','codigo_ccu')||'').trim(),
+    Math.round(cajasProg(r)), Math.round(num(get(r,'BOTELLAS','Botellas','botellas'))), get(r,'SEMIELABORADO','Semielaborado','semielaborado')||'' ]);
+  out+='## Programa (top 200)\n'+_rowsCSV(['semana','linea','turno','orden_sap','articulo','codigo_ccu','cajas_prog','botellas_prog','semielaborado'], prog)+'\n\n';
+  const opiMap={};
+  (opinonaData||[]).forEach(r=>{ const op=String(get(r,'Id. Producción','Id. Produccion','id_produccion','ORDEN SAP','Orden SAP')||'').trim(); if(!op) return; opiMap[op]=(opiMap[op]||0)+num(get(r,'Cantidad cajas Producidas','Cantidad_cajas_Producidas','cajas')); });
+  const cump={};
+  P.forEach(r=>{ const op=String(get(r,'ORDEN SAP','Orden SAP','orden_sap','OP')||'').trim(); if(!op) return; const g=cump[op]||(cump[op]={op,linea:getLinea(r)||'',prog:0}); g.prog+=cajasProg(r); });
+  const cRows=Object.keys(cump).map(op=>{ const g=cump[op]; const prod=opiMap[op]||0; const pct=g.prog>0?Math.round(prod/g.prog*100):''; return [g.op,g.linea,Math.round(g.prog),Math.round(prod),pct]; }).slice(0,200);
+  out+='## Cumplimiento por OP (cajas prog vs producidas)\n'+_rowsCSV(['orden_sap','linea','cajas_prog','cajas_producidas','cumplimiento_pct'], cRows)+'\n\n';
+  return out;
+}
+async function preguntarProg(tx){
+  _burbuja('u',tx); setAsistStatus('Analizando datos…');
+  let resumen=''; try{ resumen=resumenDatosProg(); }catch(e){ resumen=''; }
+  try{
+    const ctx='Página PROGRAMAS (plan semanal de producción por línea/turno). El digest respeta los filtros activos (semana/año/línea/turno). Incluye cumplimiento cruzando con OPINONA.'+((opinonaData&&opinonaData.length)?'':' (detalle OPINONA aún cargando)');
+    const res=await fetch(API_URL,{method:'POST',body:JSON.stringify({accion:'preguntar',texto:tx,resumen,contexto:ctx})});
+    const raw=await res.text(); let j;
+    try{ j=JSON.parse(raw); }catch(_){ throw new Error('Respuesta no-JSON (HTTP '+res.status+')'); }
+    if(j.status!=='success') throw new Error(j.msg||'sin respuesta');
+    _burbuja('a',j.respuesta||'(sin respuesta)'); _leer(j.respuesta||''); setAsistStatus('');
+  }catch(e){ console.error(e); setAsistStatus('IA: '+(e.message||e), true); }
+}
+(function(){const b=document.getElementById('asistP-voz'); if(b)b.textContent=_vozOn?'🔊':'🔇';})();
 
 let _asistRec = null;
 function asistenteVoz(){

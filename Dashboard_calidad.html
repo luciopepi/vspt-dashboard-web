@@ -310,8 +310,13 @@
     style="flex:1;min-width:240px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:inherit"
     onkeydown="if(event.key==='Enter')window.__asistCexec()">
   <button id="asistC-mic" title="Dictar por voz" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 11px;cursor:pointer">🎤</button>
+  <button id="asistC-voz" title="Leer respuestas en voz alta" style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 11px;cursor:pointer">🔊</button>
   <button id="asistC-go" class="btn-clear">Ejecutar</button>
   <span id="asistC-st" style="font-size:11px;color:var(--muted)"></span>
+</div>
+<div id="asistC-chatwrap" style="display:none;background:var(--card);border-bottom:1px solid var(--border);padding:6px 22px;position:relative">
+  <button id="asistC-chatx" title="Cerrar chat" style="position:absolute;right:14px;top:4px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1">×</button>
+  <div id="asistC-chat" style="max-height:280px;overflow-y:auto;font-size:12px"></div>
 </div>
 
 <!-- MAIN -->
@@ -1449,6 +1454,71 @@ fetchData();
     '{"accion":"fechas","desde":"AAAA-MM-DD","hasta":"..."}, '+
     '{"accion":"resaltar","valor":"texto","color":"rojo|verde|..."} (resalta filas de la tabla cuyo texto contenga el valor), '+
     '{"accion":"limpiar"} colores, {"accion":"limpiarFiltros"}.';
+  /* ---- Preguntas analíticas (digest + chat + voz de salida) ---- */
+  function esPregunta(t){
+    const s=_n(t); if(!s) return false;
+    if(s.includes('?')) return true;
+    if(/^(que|qué|cual|cuál|cuant|cuánt|cuando|cuándo|quien|quién|como|cómo|por que|por qué|hay |hubo |fue |es |son |dame|decime|mostrame un resumen|analiza|analizá|resumi|resumí|explica|explicá|compara|compará)/.test(s)) return true;
+    if(/\b(top|ranking|tendencia|promedio|comparar|mas alto|más alto|mas bajo|más bajo|peor|mejor|total de|cuanto|cuánto)\b/.test(s)) return true;
+    return false;
+  }
+  let _vozOn=(function(){try{return (localStorage.getItem('asist-voz')||'1')==='1';}catch(e){return true;}})();
+  function _leer(txt){ if(!window.speechSynthesis||!_vozOn) return; try{ speechSynthesis.cancel(); const limpio=String(txt).replace(/[*#|]/g,'').replace(/^\s*[-–—]\s+/gm,'').replace(/-{2,}/g,' '); const u=new SpeechSynthesisUtterance(limpio); u.lang='es-AR'; u.rate=1.05; speechSynthesis.speak(u);}catch(e){} }
+  function _toggleVoz(){ _vozOn=!_vozOn; try{localStorage.setItem('asist-voz',_vozOn?'1':'0');}catch(e){} const b=document.getElementById('asistC-voz'); if(b)b.textContent=_vozOn?'🔊':'🔇'; if(!_vozOn&&window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} }
+  function _burbuja(who,txt){ const w=document.getElementById('asistC-chatwrap'), c=document.getElementById('asistC-chat'); if(!c) return; if(w)w.style.display='block';
+    const d=document.createElement('div'); const base='margin:5px 0;padding:6px 8px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-word;';
+    d.style.cssText=base+(who==='u'?'background:var(--card);border:1px solid var(--border);':'background:var(--card2);border-left:3px solid #D81840;');
+    d.textContent=txt; c.appendChild(d); c.scrollTop=c.scrollHeight; }
+  function _csvVal(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; }
+  function _rowsCSV(h,rows){ return h.join(',')+'\n'+rows.map(r=>r.map(_csvVal).join(',')).join('\n'); }
+  function _numC(v){ if(v==null||v==='')return 0; const n=parseFloat(String(v).replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.')); return isNaN(n)?0:n; }
+  function _grp(rows,keyFn,cjFn){ const m={}; rows.forEach(r=>{ const k=keyFn(r); if(k==null||k==='') return; const g=m[k]||(m[k]={k,n:0,cajas:0}); g.n++; g.cajas+=cjFn(r); }); return Object.keys(m).map(k=>m[k]); }
+  let _dpCache=null;
+  async function resumenDatosCal(preg){
+    const q=_n(preg); const R=(typeof ALL_ROWS!=='undefined'?ALL_ROWS:[]); const cj=r=>_numC(r['Cajas 9L']);
+    let out='# Digest CALIDAD (desvíos). Total desvíos cargados: '+R.length+'.\n\n';
+    const porMes=_grp(R,r=>String(r['Mes']||'').trim(),cj).sort((a,b)=>b.n-a.n);
+    out+='## Desvios por mes\n'+_rowsCSV(['mes','desvios','cajas_9L'],porMes.map(g=>[g.k,g.n,g.cajas.toFixed(1)]))+'\n\n';
+    const porMot=_grp(R,r=>String(r['Motivo de Desvio']||'').trim(),cj).sort((a,b)=>b.n-a.n).slice(0,40);
+    out+='## Por motivo (top 40)\n'+_rowsCSV(['motivo','desvios','cajas_9L'],porMot.map(g=>[g.k,g.n,g.cajas.toFixed(1)]))+'\n\n';
+    const porSku=_grp(R,r=>String(r['SKU']||r['PRODUCTO']||'').trim(),cj).sort((a,b)=>b.n-a.n).slice(0,40);
+    out+='## Por producto/SKU (top 40)\n'+_rowsCSV(['sku_producto','desvios','cajas_9L'],porSku.map(g=>[g.k,g.n,g.cajas.toFixed(1)]))+'\n\n';
+    const porSol=_grp(R,r=>String(r['Solicita']||'').trim(),cj).sort((a,b)=>b.n-a.n).slice(0,30);
+    out+='## Por solicita (top 30)\n'+_rowsCSV(['solicita','desvios','cajas_9L'],porSol.map(g=>[g.k,g.n,g.cajas.toFixed(1)]))+'\n\n';
+    const porDet=_grp(R,r=>String(r['Detecto']||'').trim(),cj).sort((a,b)=>b.n-a.n).slice(0,30);
+    out+='## Por detecto (top 30)\n'+_rowsCSV(['detecto','desvios','cajas_9L'],porDet.map(g=>[g.k,g.n,g.cajas.toFixed(1)]))+'\n\n';
+    const lts=R.map(r=>_numC(r['Lead Time (días)'])).filter(v=>v>0);
+    if(lts.length){ const prom=lts.reduce((a,b)=>a+b,0)/lts.length; const mx=Math.max.apply(null,lts); out+='## Lead time (dias)\nmetrica,valor\npromedio,'+prom.toFixed(1)+'\nmaximo,'+mx.toFixed(0)+'\nmuestras,'+lts.length+'\n\n'; }
+    const cncRows=R.map(r=>{ const c=(typeof cncForRow==='function')?cncForRow(r):null; if(!c||!c.total) return null; return [String(r['|']||'').trim(),String(r['PRODUCTO']||'').trim(),Math.round(c.total),Math.round(c.mo_total),Math.round(c.ajustes),(c.horas||0).toFixed(1)]; }).filter(Boolean).sort((a,b)=>b[2]-a[2]).slice(0,30);
+    out+='## CNC (costos no calidad, top 30 por total)\n'+_rowsCSV(['nro_desvio','producto','costo_total','costo_mo','costo_ajustes','horas'],cncRows)+'\n\n';
+    if(/maquinista|supervisor|turno|operari|etiquet/.test(q)){
+      try{
+        if(!_dpCache){ const rr=await fetch(SCRIPT_URL+'?tabla=desvios_personal'); const jj=await rr.json(); _dpCache=jj.desvios_personal||[]; }
+        const D=_dpCache; const okN=D.filter(x=>String(x.match)==='ok').length; const cob=D.length?Math.round((D.length-okN)/D.length*100):0;
+        const byMaq={}, bySup={};
+        D.forEach(x=>{ const m=String(x.fecha||'').slice(0,7);
+          const maq=String(x.maquinista_etiquetado||'').trim(); if(maq){ const g=byMaq[maq]||(byMaq[maq]={n:0,ms:{}}); g.n++; if(m)g.ms[m]=1; }
+          const sup=String(x.supervisor||'').trim(); if(sup){ const g=bySup[sup]||(bySup[sup]={n:0,ms:{}}); g.n++; if(m)g.ms[m]=1; } });
+        const mr=Object.keys(byMaq).map(k=>[k,byMaq[k].n,Object.keys(byMaq[k].ms).length]).sort((a,b)=>b[1]-a[1]).slice(0,40);
+        const sr=Object.keys(bySup).map(k=>[k,bySup[k].n,Object.keys(bySup[k].ms).length]).sort((a,b)=>b[1]-a[1]).slice(0,40);
+        out+='## Desvios por maquinista (cobertura: '+cob+'% de filas NO asignables, match!=ok)\n'+_rowsCSV(['maquinista','desvios','meses'],mr)+'\n\n';
+        out+='## Desvios por supervisor\n'+_rowsCSV(['supervisor','desvios','meses'],sr)+'\n\n';
+      }catch(e){}
+    }
+    return out;
+  }
+  async function preguntar(tx){
+    _burbuja('u',tx); st('Analizando datos…');
+    let resumen=''; try{ resumen=await resumenDatosCal(tx); }catch(e){ resumen=''; }
+    try{
+      const ctx='Página CALIDAD (desvíos de calidad de la planta embotelladora). El digest trae todos los desvíos cargados: por mes, motivo, producto/SKU, solicita, detecto, lead time, costos CNC, y opcionalmente maquinista/supervisor por desvío.';
+      const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'preguntar',texto:tx,resumen,contexto:ctx})});
+      const raw=await res.text(); let j;
+      try{ j=JSON.parse(raw); }catch(_){ throw new Error('Respuesta no-JSON (HTTP '+res.status+')'); }
+      if(j.status!=='success') throw new Error(j.msg||'sin respuesta');
+      _burbuja('a',j.respuesta||'(sin respuesta)'); _leer(j.respuesta||''); st('');
+    }catch(e){ console.error(e); st('IA: '+(e.message||e), true); }
+  }
   let _rec=null;
   function voz(){
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -1465,6 +1535,7 @@ fetchData();
   async function ejec(){
     const i=document.getElementById('asistC-in'); const tx=((i&&i.value)||'').trim(); if(!tx) return;
     st('Procesando…');
+    if(esPregunta(tx)){ preguntar(tx); return; }
     const loc=parse(tx); if(loc){ apply(loc); return; }
     try{
       st('Consultando IA…');
@@ -1477,6 +1548,8 @@ fetchData();
   }
   document.getElementById('asistC-go').onclick=ejec;
   document.getElementById('asistC-mic').onclick=voz;
+  (function(){ const vz=document.getElementById('asistC-voz'); if(vz){ vz.textContent=_vozOn?'🔊':'🔇'; vz.onclick=_toggleVoz; }
+    const cx=document.getElementById('asistC-chatx'); if(cx)cx.onclick=function(){ const w=document.getElementById('asistC-chatwrap'); if(w)w.style.display='none'; }; })();
   window.__asistCexec=ejec;
 })();
 </script>
