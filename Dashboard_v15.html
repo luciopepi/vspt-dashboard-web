@@ -641,23 +641,20 @@ window.addEventListener('message', (e) => {
 window.addEventListener('load', () => {
     applyTweaks();
     try { window.parent.postMessage({ type:'__edit_mode_available' }, '*'); } catch(e){}
-    // Precargar iframes en background para que la primera vez que el usuario
-    // abra Programas o Calidad ya estén listos
+    // Precargar TODAS las pestañas embebidas en background (Programas, Calidad
+    // y Personal) para que al abrirlas ya estén listas
     setTimeout(() => {
-      const ifP = document.getElementById('iframeProgramas');
-      const ifC = document.getElementById('iframeCalidad');
-      if (ifP && ifP.src === 'about:blank') {
-        ifP.addEventListener('load', () => {
-          try { ifP.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
-        }, { once:true });
-        ifP.src = 'Dashboard_programas.html';
-      }
-      if (ifC && ifC.src === 'about:blank') {
-        ifC.addEventListener('load', () => {
-          try { ifC.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
-        }, { once:true });
-        ifC.src = 'Dashboard_calidad.html';
-      }
+      [ ['iframeProgramas','Dashboard_programas.html'],
+        ['iframeCalidad','Dashboard_calidad.html'],
+        ['iframePersonal','Dashboard_personal.html'] ].forEach(([id, src]) => {
+        const f = document.getElementById(id);
+        if (f && f.src === 'about:blank') {
+          f.addEventListener('load', () => {
+            try { f.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
+          }, { once:true });
+          f.src = src;
+        }
+      });
     }, 1500);
   });
 
@@ -809,6 +806,10 @@ async function init() {
     } catch(e) {}
   }
 
+  // El pedido de OPINONA (fase 2, lento) arranca YA, en paralelo con el KPI
+  const opiPromise = fetch(API_URL + '?tabla=opinona');
+  opiPromise.catch(() => {});   // el error real se maneja al hacer await más abajo
+
   try {
     const resK = await fetch(API_URL + '?tabla=kpi_planta_mensual');
     const jK = await resK.json();
@@ -836,7 +837,7 @@ async function init() {
   }
 
   try {
-    const res = await fetch(API_URL + '?tabla=opinona');
+    const res = await opiPromise;
     const j = await res.json();
     if (j.status === 'success' && Array.isArray(j.opinona)) {
       rawData = j.opinona;
@@ -2718,7 +2719,7 @@ function broadcastTheme() {
 (function(){
   const COLORS={amarillo:'#F8C040',verde:'#98A040',rojo:'#D81840',azul:'#3b82f6',naranja:'#F08808',violeta:'#701F52',celeste:'#5DC7D1'};
   const MESES={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
-  const _n=s=>String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  const _n=s=>String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
   function st(t,e){const el=document.getElementById('asistV-st');if(el){el.textContent=t||'';el.style.color=e?'#D81840':'var(--muted,#999)';}}
   function _anio(){ const e=document.getElementById('f-anio'); const y=e&&parseInt(e.value,10); return (y&&y>2000)?y:new Date().getFullYear(); }
   function _iso(y,m,d){ return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }

@@ -1376,7 +1376,7 @@ fetchData();
 (function(){
   const COLORS={amarillo:'#F8C040',verde:'#98A040',rojo:'#D81840',azul:'#3b82f6',naranja:'#F08808',violeta:'#701F52',celeste:'#5DC7D1'};
   const MESES={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
-  const _n=s=>String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  const _n=s=>String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
   function st(t,e){const el=document.getElementById('asistC-st');if(el){el.textContent=t||'';el.style.color=e?'var(--vspt-crimson)':'var(--muted)';}}
   const SELS=['f-estado','f-mes','f-producto','f-grupo','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'];
   function _anio(){ return new Date().getFullYear(); }

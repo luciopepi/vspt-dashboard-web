@@ -537,21 +537,26 @@ function deshacer(){
 async function load(){
   setStatus("CARGANDO…");
   try{
-    const r = await fetch(API_URL + "?tabla=asignacion");
-    const d = await r.json();
-    ASIG = (d.asignacion||[]).map(normAsig);
-    const r2 = await fetch(API_URL + "?tabla=personal");
+    // Los 4 pedidos salen en paralelo (antes eran secuenciales: 4 viajes a la API uno tras otro)
+    const [r, r2, r3, r4] = await Promise.all([
+      fetch(API_URL + "?tabla=asignacion"),
+      fetch(API_URL + "?tabla=personal"),
+      fetch(API_URL + "?tabla=personal_config").catch(()=>null),
+      fetch(API_URL + "?tabla=he").catch(()=>null)
+    ]);
+    const d  = await r.json();
     const d2 = await r2.json();
+    // Token vencido/inválido: la API contesta {error:"forbidden"} → re-login, NUNCA demo
+    if(d.error==="forbidden" || d2.error==="forbidden"){ sesionVencida(d.reason||d2.reason); return; }
+    ASIG = (d.asignacion||[]).map(normAsig);
     PERS = (d2.personal||[]).map(normPers);
     migrarEstadoBlocks();
     try{
-      const r3 = await fetch(API_URL + "?tabla=personal_config");
-      const d3 = await r3.json();
-      if(d3.personal_config) CONFIG = Object.assign(CONFIG, d3.personal_config);
+      const d3 = r3 ? await r3.json() : null;
+      if(d3 && d3.personal_config) CONFIG = Object.assign(CONFIG, d3.personal_config);
     }catch(e){}
     try{
-      const r4 = await fetch(API_URL + "?tabla=he");
-      const d4 = await r4.json();
+      const d4 = r4 ? await r4.json() : {};
       HE = (d4.he||[]).map(h=>({fecha:str(h.fecha),anio:Number(h.anio)||0,dia:str(h.dia_semana),
         equipos:str(h.equipos),tpers:Number(h.t_con_personal)||0,
         ref:(h.referencia===""||h.referencia==null)?"":Number(h.referencia),
@@ -563,8 +568,21 @@ async function load(){
     setTab('grid');
     render();
     savedState = snap(); undoStack = []; dirty = false; updateUI();
+    try{ sessionStorage.removeItem("vspt_relogin"); }catch(e){}   // carga OK → rearmar el auto-relogin
     if(!ASIG.length && !PERS.length) cargarDemo();   // editor sin conexión a la API → datos de ejemplo
   }catch(e){ console.warn("API no disponible — cargando datos de ejemplo", e); cargarDemo(); }
+}
+// La API rechazó el pedido (token vencido/inválido). Antes esto caía en silencio a los
+// datos demo; ahora limpia la sesión guardada y recarga UNA sola vez para re-loguear.
+function sesionVencida(reason){
+  try{ localStorage.removeItem("vspt_idtoken"); localStorage.removeItem("vspt_idtoken_exp"); }catch(e){}
+  let primeraVez = false;
+  try{
+    primeraVez = !sessionStorage.getItem("vspt_relogin");
+    if(primeraVez) sessionStorage.setItem("vspt_relogin","1");
+  }catch(e){}
+  if(primeraVez){ location.reload(); return; }
+  setStatus("SESIÓN VENCIDA ("+(reason||"forbidden")+") — RECARGÁ LA PÁGINA E INICIÁ SESIÓN","err");
 }
 // ---------- Datos de ejemplo (solo cuando la API no responde, p.ej. en el editor) ----------
 function cargarDemo(){
