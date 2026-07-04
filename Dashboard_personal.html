@@ -1400,7 +1400,7 @@ function asistEjecutar(){
   if(!texto) return;
   const act=parseComandoLocal(texto);
   if(act){ aplicarAccionAsistente(act); return; }
-  if(esPregunta(texto)){ preguntarPers(texto); return; }
+  if(esPregunta(texto)||texto.split(/\s+/).length>=4){ preguntarPers(texto); return; }
   setAsistStatus('No entendí. Probá: "mover a roberto cataldo a la armadora de cajas de línea 2", "mover personal de línea 2 turno mañana a línea 3 turno tarde", "intercambiar línea 1 con línea 3", "vaciar línea 2 turno tarde" — o hacé una pregunta ("¿cuántas horas extra hubo esta semana?").', true);
 }
 /* ===== Preguntas analíticas (digest + chat + voz de salida) ===== */

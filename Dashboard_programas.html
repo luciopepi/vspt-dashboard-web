@@ -1225,6 +1225,7 @@ async function asistenteEjecutar(){
   if(esPregunta(texto)){ preguntarProg(texto); return; }
   const local=parseComandoLocal(texto);
   if(local){ aplicarAccionAsistente(local); return; }
+  if(texto.split(/\s+/).length>=4){ preguntarProg(texto); return; }
   try{
     setAsistStatus('Consultando asistente IA…'); if(window.vsptBotPensando)vsptBotPensando(true);
     const res=await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:'asistente', texto }) });

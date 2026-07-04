@@ -1599,6 +1599,7 @@ fetchData();
     st('Procesando…');
     if(esPregunta(tx)){ preguntar(tx); return; }
     const loc=parse(tx); if(loc){ apply(loc); return; }
+    if(tx.split(/\s+/).length>=4){ preguntar(tx); return; }
     try{
       st('Consultando IA…'); if(window.vsptBotPensando)vsptBotPensando(true);
       const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'asistente',texto:tx,contexto:CTX})});
