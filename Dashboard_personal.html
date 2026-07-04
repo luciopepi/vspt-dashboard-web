@@ -1228,7 +1228,7 @@ function extraerLT(s){
 }
 // --- Personas por nombre ("mover a roberto cataldo a la armadora de cajas de línea 2") ---
 function _tokensNom(s){ return _normNombre(s).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean); }
-const _STOP_NOM=["a","al","la","el","lo","los","las","de","del","don","dona","sr","sra","senor","senora","turno","linea","lineas","manana","tarde","noche","operario","operaria"];
+const _STOP_NOM=["a","al","la","el","lo","los","las","de","del","en","para","hacia","sobre","don","dona","sr","sra","senor","senora","turno","linea","lineas","manana","tarde","noche","operario","operaria"];
 // devuelve las personas del roster que mejor matchean el texto (tolera "Roberto Cataldo" ↔ "Cataldo Roberto")
 function buscarPersonas(texto){
   const qt=_tokensNom(texto).filter(x=>!_STOP_NOM.includes(x)&&!/^\d+$/.test(x));
@@ -1267,29 +1267,115 @@ function extraerGrupoAux(s){
 function turnoDe(n){ const k=_normNombre(n); const a=ASIG.find(x=>x.semana===curWeek()&&x.turno&&x.nombre&&_normNombre(x.nombre)===k); return a?a.turno:""; }
 function lineaDe(n){ const k=_normNombre(n); const a=ASIG.find(x=>x.semana===curWeek()&&x.linea&&x.nombre&&_normNombre(x.nombre)===k); return a?a.linea:""; }
 function turnoConGente(l){ for(const t of TURNOS){ if(slotsLinea(t,l).some(a=>a.nombre)) return t; } return ""; }
-// "mover/pasar/... a PERSONA a DESTINO" → acción sobre UNA persona (o null si no es una persona)
+// Verbos de comando como prefijos: cubren infinitivo, imperativo y voseo
+// (mover/mové/movelo, pasar/pasá/pasame, poner/poné, cambiar/cambiá, sacar/sacá...)
+const _V_MOVER="(?:mov|muev|pas|asign|reasign|llev|traslad|pon|pong|mand|cambi|coloc|met|dej)\\w*";
+const _V_SACAR="(?:sac|quit|liber|solt|desasign)\\w*";
+const _RE_CMD_MOVER=new RegExp("^\\s*(?:"+_V_MOVER+")\\s+(?:a\\s+)?(.+)$");
+const _RE_CMD_SACAR=new RegExp("^\\s*(?:"+_V_SACAR+")\\s+(?:a\\s+)?(.+)$");
+const _RE_TOKEN_VERBO=new RegExp("^(?:"+_V_MOVER+"|"+_V_SACAR+")$");
+// distancia de edición (para tolerar typos: "favio lopes" → "Fabio Lopez")
+function _lev(a,b){
+  if(a===b) return 0;
+  const m=a.length,n=b.length; if(!m) return n; if(!n) return m;
+  let prev=Array.from({length:n+1},(_,i)=>i);
+  for(let i=1;i<=m;i++){ const cur=[i]; for(let j=1;j<=n;j++){ cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1)); } prev=cur; }
+  return prev[n];
+}
+// como buscarPersonas pero tolerando 1-2 letras cambiadas por palabra (candidatas de menor distancia)
+function buscarPersonasFuzzy(texto){
+  const qt=_tokensNom(texto).filter(x=>!_STOP_NOM.includes(x)&&!/^\d+$/.test(x));
+  if(!qt.length) return [];
+  let best=[],bestD=99;
+  PERS.filter(p=>p.estado!=="baja").forEach(p=>{
+    const nt=_tokensNom(p.nombre);
+    let total=0;
+    for(const q of qt){
+      let d=99;
+      for(const n of nt){
+        if(n===q||(q.length>=3&&n.startsWith(q))){ d=0; break; }
+        if(q.length>=4){ const lv=_lev(q,n); if(lv<=(q.length>=6?2:1)&&lv<d) d=lv; }
+      }
+      if(d===99){ total=99; break; }
+      total+=d;
+    }
+    if(total>=99) return;
+    if(total<bestD){ bestD=total; best=[p]; }
+    else if(total===bestD) best.push(p);
+  });
+  return best;
+}
+// tokens que son destino/relleno y NO parte de un nombre (puestos, grupos de la semana, línea/turno...)
+function _palabrasDestino(){
+  const set=new Set(["linea","lineas","turno","turnos","manana","tarde","noche","vacaciones","vacacion",
+    "licencia","licencias","disponible","libre","banca","equipo","equipos","personal","gente","todo","toda",
+    "todos","todas","puesto","puestos","casillero","grupo","semana","con","sin","desde","hasta","y","o","u",
+    "e","que","como","por","favor","destajo","filtro","filtros","filtreros","declaraciones","randstad","bayton"]);
+  PUESTOS.forEach(p=>_tokensNom(p).forEach(x=>set.add(x)));
+  ASIG.filter(a=>a.semana===curWeek()&&!a.turno&&!a.linea&&a.puesto&&!a.puesto.startsWith("__"))
+      .forEach(a=>_tokensNom(a.puesto).forEach(x=>set.add(x)));
+  return set;
+}
+// busca a la persona nombrada en cualquier parte del texto: saca palabras de destino/relleno,
+// prueba match exacto, después sin tokens que parecen verbos, y por último difuso (typos)
+function extraerPersonaDe(txt){
+  const dest=_palabrasDestino();
+  let toks=_tokensNom(txt).filter(x=>!_STOP_NOM.includes(x)&&!/^\d+$/.test(x)&&!dest.has(x));
+  if(!toks.length) return {cand:[],fuzzy:false};
+  let cand=buscarPersonas(toks.join(" "));
+  if(!cand.length&&toks.some(x=>_RE_TOKEN_VERBO.test(x))){
+    toks=toks.filter(x=>!_RE_TOKEN_VERBO.test(x));
+    cand=toks.length?buscarPersonas(toks.join(" ")):[];
+  }
+  if(cand.length) return {cand,fuzzy:false};
+  if(!toks.length) return {cand:[],fuzzy:false};
+  return {cand:buscarPersonasFuzzy(toks.join(" ")),fuzzy:true};
+}
+// destino mencionado en el texto → {kind,...} o null
+function _parseDestino(s){
+  if(/vacacion/.test(s)) return {kind:"estado",estado:"vacaciones"};
+  if(/licencia/.test(s)) return {kind:"estado",estado:"licencia"};
+  if(/disponible|\bbanca\b|\blibre\b/.test(s)) return {kind:"libre"};
+  const puesto=extraerPuesto(s);
+  const lt=extraerLT(s);
+  if(puesto||lt.linea) return {kind:"linea",puesto,linea:lt.linea,turno:lt.turno};
+  const grupo=extraerGrupoAux(s);
+  if(grupo) return {kind:"aux",grupo};
+  const gi=s.match(/\b(destajo|filtr\w*|declaracion\w*)\b/);
+  if(gi) return {kind:"aux_inexistente",pedido:gi[1]};        // menciona un grupo que no existe esta semana
+  if(lt.turno) return {kind:"linea",puesto:null,linea:null,turno:lt.turno};
+  if(/\blineas?\b/.test(s)) return {kind:"otra_linea"};       // "cambiar de línea" sin número
+  return null;
+}
+// "mover/pasá/poné/sacá... PERSONA [DESTINO]" — la persona puede ir en cualquier parte de la frase
 function parseMoverPersona(t){
-  const m=t.match(/^\s*(?:mover|pasar|asignar|llevar|trasladar|poner|mandar|cambiar)\s+(?:a\s+)?(.+)$/);
-  if(!m) return null;
-  const partes=m[1].split(/\s+(?:a|al|hacia|en|para)\s+/);
-  if(partes.length<2) return null;
-  const cand=buscarPersonas(partes[0]);
-  if(!cand.length) return null;                 // no nombra a una persona → reglas por línea
-  if(cand.length>1) return {tipo:"persona_ambigua", nombres:cand.map(p=>p.nombre)};
-  const nombre=cand[0].nombre;
-  const destTxt=partes.slice(1).join(" a ");
-  if(/vacacion/.test(destTxt)) return {tipo:"mover_persona",nombre,kind:"estado",estado:"vacaciones"};
-  if(/licencia/.test(destTxt)) return {tipo:"mover_persona",nombre,kind:"estado",estado:"licencia"};
-  if(/disponible|liberar|banca/.test(destTxt)) return {tipo:"mover_persona",nombre,kind:"libre"};
-  const puesto=extraerPuesto(destTxt);
-  const lt=extraerLT(destTxt);
-  if(puesto||lt.linea) return {tipo:"mover_persona",nombre,kind:"linea",puesto,linea:lt.linea,turno:lt.turno};
-  const grupo=extraerGrupoAux(destTxt);
-  if(grupo) return {tipo:"mover_persona",nombre,kind:"aux",grupo};
-  return {tipo:"persona_sin_destino",nombre,dest:destTxt};
+  const mS=t.match(_RE_CMD_SACAR), mM=mS?null:t.match(_RE_CMD_MOVER);
+  if(!mS&&!mM) return null;
+  const resto=(mS||mM)[1];
+  const pr=extraerPersonaDe(resto);
+  if(!pr.cand.length) return null;                 // no nombra a una persona → reglas por línea
+  if(pr.cand.length>1) return {tipo:"persona_ambigua",nombres:pr.cand.map(p=>p.nombre),fuzzy:pr.fuzzy};
+  const nombre=pr.cand[0].nombre, fuzzy=pr.fuzzy;
+  if(mS) return {tipo:"mover_persona",nombre,fuzzy,kind:"libre"};
+  const dest=_parseDestino(resto);
+  if(dest) return Object.assign({tipo:"mover_persona",nombre,fuzzy},dest);
+  return {tipo:"persona_sin_destino",nombre,dest:resto};
 }
 function moverPersonaAsistente(act){
   const n=act.nombre;
+  // match difuso (typo en el nombre): confirmar antes de tocar nada
+  if(act.fuzzy&&!confirm(`No encontré ese nombre exacto. ¿Quisiste decir ${n}?`)){ setAsistStatus("Ok, no hice cambios."); return; }
+  if(act.kind==="aux_inexistente"){
+    setAsistStatus(`Esta semana no hay ningún grupo "${act.pedido}". Crealo con "➕ Agregar grupo" (columna derecha) y volvé a pedírmelo.`,true); return;
+  }
+  if(act.kind==="otra_linea"){
+    // "cambiar de línea a X" sin decir cuál: si hay UNA sola otra línea con gente, va ahí
+    const cur=lineaDe(n);
+    const otras=LINEAS.filter(l=>l!==cur&&TURNOS.some(t=>slotsLinea(t,l).some(a=>a.nombre)));
+    if(otras.length===1){ act.kind="linea"; act.linea=otras[0]; act.puesto=act.puesto||null; }
+    else if(!otras.length){ setAsistStatus(`No hay otra línea con gente esta semana. Decime cuál: "mover a ${n.toLowerCase()} a la línea 2".`,true); return; }
+    else { setAsistStatus(`¿A qué línea? Hay gente en ${otras.map(l=>"L"+l).join(" y ")}. Ej: "mover a ${n.toLowerCase()} a la línea ${otras[0]}".`,true); return; }
+  }
   if(act.kind==="estado"){
     pushUndo(); removeNameFromWeek(n); setEstadoByName(n,act.estado); markDirty(); render();
     if(!$("#tab-roster").classList.contains("hidden")) renderRoster();
@@ -1325,12 +1411,13 @@ function moverPersonaAsistente(act){
   setAsistStatus(`✓ ${n} → ${pu} · Línea ${l} · turno ${t.toLowerCase()}${desplazado?` (reemplaza a ${desplazado}, que quedó disponible)`:""}.`);
 }
 function parseComandoLocal(texto){
-  const t=texto.toLowerCase().trim();
+  // minúsculas + sin acentos: "pasá"/"poné"/"línea" se parsean igual que "pasa"/"pone"/"linea"
+  const t=texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
   // mover a UNA persona por su nombre (va antes que las reglas por línea, para no mover toda la línea)
   const mp=parseMoverPersona(t);
   if(mp) return mp;
   // intercambiar L con L
-  if(/(intercambi|swap|permut)/.test(t) && /\bcon\b/.test(t)){
+  if(/(intercambi|swap|permut|cambi)/.test(t) && /\bcon\b/.test(t)){
     const partes=t.split(/\bcon\b/);
     const a=extraerLT(partes[0]||""), b=extraerLT(partes[1]||"");
     if(a.linea&&b.linea){
@@ -1338,8 +1425,8 @@ function parseComandoLocal(texto){
       return {tipo:"swap", aT:a.turno||turnoComun, aL:a.linea, bT:b.turno||turnoComun, bL:b.linea};
     }
   }
-  // mover/pasar/asignar/llevar de ... a ...
-  if(/(mover|pasar|asignar|llevar|trasladar|mand)/.test(t) && /\s+a\s+|hacia/.test(t)){
+  // mover/pasá/asigná/llevá... de LÍNEA a LÍNEA (grupo completo)
+  if(new RegExp("^\\s*(?:"+_V_MOVER+")").test(t) && /\s+a\s+|hacia/.test(t)){
     const partes=t.split(/\s+a\s+|\s+hacia\s+/);
     if(partes.length>=2){
       const src=extraerLT(partes[0]);
@@ -1349,10 +1436,20 @@ function parseComandoLocal(texto){
       }
     }
   }
-  // vaciar/limpiar/liberar línea
-  if(/(vaciar|limpiar|liberar|sacar)/.test(t)){
+  // vaciar/limpiá/liberá/sacá línea
+  if(/(vaci|limpi|liber|sac|quit)\w*/.test(t)){
     const lt=extraerLT(t);
     if(lt.linea) return {tipo:"vaciar", t:lt.turno||"MAÑANA", l:lt.linea};
+  }
+  // sin verbo: "fabio lopez a la linea 2" — persona + destino explícito (frase corta, no pregunta)
+  if(!/[?¿]/.test(t) && t.split(/\s+/).length<=9 &&
+     !/(cuant|quien|donde|cual|como|por que|cuando|\bhay\b|\bhubo\b|\bhoras?\b|semana|informe|reporte|resumen|desvio|extra)/.test(t)){
+    const pr=extraerPersonaDe(t);
+    if(pr.cand.length){
+      const dest=_parseDestino(t);
+      if(dest&&pr.cand.length===1) return Object.assign({tipo:"mover_persona",nombre:pr.cand[0].nombre,fuzzy:pr.fuzzy},dest);
+      if(dest&&pr.cand.length>1) return {tipo:"persona_ambigua",nombres:pr.cand.map(p=>p.nombre),fuzzy:pr.fuzzy};
+    }
   }
   return null;
 }
@@ -1388,7 +1485,7 @@ function aplicarAccionAsistente(act){
   } else if(act.tipo==="mover_persona"){
     moverPersonaAsistente(act);
   } else if(act.tipo==="persona_ambigua"){
-    setAsistStatus(`Hay varias personas que coinciden: ${act.nombres.slice(0,4).join(" · ")}${act.nombres.length>4?"…":""}. Escribí nombre y apellido.`,true);
+    setAsistStatus(`${act.fuzzy?"No encontré ese nombre exacto. ":""}Coinciden varias personas: ${act.nombres.slice(0,4).join(" · ")}${act.nombres.length>4?"…":""}. Escribí nombre y apellido.`,true);
   } else if(act.tipo==="persona_sin_destino"){
     setAsistStatus(`Entendí mover a ${act.nombre}, pero no reconocí el destino "${act.dest}". Probá un puesto ("armadora de cajas de línea 2"), un grupo ("destajo mañana"), "vacaciones" o "disponible".`,true);
   } else {
@@ -1401,7 +1498,7 @@ function asistEjecutar(){
   const act=parseComandoLocal(texto);
   if(act){ aplicarAccionAsistente(act); return; }
   if(esPregunta(texto)||(!_esComando(texto)&&texto.split(/\s+/).length>=4)){ preguntarPers(texto); return; }
-  setAsistStatus('No entendí. Probá: "mover a roberto cataldo a la armadora de cajas de línea 2", "mover personal de línea 2 turno mañana a línea 3 turno tarde", "intercambiar línea 1 con línea 3", "vaciar línea 2 turno tarde" — o hacé una pregunta ("¿cuántas horas extra hubo esta semana?").', true);
+  setAsistStatus('No entendí. Probá: "pasá a fabio lópez a la línea 2", "cambiá de línea a fabio", "poné a lopez en la llenadora de línea 1", "sacá a juan", "mover personal de línea 2 turno mañana a línea 3 turno tarde" — o hacé una pregunta ("¿cuántas horas extra hubo esta semana?").', true);
 }
 /* ===== Preguntas analíticas (digest + chat + voz de salida) ===== */
 function _esComando(t){ const s=String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); return /^(filtr|mostr|resalt|marc|pint|anda|ir |pone|saca|limpi|borr|agreg|quit|cambi|abri|selecc|mov|pasa|intercambi|vaci|traslad)/.test(s); }
@@ -1951,7 +2048,7 @@ load();
         </div>
         <span id="asist-status" class="vb-st"></span>
         <div class="vb-row">
-          <input id="asist-input" type="text" placeholder='Ej: "mover a roberto cataldo a la armadora de cajas de línea 2"  ·  "intercambiar línea 1 con línea 3"' onkeydown="if(event.key==='Enter')asistEjecutar()">
+          <input id="asist-input" type="text" placeholder='Ej: "pasá a fabio lópez a la línea 2"  ·  "cambiá de línea a cataldo"  ·  "poné a lopez en la llenadora de línea 1"  ·  "intercambiar línea 1 con línea 3"' onkeydown="if(event.key==='Enter')asistEjecutar()">
           <button id="asist-mic" onclick="asistVoz()" title="Dictar por voz">🎤</button>
           <button id="asist-voz" onclick="_toggleVoz()" title="Leer respuestas en voz alta">🔊</button>
           <button onclick="_pararVoz()" title="Detener lectura">⏹</button>
