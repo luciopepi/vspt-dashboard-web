@@ -1400,10 +1400,11 @@ function asistEjecutar(){
   if(!texto) return;
   const act=parseComandoLocal(texto);
   if(act){ aplicarAccionAsistente(act); return; }
-  if(esPregunta(texto)||texto.split(/\s+/).length>=4){ preguntarPers(texto); return; }
+  if(esPregunta(texto)||(!_esComando(texto)&&texto.split(/\s+/).length>=4)){ preguntarPers(texto); return; }
   setAsistStatus('No entendí. Probá: "mover a roberto cataldo a la armadora de cajas de línea 2", "mover personal de línea 2 turno mañana a línea 3 turno tarde", "intercambiar línea 1 con línea 3", "vaciar línea 2 turno tarde" — o hacé una pregunta ("¿cuántas horas extra hubo esta semana?").', true);
 }
 /* ===== Preguntas analíticas (digest + chat + voz de salida) ===== */
+function _esComando(t){ const s=String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim(); return /^(filtr|mostr|resalt|marc|pint|anda|ir |pone|saca|limpi|borr|agreg|quit|cambi|abri|selecc|mov|pasa|intercambi|vaci|traslad)/.test(s); }
 function esPregunta(t){
   const s=String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); if(!s) return false;
   if(s.includes('?')) return true;
