@@ -2781,6 +2781,87 @@ function broadcastTheme() {
     'Para filtros usá {"accion":"setfiltros","filtros":{"<id>":"<valor>"}}. '+
     'Para fechas {"accion":"fechas","desde":"AAAA-MM-DD","hasta":"AAAA-MM-DD"}. '+
     'No hay resaltado de filas en esta vista.';
+  /* ---- Preguntas analíticas (digest + chat + voz de salida) ---- */
+  function esPregunta(t){
+    const s=_n(t); if(!s) return false;
+    if(s.includes('?')) return true;
+    if(/^(que|qué|cual|cuál|cuant|cuánt|cuando|cuándo|quien|quién|como|cómo|por que|por qué|hay |hubo |fue |es |son |dame|decime|mostrame un resumen|analiza|analizá|resumi|resumí|explica|explicá|compara|compará)/.test(s)) return true;
+    if(/\b(top|ranking|tendencia|promedio|comparar|mas alto|más alto|mas bajo|más bajo|peor|mejor|total de|cuanto|cuánto)\b/.test(s)) return true;
+    return false;
+  }
+  let _vozOn=(function(){try{return (localStorage.getItem('asist-voz')||'1')==='1';}catch(e){return true;}})();
+  function _leer(txt){ if(!window.speechSynthesis||!_vozOn) return; try{ speechSynthesis.cancel(); const limpio=String(txt).replace(/[*#|]/g,'').replace(/^\s*[-–—]\s+/gm,'').replace(/-{2,}/g,' '); const u=new SpeechSynthesisUtterance(limpio); u.lang='es-AR'; u.rate=1.05; speechSynthesis.speak(u);}catch(e){} }
+  function _toggleVoz(){ _vozOn=!_vozOn; try{localStorage.setItem('asist-voz',_vozOn?'1':'0');}catch(e){} const b=document.getElementById('asistV-voz'); if(b)b.textContent=_vozOn?'🔊':'🔇'; if(!_vozOn&&window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} }
+  function _burbuja(who,txt){ const c=document.getElementById('asistV-chat'); if(!c) return; c.style.display='block';
+    const cl=document.getElementById('asistV-chatx'); if(cl)cl.style.display='block';
+    const d=document.createElement('div'); const base='margin:5px 0;padding:6px 8px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-word;';
+    d.style.cssText=base+(who==='u'?'background:var(--card,#222);border:1px solid var(--border,#3334);':'background:var(--card2,rgba(0,0,0,.15));border-left:3px solid #D81840;');
+    d.textContent=txt; c.appendChild(d); c.scrollTop=c.scrollHeight; }
+  function _csvVal(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; }
+  function _rowsCSV(h,rows){ return h.join(',')+'\n'+rows.map(r=>r.map(_csvVal).join(',')).join('\n'); }
+  function _fd(d){ if(!d||isNaN(d.getTime&&d.getTime()))return ''; try{return d.toISOString().slice(0,10);}catch(e){return '';} }
+  function _isoW(d){ if(!d)return 0; const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const dy=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-dy+3); const y0=new Date(Date.UTC(t.getUTCFullYear(),0,4)); const d0=(y0.getUTCDay()+6)%7; y0.setUTCDate(y0.getUTCDate()-d0+3); return 1+Math.round((t-y0)/6048e5); }
+  let _heCache=null;
+  async function resumenDatosV15(preg){
+    const q=_n(preg);
+    const R=(typeof rawData!=='undefined'?rawData:[]).filter(r=>{const a=getAnio(r); return a===null||a===activeYear;});
+    const fil=['f-periodo','f-semana','f-turno','f-clasif','f-subclasif','f-tipoeti','f-formato','f-mto','f-op','f-desde','f-hasta']
+      .map(id=>{const el=document.getElementById(id); const v=el?String(el.value||''):''; return (v&&v!=='ALL')?(id.replace('f-','')+'='+v):null;}).filter(Boolean);
+    let out='# Digest OPINONA · año '+activeYear+' (datos del AÑO COMPLETO, NO filtrados por pantalla). Filtros activos en pantalla: '+(fil.join(' · ')||'ninguno')+'\n\n';
+    if(Array.isArray(kpiData)&&kpiData.length){ const ks=Object.keys(kpiData[0]); out+='## KPI mensual\n'+_rowsCSV(ks, kpiData.slice(0,400).map(o=>ks.map(k=>o[k])))+'\n\n'; }
+    if(planLookup===null && /sku|articulo|producto/.test(q)){ try{ await cargarPlanLookup(); }catch(e){} }
+    // Produccion por OP
+    const byOP={};
+    R.forEach(r=>{ const op=String(get(r,'Id. Producción','Id. Produccion','id_produccion')||'').trim(); if(!op) return; const L=getLinea(r); const k=op+'|'+L;
+      const g=byOP[k]||(byOP[k]={op,linea:L,cajas:0,unid:0,hProd:0,semana:get(r,'Semana','semana')||''});
+      g.cajas+=getCajas(r); g.unid+=getUnidades(r); if(getClasif1(r)===CATS.PRODUCCION) g.hProd+=getVarTiempo(r); });
+    const ops=Object.keys(byOP).map(k=>byOP[k]).sort((a,b)=>b.cajas-a.cajas).slice(0,150);
+    out+='## Produccion por OP (top 150 cajas)\n'+_rowsCSV(['OP','linea','sku_articulo','cajas','unidades','horas_prod','semana'],
+      ops.map(g=>[g.op,g.linea,(planLookup&&planLookup[g.op]&&planLookup[g.op].articulo)||'',Math.round(g.cajas),Math.round(g.unid),g.hProd.toFixed(1),g.semana]))+'\n\n';
+    // Semanal x linea
+    const bySL={};
+    R.forEach(r=>{ const sem=String(get(r,'Semana','semana')||'').trim(); const L=getLinea(r); if(!sem&&!L) return; const k=sem+'|'+L;
+      const g=bySL[k]||(bySL[k]={sem,linea:L,cajas:0,semi:0,hProd:0,hParo:0}); const cj=getCajas(r); g.cajas+=cj; if(getTipoEti(r)==='LLENADO') g.semi+=cj;
+      const vt=getVarTiempo(r); if(getClasif1(r)===CATS.PRODUCCION) g.hProd+=vt; else g.hParo+=vt; });
+    const sl=Object.keys(bySL).map(k=>bySL[k]).sort((a,b)=>(Number(a.sem)-Number(b.sem))||(a.linea<b.linea?-1:1));
+    out+='## Semanal x linea\n'+_rowsCSV(['semana','linea','cajas','cajas_semielaborado','horas_prod','horas_paro'],
+      sl.map(g=>[g.sem,g.linea,Math.round(g.cajas),Math.round(g.semi),g.hProd.toFixed(1),g.hParo.toFixed(1)]))+'\n\n';
+    // Paros
+    const byP={};
+    R.forEach(r=>{ const c1=getClasif1(r); if(!c1||c1===CATS.PRODUCCION) return; const c2=getClasif2(r)||'—'; const k=c1+'|'+c2; const g=byP[k]||(byP[k]={c1,c2,h:0,n:0}); g.h+=getVarTiempo(r); g.n++; });
+    const ps=Object.keys(byP).map(k=>byP[k]).sort((a,b)=>b.h-a.h).slice(0,40);
+    out+='## Paros (Clasif_1 x Clasif_2, top 40 horas)\n'+_rowsCSV(['clasif_1','clasif_2','horas','eventos'], ps.map(g=>[g.c1,g.c2,g.h.toFixed(1),g.n]))+'\n\n';
+    // Cambios
+    const camb=R.filter(r=>getClasif1(r)===CATS.CAMBIO).map(r=>({f:_fd(getFecha(r)),l:getLinea(r),a:getPTA(r),b:getPTB(r),h:getVarTiempo(r)})).sort((a,b)=>b.h-a.h).slice(0,40);
+    out+='## Cambios de formato (top 40 duracion)\n'+_rowsCSV(['fecha','linea','pt_a','pt_b','duracion_h'], camb.map(c=>[c.f,c.l,c.a,c.b,c.h.toFixed(2)]))+'\n\n';
+    // Fallas equipo x mes
+    const byF={};
+    R.forEach(r=>{ if(getClasif1(r)!==CATS.FALLA) return; const c2=getClasif2(r)||'—'; const mes=normalizeMes(get(r,'mes','Mes','MES'))||''; const k=c2+'|'+mes; const g=byF[k]||(byF[k]={c2,mes,n:0,h:0}); g.n++; g.h+=getVarTiempo(r); });
+    const fs=Object.keys(byF).map(k=>byF[k]).sort((a,b)=>b.h-a.h).slice(0,60);
+    out+='## Fallas equipo x mes\n'+_rowsCSV(['falla','mes','eventos','horas'], fs.map(g=>[g.c2,g.mes,g.n,g.h.toFixed(1)]))+'\n\n';
+    // HE semanal (lazy)
+    if(/hora.*extra|\bhe\b/.test(q)){
+      try{ if(!_heCache){ const rr=await fetch(API_URL+'?tabla=he'); const jj=await rr.json(); _heCache=jj.he||[]; }
+        const byW={};
+        _heCache.forEach(h=>{ const an=Number(h.anio)||0; if(an&&an!==activeYear) return; const d=new Date(h.fecha); if(isNaN(d.getTime())) return; const w=_isoW(d); const g=byW[w]||(byW[w]={w,he:0}); g.he+=Number(h.he_horas)||0; });
+        const ws=Object.keys(byW).map(k=>byW[k]).sort((a,b)=>a.w-b.w);
+        out+='## HE semanal (horas extra)\n'+_rowsCSV(['semana_iso','he_horas'], ws.map(g=>[g.w,g.he.toFixed(1)]))+'\n\n';
+      }catch(e){}
+    }
+    return out;
+  }
+  async function preguntar(tx){
+    _burbuja('u',tx); st('Analizando datos…');
+    let resumen=''; try{ resumen=await resumenDatosV15(tx); }catch(e){ resumen=''; }
+    try{
+      const ctx='Página OPINONA (Dashboard general / DET LINEA). Año activo '+activeYear+'. El digest trae el AÑO COMPLETO. Líneas L1/L2/L3. Métricas: cajas, unidades, horas (Var. Tiempo), paros, cambios de formato, fallas de equipos, HE.'+(opinonaCargada?'':' (detalle OPINONA aún cargando)');
+      const res=await fetch(API_URL,{method:'POST',body:JSON.stringify({accion:'preguntar',texto:tx,resumen,contexto:ctx})});
+      const raw=await res.text(); let j;
+      try{ j=JSON.parse(raw); }catch(_){ throw new Error('Respuesta no-JSON (HTTP '+res.status+')'); }
+      if(j.status!=='success') throw new Error(j.msg||'sin respuesta');
+      _burbuja('a',j.respuesta||'(sin respuesta)'); _leer(j.respuesta||''); st('');
+    }catch(e){ console.error(e); st('IA: '+(e.message||e), true); }
+  }
   let _rec=null;
   function voz(){
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -2797,6 +2878,7 @@ function broadcastTheme() {
   async function ejec(){
     const i=document.getElementById('asistV-in'); const tx=((i&&i.value)||'').trim(); if(!tx) return;
     st('Procesando…');
+    if(esPregunta(tx)){ preguntar(tx); return; }
     const loc=parse(tx); if(loc){ apply(loc); return; }
     try{
       st('Consultando IA…');
@@ -2814,11 +2896,16 @@ function broadcastTheme() {
     box.innerHTML='<div style="font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--muted,#999);margin-bottom:6px">🤖 ASISTENTE</div>'+
       '<input id="asistV-in" type="text" placeholder=\'ej: "filtrá semana 18 y turno TM" · "ir a calidad"\' style="width:100%;background:var(--card,#222);border:1px solid var(--border,#3334);color:var(--text,#eee);border-radius:6px;padding:7px 9px;font-size:12px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\')window.__asistVexec()">'+
       '<div style="display:flex;gap:6px;margin-top:6px"><button id="asistV-mic" title="Dictar" style="flex:0 0 auto;background:transparent;border:1px solid var(--border,#3334);color:var(--text,#eee);border-radius:6px;padding:5px 9px;cursor:pointer">🎤</button>'+
+      '<button id="asistV-voz" title="Leer respuestas en voz alta" style="flex:0 0 auto;background:transparent;border:1px solid var(--border,#3334);color:var(--text,#eee);border-radius:6px;padding:5px 9px;cursor:pointer">'+(_vozOn?'🔊':'🔇')+'</button>'+
       '<button id="asistV-go" style="flex:1;background:linear-gradient(135deg,#4E1742,#D81840);border:none;color:#fff;border-radius:6px;padding:5px;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.1em">Ejecutar</button></div>'+
-      '<div id="asistV-st" style="font-size:10px;color:var(--muted,#999);margin-top:6px;min-height:12px"></div>';
+      '<div id="asistV-st" style="font-size:10px;color:var(--muted,#999);margin-top:6px;min-height:12px"></div>'+
+      '<div style="position:relative"><button id="asistV-chatx" title="Cerrar chat" style="display:none;position:absolute;right:0;top:2px;background:transparent;border:none;color:var(--muted,#999);cursor:pointer;font-size:13px;line-height:1">×</button>'+
+      '<div id="asistV-chat" style="display:none;max-height:280px;overflow-y:auto;font-size:12px;margin-top:6px"></div></div>';
     const h=sb.querySelector('h3'); if(h&&h.nextSibling) sb.insertBefore(box,h.nextSibling); else sb.appendChild(box);
     document.getElementById('asistV-go').onclick=ejec;
     document.getElementById('asistV-mic').onclick=voz;
+    document.getElementById('asistV-voz').onclick=_toggleVoz;
+    const _cx=document.getElementById('asistV-chatx'); if(_cx)_cx.onclick=function(){const c=document.getElementById('asistV-chat'); if(c){c.style.display='none';} this.style.display='none';};
     window.__asistVexec=ejec;
   }
   if(document.readyState!=='loading') montar(); else document.addEventListener('DOMContentLoaded',montar);
