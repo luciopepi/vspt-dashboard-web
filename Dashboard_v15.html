@@ -1265,9 +1265,13 @@ function changeTab(id) {
   }
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('sidebarToggle').style.display = 'none';
+  // La página embebida trae su propio asistente (conoce SUS datos): ocultar la botella del general
+  const _vb = document.getElementById('vsptBot'); if (_vb) _vb.style.display = 'none';
+  if (window.speechSynthesis) speechSynthesis.cancel();
 } else {
   document.getElementById('sidebar').style.display = '';
   document.getElementById('sidebarToggle').style.display = '';
+  const _vb2 = document.getElementById('vsptBot'); if (_vb2) _vb2.style.display = '';
 }
   render();
 }
@@ -2804,6 +2808,7 @@ function broadcastTheme() {
   let _vozOn=(function(){try{return (localStorage.getItem('asist-voz')||'1')==='1';}catch(e){return true;}})();
   function _leer(txt){ if(!window.speechSynthesis||!_vozOn) return; try{ speechSynthesis.cancel(); const limpio=String(txt).replace(/[*#|]/g,'').replace(/^\s*[-–—]\s+/gm,'').replace(/-{2,}/g,' '); const u=new SpeechSynthesisUtterance(limpio); u.lang='es-AR'; u.rate=1.05; u.onstart=function(){var b=document.getElementById('vsptBot');if(b)b.classList.add('leyendo');}; u.onend=function(){var b=document.getElementById('vsptBot');if(b)b.classList.remove('leyendo');}; speechSynthesis.speak(u);}catch(e){} }
   function _toggleVoz(){ _vozOn=!_vozOn; try{localStorage.setItem('asist-voz',_vozOn?'1':'0');}catch(e){} const b=document.getElementById('asistV-voz'); if(b)b.textContent=_vozOn?'🔊':'🔇'; if(!_vozOn&&window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} }
+  function _pararVoz(){ if(window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} const _b=document.getElementById('vsptBot'); if(_b)_b.classList.remove('leyendo'); }
   function _burbuja(who,txt){ const c=document.getElementById('asistV-chat'); if(!c) return; c.style.display='block';
     const cl=document.getElementById('asistV-chatx'); if(cl)cl.style.display='block';
     const d=document.createElement('div'); const base='margin:5px 0;padding:6px 8px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-word;';
@@ -2935,12 +2940,14 @@ function broadcastTheme() {
       '<div class="vb-row"><input id="asistV-in" type="text" placeholder=\'ej: "filtrá semana 18 y turno TM" · "ir a calidad"\' onkeydown="if(event.key===\'Enter\')window.__asistVexec()">'+
       '<button id="asistV-mic" title="Dictar">🎤</button>'+
       '<button id="asistV-voz" title="Leer respuestas en voz alta">'+(_vozOn?'🔊':'🔇')+'</button>'+
+      '<button id="asistV-stop" title="Detener lectura">⏹</button>'+
       '<button id="asistV-go" class="vb-go">Ejecutar</button></div>'+
       '</div>'+
       '<button id="vsptBot-launcher" aria-label="Asistente VSPT">'+_SVGBOT+'<span id="vsptBot-badge" hidden></span></button>';
     document.body.appendChild(bot);
     document.getElementById('asistV-go').onclick=ejec;
     document.getElementById('asistV-mic').onclick=voz;
+    document.getElementById('asistV-stop').onclick=_pararVoz;
     document.getElementById('asistV-voz').onclick=_toggleVoz;
     const _cx=document.getElementById('asistV-chatx'); if(_cx)_cx.onclick=function(){const c=document.getElementById('asistV-chat'); if(c){c.style.display='none';} this.style.display='none';};
     window.__asistVexec=ejec;

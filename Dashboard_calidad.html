@@ -369,6 +369,7 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
       <input id="asistC-in" type="text" placeholder='ej: "marcá en rojo los de Brasil" · "limpiar"' onkeydown="if(event.key==='Enter')window.__asistCexec()">
       <button id="asistC-mic" title="Dictar por voz">🎤</button>
       <button id="asistC-voz" title="Leer respuestas en voz alta">🔊</button>
+      <button id="asistC-stop" title="Detener lectura">⏹</button>
       <button id="asistC-go" class="vb-go">Ejecutar</button>
     </div>
   </div>
@@ -1532,6 +1533,7 @@ fetchData();
   let _vozOn=(function(){try{return (localStorage.getItem('asist-voz')||'1')==='1';}catch(e){return true;}})();
   function _leer(txt){ if(!window.speechSynthesis||!_vozOn) return; try{ speechSynthesis.cancel(); const limpio=String(txt).replace(/[*#|]/g,'').replace(/^\s*[-–—]\s+/gm,'').replace(/-{2,}/g,' '); const u=new SpeechSynthesisUtterance(limpio); u.lang='es-AR'; u.rate=1.05; u.onstart=function(){var b=document.getElementById('vsptBot');if(b)b.classList.add('leyendo');}; u.onend=function(){var b=document.getElementById('vsptBot');if(b)b.classList.remove('leyendo');}; speechSynthesis.speak(u);}catch(e){} }
   function _toggleVoz(){ _vozOn=!_vozOn; try{localStorage.setItem('asist-voz',_vozOn?'1':'0');}catch(e){} const b=document.getElementById('asistC-voz'); if(b)b.textContent=_vozOn?'🔊':'🔇'; if(!_vozOn&&window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} }
+  function _pararVoz(){ if(window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} const _b=document.getElementById('vsptBot'); if(_b)_b.classList.remove('leyendo'); }
   function _burbuja(who,txt){ const w=document.getElementById('asistC-chatwrap'), c=document.getElementById('asistC-chat'); if(!c) return; if(w)w.style.display='block'; if(who==='a'&&window.vsptBotAviso)vsptBotAviso();
     const d=document.createElement('div'); const base='margin:5px 0;padding:6px 8px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-word;';
     d.style.cssText=base+(who==='u'?'background:var(--card);border:1px solid var(--border);':'background:var(--card2);border-left:3px solid #D81840;');
@@ -1630,7 +1632,7 @@ fetchData();
   }
   document.getElementById('asistC-go').onclick=ejec;
   document.getElementById('asistC-mic').onclick=voz;
-  (function(){ const vz=document.getElementById('asistC-voz'); if(vz){ vz.textContent=_vozOn?'🔊':'🔇'; vz.onclick=_toggleVoz; }
+  (function(){ const vz=document.getElementById('asistC-voz'); if(vz){ vz.textContent=_vozOn?'🔊':'🔇'; vz.onclick=_toggleVoz; } const sp=document.getElementById('asistC-stop'); if(sp)sp.onclick=_pararVoz;
     const cx=document.getElementById('asistC-chatx'); if(cx)cx.onclick=function(){ const w=document.getElementById('asistC-chatwrap'); if(w)w.style.display='none'; }; })();
   window.__asistCexec=ejec;
   /* ---- Widget flotante VSPT (launcher botella + panel) ---- */
