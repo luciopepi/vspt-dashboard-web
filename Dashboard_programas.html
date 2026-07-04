@@ -193,6 +193,47 @@ tr.dragging{opacity:0.35;background:var(--tr-hover)}
 tr.drag-over{outline:2px dashed var(--vspt-amber);outline-offset:-2px;background:rgba(248,192,64,0.08)}
 .alist-row.drag-over{outline:2px dashed var(--vspt-amber);background:rgba(248,192,64,0.08)}
 </style>
+<style id="vsptBot-css">
+#vsptBot{position:fixed;right:18px;bottom:18px;z-index:9000;font-family:'Montserrat',system-ui,sans-serif}
+#vsptBot[data-variedad="tinto"]{--bot-vidrio:#1F1330;--bot-capsula:#701F52;--bot-etiqueta:#3A1650;--bot-marco:#D4A72C;--bot-texto:#EFE3B8;--bot-firma:#F8C040;--bot-c1:#E0218A;--bot-c2:#F08808;--bot-c3:#8C4BC7}
+#vsptBot[data-variedad="durazno"]{--bot-vidrio:#B4551E;--bot-capsula:#F08808;--bot-etiqueta:#F5A65B;--bot-marco:#C22B2B;--bot-texto:#5A1E10;--bot-firma:#8A3A16;--bot-c1:#E85D2A;--bot-c2:#C22B2B;--bot-c3:#F5C06B}
+#vsptBot[data-variedad="frutos"]{--bot-vidrio:#C4557E;--bot-capsula:#B81368;--bot-etiqueta:#D81860;--bot-marco:#701F52;--bot-texto:#FFFFFF;--bot-firma:#FFE3EF;--bot-c1:#8C1F4B;--bot-c2:#F0609A;--bot-c3:#5A1030}
+#vsptBot[data-variedad="blanco"]{--bot-vidrio:#EBDFA6;--bot-capsula:#D8C878;--bot-etiqueta:#F5EEDC;--bot-marco:#B8A860;--bot-texto:#6B5E2E;--bot-firma:#B8A860;--bot-c1:#5DC7D1;--bot-c2:#3AA8B8;--bot-c3:#7FD8CF}
+#vsptBot-launcher{background:transparent;border:none;padding:0;cursor:pointer;position:relative;display:block;line-height:0;filter:drop-shadow(0 6px 10px rgba(0,0,0,.45));animation:vbFlotar 3s ease-in-out infinite}
+body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
+.vb-botella{height:64px;width:auto;display:block}
+.vb-botella *{transition:fill 1.1s ease,stroke 1.1s ease}
+.b-vidrio{fill:var(--bot-vidrio)}
+.b-capsula{fill:var(--bot-capsula)}
+.b-anillo{fill:var(--bot-marco);opacity:.85}
+.b-etiqueta{fill:var(--bot-etiqueta)}
+.b-marco{stroke:var(--bot-marco);stroke-width:1}
+.b-texto{fill:var(--bot-texto);font-size:9px;font-weight:800;letter-spacing:1.2px;font-family:'Montserrat',sans-serif}
+.b-firma{fill:var(--bot-firma);font-size:7px;font-style:italic;font-family:'Montserrat',sans-serif}
+.b-conf1{fill:var(--bot-c1)}.b-conf2{fill:var(--bot-c2)}.b-conf3{fill:var(--bot-c3)}
+.b-brillo{fill:#fff;opacity:.14;animation:vbBrillo 6s ease-in-out infinite}
+#vsptBot.pensando .vb-botella{animation:vbBalanceo 1.2s ease-in-out infinite}
+#vsptBot.respondiendo .vb-botella{animation:vbBounce .6s ease}
+#vsptBot.leyendo .vb-botella{animation:vbLee 1s ease-in-out infinite}
+@keyframes vbFlotar{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes vbBrillo{0%,100%{opacity:.05;transform:translateX(-2px)}50%{opacity:.22;transform:translateX(2px)}}
+@keyframes vbBalanceo{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes vbBounce{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+@keyframes vbLee{0%,100%{transform:rotate(0)}50%{transform:rotate(2deg)}}
+#vsptBot-badge{position:absolute;top:2px;right:2px;width:11px;height:11px;border-radius:50%;background:#D81840;border:2px solid #fff;animation:vbPulso 1.4s ease-in-out infinite}
+@keyframes vbPulso{0%,100%{box-shadow:0 0 0 0 rgba(216,24,64,.6)}50%{box-shadow:0 0 0 5px rgba(216,24,64,0)}}
+#vsptBot-panel{position:absolute;right:0;bottom:calc(100% + 10px);width:360px;max-height:70vh;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.45);overflow:hidden}
+#vsptBot-panel[hidden]{display:none}
+.vb-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(135deg,#4E1742,#D81840);color:#fff;font-size:13px;font-weight:700}
+.vb-head button{margin-left:auto;background:transparent;border:none;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0 2px}
+#vsptBot .vb-chat{flex:1;overflow-y:auto;padding:8px 12px;min-height:60px;position:relative;font-size:12px}
+#vsptBot .vb-st{display:block;padding:2px 14px;font-size:11px;color:var(--muted);min-height:14px}
+.vb-row{display:flex;gap:6px;align-items:center;padding:8px 12px;border-top:1px solid var(--border)}
+.vb-row input{flex:1;min-width:0;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:inherit}
+.vb-row button{flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 9px;cursor:pointer;font-size:12px}
+.vb-row button.vb-go{background:linear-gradient(135deg,#4E1742,#D81840);border:none;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:6px 10px;font-size:11px}
+@media (max-width:480px){#vsptBot-panel{width:calc(100vw - 24px);max-height:80vh;right:-6px}.vb-botella{height:56px}}
+</style>
 </head>
 <body>
 
@@ -255,19 +296,34 @@ tr.drag-over{outline:2px dashed var(--vspt-amber);outline-offset:-2px;background
   <button class="btn-light" id="btn-genplan" onclick="generarPlanEnSheets(this)" title="Genera un Google Sheets nuevo con el plan reordenado tal como lo dejaste. No modifica el plan maestro.">📋 Generar plan en Sheets</button>
 </div>
 
-<div style="background:var(--card);border-bottom:1px solid var(--border);padding:8px 22px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-  <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.14em">🤖 Asistente</span>
-  <input id="asistente-input" type="text" placeholder='Ej: "marcá con verde las órdenes del pedido 1589"  ·  "limpiar colores"'
-    style="flex:1;min-width:240px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:inherit"
-    onkeydown="if(event.key==='Enter')asistenteEjecutar()">
-  <button class="btn-light" id="asistente-mic" onclick="asistenteVoz()" title="Dictar por voz">🎤</button>
-  <button class="btn-light" id="asistP-voz" onclick="_toggleVoz()" title="Leer respuestas en voz alta">🔊</button>
-  <button class="btn-clear" onclick="asistenteEjecutar()">Ejecutar</button>
-  <span id="asistente-status" style="font-size:11px;color:var(--muted)"></span>
-</div>
-<div id="asistP-chatwrap" style="display:none;background:var(--card);border-bottom:1px solid var(--border);padding:6px 22px;position:relative">
-  <button id="asistP-chatx" title="Cerrar chat" onclick="document.getElementById('asistP-chatwrap').style.display='none'" style="position:absolute;right:14px;top:4px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1">×</button>
-  <div id="asistP-chat" style="max-height:280px;overflow-y:auto;font-size:12px"></div>
+<div id="vsptBot" data-variedad="tinto">
+  <div id="vsptBot-panel" hidden>
+    <div class="vb-head">🍷 Asistente VSPT <button id="vsptBot-close" title="Cerrar">×</button></div>
+    <div id="asistP-chatwrap" class="vb-chat">
+      <button id="asistP-chatx" title="Cerrar chat" onclick="document.getElementById('asistP-chatwrap').style.display='none'" style="display:none;position:absolute;right:8px;top:4px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1">×</button>
+      <div id="asistP-chat"></div>
+    </div>
+    <span id="asistente-status" class="vb-st"></span>
+    <div class="vb-row">
+      <input id="asistente-input" type="text" placeholder='Ej: "marcá con verde las órdenes del pedido 1589"  ·  "limpiar colores"' onkeydown="if(event.key==='Enter')asistenteEjecutar()">
+      <button id="asistente-mic" onclick="asistenteVoz()" title="Dictar por voz">🎤</button>
+      <button id="asistP-voz" onclick="_toggleVoz()" title="Leer respuestas en voz alta">🔊</button>
+      <button class="vb-go" onclick="asistenteEjecutar()">Ejecutar</button>
+    </div>
+  </div>
+  <button id="vsptBot-launcher" aria-label="Asistente VSPT">
+    <svg class="vb-botella" viewBox="0 0 60 170" xmlns="http://www.w3.org/2000/svg">
+      <path class="b-vidrio" d="M23,11 L23,52 C23,58 10,62 10,80 L10,158 Q10,165 17,165 L43,165 Q50,165 50,158 L50,80 C50,62 37,58 37,52 L37,11 Q30,8 23,11 Z"/>
+      <path class="b-brillo" d="M16,72 L21,72 L15,162 L11,159 Z"/>
+      <rect class="b-capsula" x="22" y="9" width="16" height="30" rx="2"/><rect class="b-anillo" x="21" y="37" width="18" height="3"/>
+      <rect class="b-etiqueta" x="13" y="92" width="34" height="56" rx="3"/><rect class="b-marco" x="16" y="96" width="28" height="48" rx="2" fill="none"/>
+      <text class="b-texto" x="30" y="114" text-anchor="middle">COLON</text><text class="b-firma" x="30" y="130" text-anchor="middle">Selecto</text>
+      <circle class="b-conf1" cx="20" cy="139" r="1.6"/><circle class="b-conf2" cx="25" cy="141" r="1.3"/><ellipse class="b-conf3" cx="30" cy="139" rx="1.8" ry="1.2"/>
+      <circle class="b-conf1" cx="35" cy="141" r="1.4"/><circle class="b-conf2" cx="40" cy="139" r="1.6"/><circle class="b-conf3" cx="22" cy="144" r="1.1"/>
+      <circle class="b-conf1" cx="28" cy="145" r="1.2"/><ellipse class="b-conf2" cx="33" cy="144" rx="1.5" ry="1"/><circle class="b-conf3" cx="38" cy="145" r="1.3"/><circle class="b-conf1" cx="30" cy="147" r="1"/>
+    </svg>
+    <span id="vsptBot-badge" hidden></span>
+  </button>
 </div>
 
 <div class="content" id="content">
@@ -1164,7 +1220,7 @@ async function asistenteEjecutar(){
   const local=parseComandoLocal(texto);
   if(local){ aplicarAccionAsistente(local); return; }
   try{
-    setAsistStatus('Consultando asistente IA…');
+    setAsistStatus('Consultando asistente IA…'); if(window.vsptBotPensando)vsptBotPensando(true);
     const res=await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:'asistente', texto }) });
     let j;
     const raw = await res.text();
@@ -1175,7 +1231,7 @@ async function asistenteEjecutar(){
   }catch(e){
     console.error(e);
     setAsistStatus('IA: '+(e.message||e), true);
-  }
+  }finally{ if(window.vsptBotPensando)vsptBotPensando(false); }
 }
 
 /* ===== Preguntas analíticas (digest + chat + voz de salida) ===== */
@@ -1187,9 +1243,9 @@ function esPregunta(t){
   return false;
 }
 let _vozOn=(function(){try{return (localStorage.getItem('asist-voz')||'1')==='1';}catch(e){return true;}})();
-function _leer(txt){ if(!window.speechSynthesis||!_vozOn) return; try{ speechSynthesis.cancel(); const limpio=String(txt).replace(/[*#|]/g,'').replace(/^\s*[-–—]\s+/gm,'').replace(/-{2,}/g,' '); const u=new SpeechSynthesisUtterance(limpio); u.lang='es-AR'; u.rate=1.05; speechSynthesis.speak(u);}catch(e){} }
+function _leer(txt){ if(!window.speechSynthesis||!_vozOn) return; try{ speechSynthesis.cancel(); const limpio=String(txt).replace(/[*#|]/g,'').replace(/^\s*[-–—]\s+/gm,'').replace(/-{2,}/g,' '); const u=new SpeechSynthesisUtterance(limpio); u.lang='es-AR'; u.rate=1.05; u.onstart=function(){var b=document.getElementById('vsptBot');if(b)b.classList.add('leyendo');}; u.onend=function(){var b=document.getElementById('vsptBot');if(b)b.classList.remove('leyendo');}; speechSynthesis.speak(u);}catch(e){} }
 function _toggleVoz(){ _vozOn=!_vozOn; try{localStorage.setItem('asist-voz',_vozOn?'1':'0');}catch(e){} const b=document.getElementById('asistP-voz'); if(b)b.textContent=_vozOn?'🔊':'🔇'; if(!_vozOn&&window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} }
-function _burbuja(who,txt){ const w=document.getElementById('asistP-chatwrap'), c=document.getElementById('asistP-chat'); if(!c) return; if(w)w.style.display='block';
+function _burbuja(who,txt){ const w=document.getElementById('asistP-chatwrap'), c=document.getElementById('asistP-chat'); if(!c) return; if(w)w.style.display='block'; if(who==='a'&&window.vsptBotAviso)vsptBotAviso();
   const d=document.createElement('div'); const base='margin:5px 0;padding:6px 8px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-word;';
   d.style.cssText=base+(who==='u'?'background:var(--card2);border:1px solid var(--border);':'background:var(--card2);border-left:3px solid #D81840;');
   d.textContent=txt; c.appendChild(d); c.scrollTop=c.scrollHeight; }
@@ -1216,7 +1272,7 @@ function resumenDatosProg(){
   return out;
 }
 async function preguntarProg(tx){
-  _burbuja('u',tx); setAsistStatus('Analizando datos…');
+  _burbuja('u',tx); setAsistStatus('Analizando datos…'); if(window.vsptBotPensando)vsptBotPensando(true);
   let resumen=''; try{ resumen=resumenDatosProg(); }catch(e){ resumen=''; }
   try{
     const ctx='Página PROGRAMAS (plan semanal de producción por línea/turno). El digest respeta los filtros activos (semana/año/línea/turno). Incluye cumplimiento cruzando con OPINONA.'+((opinonaData&&opinonaData.length)?'':' (detalle OPINONA aún cargando)');
@@ -1225,9 +1281,23 @@ async function preguntarProg(tx){
     try{ j=JSON.parse(raw); }catch(_){ throw new Error('Respuesta no-JSON (HTTP '+res.status+')'); }
     if(j.status!=='success') throw new Error(j.msg||'sin respuesta');
     _burbuja('a',j.respuesta||'(sin respuesta)'); _leer(j.respuesta||''); setAsistStatus('');
-  }catch(e){ console.error(e); setAsistStatus('IA: '+(e.message||e), true); }
+  }catch(e){ console.error(e); setAsistStatus('IA: '+(e.message||e), true); }finally{ if(window.vsptBotPensando)vsptBotPensando(false); }
 }
 (function(){const b=document.getElementById('asistP-voz'); if(b)b.textContent=_vozOn?'🔊':'🔇';})();
+/* ===== Widget flotante VSPT (launcher botella + panel) ===== */
+(function(){
+  const bot=document.getElementById('vsptBot'); if(!bot) return;
+  const panel=document.getElementById('vsptBot-panel'), launcher=document.getElementById('vsptBot-launcher'), badge=document.getElementById('vsptBot-badge');
+  function abrir(){ panel.hidden=false; if(badge)badge.hidden=true; const i=document.getElementById('asistente-input'); if(i)setTimeout(function(){i.focus();},30); const c=document.getElementById('asistP-chat'); if(c)c.scrollTop=c.scrollHeight; }
+  function cerrar(){ panel.hidden=true; }
+  launcher.addEventListener('click',function(e){ e.stopPropagation(); if(panel.hidden)abrir(); else cerrar(); });
+  const cl=document.getElementById('vsptBot-close'); if(cl)cl.addEventListener('click',function(e){ e.stopPropagation(); cerrar(); });
+  document.addEventListener('click',function(e){ if(!panel.hidden && !e.target.closest('#vsptBot')) cerrar(); });
+  let _pend=0,_iv=null;
+  window.vsptBotPensando=function(on){ if(on){ _pend++; if(_pend===1){ bot.classList.add('pensando'); bot.classList.remove('respondiendo'); const vs=['tinto','durazno','frutos','blanco']; let k=0; _iv=setInterval(function(){ k=(k+1)%vs.length; bot.setAttribute('data-variedad',vs[k]); },1200); } }
+    else { _pend=Math.max(0,_pend-1); if(_pend===0){ if(_iv){clearInterval(_iv);_iv=null;} bot.setAttribute('data-variedad','tinto'); bot.classList.remove('pensando'); bot.classList.add('respondiendo'); setTimeout(function(){ bot.classList.remove('respondiendo'); },600); } } };
+  window.vsptBotAviso=function(){ if(panel.hidden&&badge) badge.hidden=false; };
+})();
 
 let _asistRec = null;
 function asistenteVoz(){
