@@ -1445,6 +1445,8 @@ fetchData();
   const MESES={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,setiembre:9,octubre:10,noviembre:11,diciembre:12};
   const _n=s=>String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
   function st(t,e){const el=document.getElementById('asistC-st');if(el){el.textContent=t||'';el.style.color=e?'var(--vspt-crimson)':'var(--muted)';}}
+  function _esComando(t){ const s=_n(t); return /^(filtr|mostr|resalt|marc|pint|anda|ir |pone|saca|limpi|borr|agreg|quit|cambi|abri|selecc)/.test(s); }
+  function _fuzzyOpts(sel,texto){ const stop={filtra:1,filtrame:1,mostra:1,mostrame:1,fallas:1,falla:1,tuvo:1,para:1,turno:1,semana:1,desvios:1,desvio:1}; const toks=_n(texto).split(/[^a-z0-9]+/).filter(w=>w.length>=4&&!stop[w]&&!MESES[w]&&!/^(filtr|mostr|resalt|marc|pint|anda|pone|saca|limpi|borr|agreg|quit|cambi|abri|selecc)/.test(w)); const vals=[],seen={};let term=''; for(const o of sel.options){ const ov=_n(o.value); if(!ov||ov.length<=2) continue; for(const tk of toks){ if(ov.includes(tk)||tk.includes(ov)){ if(!seen[o.value]){seen[o.value]=1;vals.push(o.value);} if(!term)term=tk; break; } } } return {term,vals}; }
   const SELS=['f-estado','f-mes','f-producto','f-grupo','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'];
   function _anio(){ return new Date().getFullYear(); }
   function _iso(y,m,d){ return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
@@ -1477,16 +1479,18 @@ fetchData();
       const fs=buscarFechas(t); if(fs.length) return {a:'fechas',desde:fs[0],hasta:fs[1]||fs[0]};
     }
     // filtros por opciones de los selects
-    const f={};
+    const f={},amb=[];
     if(/pendiente|abierto/.test(t)) f['f-estado']='Pendiente';
     else if(/cerrad/.test(t)) f['f-estado']='Cerrado';
     if(/inocuidad/.test(t)){ if(/\bno\b/.test(t)) f['f-inocuidad']='No'; else if(/\bs[ií]\b/.test(t)) f['f-inocuidad']='Sí'; }
     for(const k in MESES){ if(new RegExp('\\b'+k+'\\b').test(t)){ const sel=document.getElementById('f-mes'); if(sel){ for(const o of sel.options){ if(_n(o.value).indexOf(k)===0||_n(o.text).indexOf(k)===0){ f['f-mes']=o.value; break; } } } break; } }
     ['f-producto','f-grupo','f-clasificacion','f-responsable','f-disposicion'].forEach(id=>{
       const sel=document.getElementById(id); if(!sel) return;
-      for(const o of sel.options){ const ov=_n(o.value); if(ov && ov.length>2 && t.includes(ov)){ f[id]=o.value; break; } }
+      let hit=false;
+      for(const o of sel.options){ const ov=_n(o.value); if(ov && ov.length>2 && t.includes(ov)){ f[id]=o.value; hit=true; break; } }
+      if(!hit){ const r=_fuzzyOpts(sel,txt); if(r.vals.length===1){ f[id]=r.vals[0]; } else if(r.vals.length>=2){ amb.push({id,term:r.term,vals:r.vals}); } }
     });
-    return Object.keys(f).length ? {a:'filtros',f} : null;
+    return (Object.keys(f).length||amb.length) ? {a:'filtros',f,amb} : null;
   }
   function apply(act){
     if(!act){ st('No entendí el comando.', true); return; }
@@ -1506,6 +1510,7 @@ fetchData();
       const partes=[];
       for(const id in f){ const el=document.getElementById(id); if(el && f[id]!=null && f[id]!==''){ el.value=String(f[id]); partes.push(id.replace('f-','')+'='+f[id]); } }
       if(typeof applyFilters==='function') applyFilters();
+      if(act.amb&&act.amb.length){ act.amb.forEach(_burbujaOpts); if(!partes.length){ st('Encontré varias opciones, elegí en el chat 💬'); return; } }
       st(partes.length?('✓ '+partes.join(' · ')):'No reconocí el filtro', !partes.length); return;
     }
     st('Comando no aplicable.', true);
@@ -1531,6 +1536,20 @@ fetchData();
     const d=document.createElement('div'); const base='margin:5px 0;padding:6px 8px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-word;';
     d.style.cssText=base+(who==='u'?'background:var(--card);border:1px solid var(--border);':'background:var(--card2);border-left:3px solid #D81840;');
     d.textContent=txt; c.appendChild(d); c.scrollTop=c.scrollHeight; }
+  function _burbujaOpts(o){ const w=document.getElementById('asistC-chatwrap'), c=document.getElementById('asistC-chat'); if(!c) return; if(w)w.style.display='block'; if(window.vsptBotAviso)vsptBotAviso();
+    const d=document.createElement('div'); d.style.cssText='background:var(--card2);border-left:3px solid #D81840;border-radius:8px;font-size:12px;padding:6px 8px;margin:5px 0';
+    const sp=document.createElement('span'); sp.textContent='Para «'+o.term+'» encontré varias opciones:'; d.appendChild(sp);
+    o.vals.slice(0,6).forEach(val=>{ const btn=document.createElement('button'); btn.textContent=val;
+      btn.style.cssText='background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;font-size:11px;padding:3px 8px;margin:4px 4px 0 0;cursor:pointer';
+      btn.onclick=function(){ const sel=document.getElementById(o.id); if(!sel){ st('Esa opción ya no está disponible',true); return; }
+        if(![...sel.options].some(x=>x.value===val)){ st('Esa opción ya no está disponible',true); return; }
+        sel.value=val; if(typeof applyFilters==='function') applyFilters();
+        st('✓ '+o.id.replace('f-','')+'='+val);
+        [...d.querySelectorAll('button')].forEach(b=>{ b.disabled=true; b.style.opacity='.5'; });
+      };
+      d.appendChild(btn); });
+    c.appendChild(d); c.scrollTop=c.scrollHeight;
+  }
   function _csvVal(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; }
   function _rowsCSV(h,rows){ return h.join(',')+'\n'+rows.map(r=>r.map(_csvVal).join(',')).join('\n'); }
   function _numC(v){ if(v==null||v==='')return 0; const n=parseFloat(String(v).replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.')); return isNaN(n)?0:n; }
@@ -1599,7 +1618,7 @@ fetchData();
     st('Procesando…');
     if(esPregunta(tx)){ preguntar(tx); return; }
     const loc=parse(tx); if(loc){ apply(loc); return; }
-    if(tx.split(/\s+/).length>=4){ preguntar(tx); return; }
+    if(!_esComando(tx)&&tx.split(/\s+/).length>=4){ preguntar(tx); return; }
     try{
       st('Consultando IA…'); if(window.vsptBotPensando)vsptBotPensando(true);
       const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'asistente',texto:tx,contexto:CTX})});

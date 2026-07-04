@@ -1225,7 +1225,7 @@ async function asistenteEjecutar(){
   if(esPregunta(texto)){ preguntarProg(texto); return; }
   const local=parseComandoLocal(texto);
   if(local){ aplicarAccionAsistente(local); return; }
-  if(texto.split(/\s+/).length>=4){ preguntarProg(texto); return; }
+  if(!_esComando(texto)&&texto.split(/\s+/).length>=4){ preguntarProg(texto); return; }
   try{
     setAsistStatus('Consultando asistente IA…'); if(window.vsptBotPensando)vsptBotPensando(true);
     const res=await fetch(API_URL, { method:'POST', body: JSON.stringify({ accion:'asistente', texto }) });
@@ -1242,6 +1242,7 @@ async function asistenteEjecutar(){
 }
 
 /* ===== Preguntas analíticas (digest + chat + voz de salida) ===== */
+function _esComando(t){ const s=_norm(t); return /^(filtr|mostr|resalt|marc|pint|anda|ir |pone|saca|limpi|borr|agreg|quit|cambi|abri|selecc)/.test(s); }
 function esPregunta(t){
   const s=_norm(t); if(!s) return false;
   if(s.includes('?')) return true;
