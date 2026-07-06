@@ -655,6 +655,9 @@ window.addEventListener('load', () => {
           f.src = src;
         }
       });
+      // Tablero de comando (Objetivos) también en background: así el asistente
+      // puede responder preguntas sobre los KPIs desde cualquier pestaña.
+      try { if (typeof cargarTableroKpi === 'function' && !KPI.cat) cargarTableroKpi(); } catch(e){}
     }, 1500);
   });
 
@@ -1278,12 +1281,12 @@ function changeTab(id) {
 
 function render() {
   if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal') return;
+  if (activeTab === 'objetivos') { renderObjetivos(); return; }
   if (!rawData.length) return;
   if (activeTab === 'planta')    renderTab('planta', filteredData);
   else if (activeTab === 'l1')   renderTab('l1', filteredData.filter(r => getLinea(r) === 'L1'));
   else if (activeTab === 'l2')   renderTab('l2', filteredData.filter(r => getLinea(r) === 'L2'));
   else if (activeTab === 'l3')   renderTab('l3', filteredData.filter(r => getLinea(r) === 'L3'));
-  else if (activeTab === 'objetivos') renderObjetivos();
 }
 
 // Render solo KPIs cards + gráfico OPINONA Mensual, leyendo de la hoja KPI_PLANTA_MENSUAL.
@@ -2271,7 +2274,9 @@ function renderObjetivos() {
     </tr>`;
   });
   html += `</tbody></table></div>`;
+  html += `<div id="kpiBoardHost"></div>`;
   container.innerHTML = html;
+  initTableroKpi();
 }
 
 function toggleAdmin() {
@@ -2285,6 +2290,468 @@ function saveTarget(id, val) {
   targets[id].anual = n;
   localStorage.setItem(TARGETS_KEY, JSON.stringify(targets));
   renderObjetivos(); render();
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  TABLERO DE COMANDO · Producción — pestaña Objetivos
+//  KPIs AUTO se calculan desde OPINONA (rawData) y HE_DIARIO; los MANUAL
+//  vienen de la hoja KPI_DIARIO y se cargan con el formulario de acá.
+// ═════════════════════════════════════════════════════════════════════
+const KPI = { cat:null, dia:null, acc:null, he:null, cargando:false, error:null,
+              gran:'d', accFiltro:'abiertas', formAbierto:false, accFormAbierto:false, msg:'', fecha:'' };
+
+function initTableroKpi() {
+  if (!document.getElementById('kpi-css')) {
+    const st = document.createElement('style'); st.id = 'kpi-css';
+    st.textContent = `
+      .kpi-blk{margin-top:22px}
+      .kpi-areas{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 14px}
+      .kpi-achip{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700}
+      .kpi-achip .n{color:var(--muted);font-weight:600}
+      .kpi-dot{width:8px;height:8px;border-radius:50%;flex:none}
+      .kpi-tblwrap{overflow-x:auto}
+      .kpi-tbl{border-collapse:collapse;width:100%;min-width:700px}
+      .kpi-tbl th{background:var(--th-bg);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px}
+      .kpi-tbl td{padding:8px 10px;border-bottom:1px solid var(--td-border);font-size:12.5px;vertical-align:middle}
+      .kpi-tbl tr:hover td{background:var(--tr-hover)}
+      .kpi-tbl .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+      .kpi-area-row td{background:var(--card2);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);padding:6px 10px}
+      .kpi-src{font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:8px;padding:2px 7px;white-space:nowrap}
+      .kpi-src.auto{color:var(--vspt-olive);border:1px solid rgba(152,160,64,.5);background:rgba(152,160,64,.12)}
+      .kpi-src.man{color:var(--muted);border:1px dashed var(--border)}
+      .kpi-st{display:inline-flex;align-items:center;gap:6px;border-radius:12px;padding:3px 10px;font-size:10px;font-weight:800;letter-spacing:.08em;white-space:nowrap}
+      .kpi-st.ok{background:rgba(152,160,64,.14);border:1px solid rgba(152,160,64,.45);color:var(--vspt-olive)}
+      .kpi-st.warn{background:rgba(248,192,64,.14);border:1px solid rgba(248,192,64,.45);color:var(--vspt-orange)}
+      .kpi-st.bad{background:rgba(216,24,64,.12);border:1px solid rgba(216,24,64,.5);color:var(--vspt-crimson)}
+      .kpi-st.na{border:1px dashed var(--border);color:var(--muted)}
+      body:not(.light) .kpi-st.ok{color:#c5cf6e} body:not(.light) .kpi-st.warn{color:var(--vspt-yellow)} body:not(.light) .kpi-st.bad{color:#ff7a93}
+      .kpi-seg{display:inline-flex;background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:2px;gap:2px}
+      .kpi-seg button{background:transparent;border:none;color:var(--muted);padding:4px 13px;border-radius:13px;cursor:pointer;font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.08em}
+      .kpi-seg button.on{background:var(--vspt-crimson);color:#fff}
+      .kpi-btn{background:var(--vspt-crimson);border:1px solid var(--vspt-crimson);color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font:inherit;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+      .kpi-btn.ghost{background:transparent;color:var(--vspt-crimson)}
+      body:not(.light) .kpi-btn.ghost{color:#ff7a93}
+      .kpi-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+      .kpi-chip{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;min-width:92px}
+      .kpi-chip .v{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+      .kpi-chip .l{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
+      .kpi-rank{display:flex;flex-direction:column;gap:7px;margin-top:6px}
+      .kpi-rrow{display:grid;grid-template-columns:150px 1fr 90px;align-items:center;gap:10px;font-size:11.5px}
+      .kpi-rbar{display:flex;height:13px;gap:2px}
+      .kpi-rbar i{display:block;height:100%;border-radius:3px}
+      .kpi-form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:10px;margin-top:12px}
+      .kpi-field{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
+      .kpi-field label{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px}
+      .kpi-field input,.kpi-field select{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font:inherit;font-size:14px;font-weight:700;padding:2px 0;outline:none}
+      .kpi-field input:focus,.kpi-field select:focus{border-bottom-color:var(--vspt-crimson)}
+      .kpi-field select option{background:var(--card);color:var(--text)}
+      .kpi-msg{font-size:11px;font-weight:700;margin-left:10px}
+      .kpi-note{font-size:11px;color:var(--muted);margin-top:10px}
+    `;
+    document.head.appendChild(st);
+  }
+  if (!KPI.cat && !KPI.cargando) cargarTableroKpi();
+  renderTableroKpi();
+}
+
+async function cargarTableroKpi() {
+  if (KPI.cargando) return;
+  KPI.cargando = true; KPI.error = null; renderTableroKpi();
+  try {
+    const [rc, rd, ra, rh] = await Promise.all([
+      fetch(API_URL + '?tabla=kpi_catalogo'),
+      fetch(API_URL + '?tabla=kpi_diario'),
+      fetch(API_URL + '?tabla=acciones'),
+      fetch(API_URL + '?tabla=he').catch(() => null)
+    ]);
+    const jc = await rc.json(), jd = await rd.json(), ja = await ra.json();
+    if (jc.error === 'forbidden' || jd.error === 'forbidden') throw new Error('Sesión vencida — recargá la página e iniciá sesión');
+    KPI.cat = (jc.kpi_catalogo || []).filter(k => String(k.ACTIVO || 'SI').toUpperCase() !== 'NO')
+              .sort((a, b) => (Number(a.ORDEN) || 0) - (Number(b.ORDEN) || 0));
+    KPI.dia = jd.kpi_diario || [];
+    KPI.acc = ja.acciones || [];
+    try { KPI.he = rh ? ((await rh.json()).he || []) : []; } catch (e) { KPI.he = []; }
+  } catch (e) { KPI.error = e.message || String(e); }
+  KPI.cargando = false;
+  renderTableroKpi();
+}
+
+// ── fechas ──
+function kpiHoyISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function kpiFechaFlex(v) {              // ISO, "d/m/aaaa" o Date serializado → AAAA-MM-DD
+  const s = String(v == null ? '' : v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
+  return '';
+}
+function kpiRango(gran) {               // [desdeISO, hastaISO] — hoy / semana ISO al día / mes al día
+  const hoy = kpiHoyISO();
+  if (gran === 'd') return [hoy, hoy];
+  const d = new Date();
+  if (gran === 's') {
+    const dow = (d.getDay() + 6) % 7;   // lunes=0
+    const lun = new Date(d); lun.setDate(d.getDate() - dow);
+    return [lun.getFullYear() + '-' + String(lun.getMonth() + 1).padStart(2, '0') + '-' + String(lun.getDate()).padStart(2, '0'), hoy];
+  }
+  return [hoy.slice(0, 8) + '01', hoy];
+}
+
+// ── series AUTO desde OPINONA (rawData): una pasada, cache por longitud ──
+let _kpiAutoCache = null, _kpiAutoN = -1;
+function kpiSeriesAuto() {
+  if (_kpiAutoCache && _kpiAutoN === rawData.length) return _kpiAutoCache;
+  const porFecha = {};   // fecha → { global:{...}, L1:{...}, L2:{...}, L3:{...} }
+  const nuevo = () => ({ tot:0, noUso:0, nona:0, cambio:0, plan:0, ext:0, falla:0, pv:0, c9l:0 });
+  rawData.forEach(r => {
+    const f = getFecha(r); if (!f) return;
+    const key = f.toISOString().slice(0, 10);
+    if (!porFecha[key]) porFecha[key] = { global: nuevo(), L1: nuevo(), L2: nuevo(), L3: nuevo() };
+    const cls = getClasif1(r), v = getVarTiempo(r), pv = getPerdidas(r), c9l = getC9L(r);
+    const destinos = [porFecha[key].global];
+    const ln = getLinea(r); if (porFecha[key][ln]) destinos.push(porFecha[key][ln]);
+    destinos.forEach(a => {
+      a.tot += v; a.pv += pv; a.c9l += c9l;
+      if (cls === CATS.NO_USO) a.noUso += v; else if (cls === CATS.NONA) a.nona += v;
+      else if (cls === CATS.CAMBIO) a.cambio += v; else if (cls === CATS.PLANEADO) a.plan += v;
+      else if (cls === CATS.EXTERNA) a.ext += v; else if (cls === CATS.FALLA) a.falla += v;
+    });
+  });
+  const opiDe = a => {
+    const tEf = a.tot - a.noUso - a.nona;
+    if (tEf <= 0) return null;
+    return ((tEf - a.cambio - a.plan - a.ext - a.falla - a.pv) / tEf) * 100;
+  };
+  const out = { opi_total:{}, opi_l1:{}, opi_l2:{}, opi_l3:{}, litros:{}, cajas9l:{}, paradas_ext:{}, he:{} };
+  Object.keys(porFecha).forEach(f => {
+    const d = porFecha[f];
+    const o = opiDe(d.global); if (o != null) out.opi_total[f] = o;
+    [['L1','opi_l1'],['L2','opi_l2'],['L3','opi_l3']].forEach(([l, k]) => {
+      const ol = opiDe(d[l]); if (ol != null && d[l].tot > 0) out[k][f] = ol;
+    });
+    if (d.global.c9l > 0) { out.litros[f] = d.global.c9l * 9; out.cajas9l[f] = d.global.c9l; }
+    if (d.global.tot > 0) out.paradas_ext[f] = d.global.ext * 60;   // horas → min
+  });
+  (KPI.he || []).forEach(h => {
+    const f = kpiFechaFlex(h.fecha); const v = Number(h.he_horas);
+    if (f && !isNaN(v)) out.he[f] = (out.he[f] || 0) + v;
+  });
+  _kpiAutoCache = out; _kpiAutoN = rawData.length;
+  return out;
+}
+
+// serie {fechaISO → valor} de un KPI del catálogo
+function kpiSerie(k) {
+  if (String(k.ORIGEN).toUpperCase() === 'AUTO') return kpiSeriesAuto()[String(k.CALC).trim()] || {};
+  const s = {};
+  (KPI.dia || []).forEach(r => {
+    if (String(r.KPI_ID).trim() !== String(k.KPI_ID).trim()) return;
+    const f = kpiFechaFlex(r.FECHA); const v = Number(String(r.VALOR).replace(',', '.'));
+    if (f && !isNaN(v)) s[f] = v;
+  });
+  return s;
+}
+
+// valor agregado + meta escalada + estado, según granularidad
+function kpiCalc(k, gran) {
+  const esPct = String(k.UNIDAD).trim() === '%';
+  const g = String(k.FREC).toUpperCase() === 'M' ? 'm' : gran;   // los mensuales siempre mes-a-la-fecha
+  const [de, ha] = kpiRango(g);
+  const serie = kpiSerie(k);
+  const fechas = Object.keys(serie).filter(f => f >= de && f <= ha).sort();
+  if (!fechas.length) return { val: null, meta: null, dias: 0, estado: 'na' };
+  let val;
+  if (esPct) val = fechas.reduce((a, f) => a + serie[f], 0) / fechas.length;
+  else val = fechas.reduce((a, f) => a + serie[f], 0);
+  const metaBase = k.META === '' || k.META == null ? null : Number(String(k.META).replace(',', '.'));
+  let meta = metaBase, estado = 'na';
+  if (meta != null && !isNaN(meta)) {
+    if (!esPct && String(k.FREC).toUpperCase() !== 'M') meta = metaBase * fechas.length;  // meta diaria × días con dato
+    const mayor = String(k.SENTIDO).trim() !== '<=';
+    const bien = mayor ? val >= meta : val <= meta;
+    const cerca = mayor ? val >= meta * 0.9 : val <= meta * 1.15;
+    estado = bien ? 'ok' : (cerca ? 'warn' : 'bad');
+  } else meta = null;
+  return { val, meta, dias: fechas.length, estado };
+}
+
+function kpiFmt(v, u) {
+  if (v == null) return '—';
+  if (u === '%') return (Math.round(v * 10) / 10).toFixed(1).replace('.', ',') + '%';
+  const n = Math.round(v * 10) / 10;
+  return (n >= 10000 ? Math.round(n).toLocaleString('es-AR') : String(n).replace('.', ',')) + ' ' + u;
+}
+
+function kpiSpark(k) {
+  const serie = kpiSerie(k);
+  const fechas = Object.keys(serie).sort().slice(-14);
+  if (fechas.length < 2) return '<span style="color:var(--muted);font-size:11px">—</span>';
+  const vals = fechas.map(f => serie[f]);
+  const w = 110, h = 26, p = 3;
+  const min = Math.min(...vals), max = Math.max(...vals), rg = (max - min) || 1;
+  const pts = vals.map((v, i) => [(p + i * (w - 2 * p) / (vals.length - 1)).toFixed(1), (h - p - (v - min) / rg * (h - 2 * p)).toFixed(1)]);
+  const last = pts[pts.length - 1];
+  const est = kpiCalc(k, 'd').estado;
+  const col = est === 'ok' ? 'var(--vspt-olive)' : est === 'warn' ? 'var(--vspt-yellow)' : est === 'bad' ? 'var(--vspt-crimson)' : 'var(--muted)';
+  const t = fechas.map((f, i) => `${f.slice(8,10)}/${f.slice(5,7)}: ${kpiFmt(vals[i], k.UNIDAD)}`).join('&#10;');
+  return `<svg width="${w}" height="${h}" style="display:block" role="img"><title>${t}</title>
+    <polyline points="${pts.map(q => q.join(',')).join(' ')}" fill="none" stroke="var(--chart-tick)" stroke-width="1.5" opacity="0.75" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="3.2" fill="${col}" stroke="var(--card)" stroke-width="1.5"/></svg>`;
+}
+
+// ── acciones: helpers ──
+function kpiAccNorm(a) {
+  const comp = kpiFechaFlex(a.FECHA_COMPROMISO), efe = kpiFechaFlex(a.FECHA_EFECTIVA);
+  const estado = String(a.ESTADO || '').toUpperCase().includes('CERR') ? 'CERRADA' : 'ABIERTA';
+  const hoy = kpiHoyISO();
+  let chip, cls;
+  if (estado === 'CERRADA') {
+    const aTiempo = comp && efe && efe <= comp;
+    chip = aTiempo ? '● CERRADA · A TIEMPO' : '● CERRADA · CON RETRASO';
+    cls = aTiempo ? 'ok' : 'warn';
+  } else if (comp && comp < hoy) {
+    const d = Math.round((new Date(hoy) - new Date(comp)) / 86400000);
+    chip = `✕ VENCIDA ${d} D`; cls = 'bad';
+  } else if (comp) {
+    const d = Math.round((new Date(comp) - new Date(hoy)) / 86400000);
+    chip = d <= 7 ? `▲ VENCE EN ${d} D` : 'EN CURSO'; cls = d <= 7 ? 'warn' : 'na';
+  } else { chip = 'EN CURSO'; cls = 'na'; }
+  return { n: Number(a.N) || 0, kpi: String(a.KPI || ''), desc: String(a.DESCRIPCION || ''), plazo: String(a.PLAZO || ''),
+           resp: String(a.RESPONSABLE || ''), comp, efe, estado, chip, cls, raw: a };
+}
+
+const ESC_KPI = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ── render principal ──
+function setKpiGran(g) { KPI.gran = g; renderTableroKpi(); }
+function setKpiAccFiltro(f) { KPI.accFiltro = f; renderTableroKpi(); }
+function toggleKpiForm() { KPI.formAbierto = !KPI.formAbierto; KPI.msg = ''; renderTableroKpi(); }
+function toggleAccForm() { KPI.accFormAbierto = !KPI.accFormAbierto; KPI.msg = ''; renderTableroKpi(); }
+
+function renderTableroKpi() {
+  const host = document.getElementById('kpiBoardHost'); if (!host) return;
+  const head = (extra) => `
+    <div class="section-title kpi-blk" style="justify-content:space-between;">
+      <span style="display:flex;align-items:center;gap:10px;"><span style="width:4px;height:16px;background:linear-gradient(180deg,var(--vspt-amber),var(--vspt-orange));border-radius:2px;"></span>Tablero de Comando · Producción</span>
+      <span style="display:flex;gap:8px;align-items:center;">${extra || ''}</span>
+    </div>`;
+  if (KPI.cargando && !KPI.cat) { host.innerHTML = head() + `<div class="chart-card full" style="color:var(--muted)">Cargando tablero de comando…</div>`; return; }
+  if (KPI.error && !KPI.cat) { host.innerHTML = head(`<button class="kpi-btn ghost" onclick="cargarTableroKpi()">Reintentar</button>`) + `<div class="chart-card full" style="color:var(--vspt-crimson)">⚠ ${ESC_KPI(KPI.error)}</div>`; return; }
+  if (!KPI.cat) { host.innerHTML = ''; return; }
+  if (!KPI.cat.length) { host.innerHTML = head() + `<div class="chart-card full" style="color:var(--muted)">La hoja KPI_CATALOGO está vacía — correr <b>SEED_KPI_TABLERO()</b> en Apps Script.</div>`; return; }
+
+  const granBtn = g => `<button class="${KPI.gran === g ? 'on' : ''}" onclick="setKpiGran('${g}')">${g === 'd' ? 'DÍA' : g === 's' ? 'SEMANA' : 'MES'}</button>`;
+  let html = head(`<span class="kpi-seg">${granBtn('d')}${granBtn('s')}${granBtn('m')}</span>
+    <button class="kpi-btn" onclick="toggleKpiForm()">${KPI.formAbierto ? '✕ Cerrar' : '＋ Cargar día'}</button>`);
+
+  // ── chips por área + tabla ──
+  const porArea = {};
+  KPI.cat.forEach(k => { (porArea[k.AREA] = porArea[k.AREA] || []).push(k); });
+  const chips = [], filas = [];
+  Object.keys(porArea).forEach(area => {
+    let okN = 0, conMeta = 0;
+    filas.push(`<tr class="kpi-area-row"><td colspan="7">${ESC_KPI(area)}</td></tr>`);
+    porArea[area].forEach(k => {
+      const c = kpiCalc(k, KPI.gran);
+      if (c.estado !== 'na') { conMeta++; if (c.estado === 'ok') okN++; }
+      const lbl = { ok: '● EN META', warn: '▲ ATENCIÓN', bad: '✕ FUERA', na: 'SIN DATO' }[c.estado];
+      const auto = String(k.ORIGEN).toUpperCase() === 'AUTO';
+      filas.push(`<tr>
+        <td style="font-weight:600">${ESC_KPI(k.NOMBRE)}</td>
+        <td><span class="kpi-src ${auto ? 'auto' : 'man'}">${auto ? 'AUTO' : 'MANUAL'}</span></td>
+        <td class="num" style="color:var(--muted)">${c.meta != null ? kpiFmt(c.meta, k.UNIDAD) : '—'}</td>
+        <td class="num" style="font-weight:800">${kpiFmt(c.val, k.UNIDAD)}</td>
+        <td>${kpiSpark(k)}</td>
+        <td><span class="kpi-st ${c.estado}">${lbl}</span></td>
+        <td style="color:var(--muted);font-size:11px">${ESC_KPI(k.RESPONSABLE || '')}</td></tr>`);
+    });
+    const col = !conMeta ? 'var(--muted)' : okN === conMeta ? 'var(--vspt-olive)' : okN >= conMeta / 2 ? 'var(--vspt-yellow)' : 'var(--vspt-crimson)';
+    chips.push(`<div class="kpi-achip"><span class="kpi-dot" style="background:${col}"></span>${ESC_KPI(area)}<span class="n">${okN}/${conMeta} en meta</span></div>`);
+  });
+  const granLbl = KPI.gran === 'd' ? 'Hoy' : KPI.gran === 's' ? 'Semana' : 'Mes';
+  html += `<div class="kpi-areas">${chips.join('')}</div>
+    <div class="chart-card full"><div class="kpi-tblwrap"><table class="kpi-tbl">
+      <thead><tr><th>KPI</th><th>Origen</th><th class="num">Meta</th><th class="num">${granLbl}</th><th>Últimos 14 días</th><th>Estado</th><th>Resp.</th></tr></thead>
+      <tbody>${filas.join('')}</tbody></table></div>
+      <div class="kpi-note">💡 <b>AUTO</b> se calcula solo desde OPINONA / HE — nadie lo tipea. <b>MANUAL</b> entra por «Cargar día».
+      En KPIs donde menos es mejor (ausentes, mermas, paradas) la meta es techo. Los mensuales se muestran siempre mes-a-la-fecha.</div>
+    </div>`;
+
+  // ── formulario de carga ──
+  if (KPI.formAbierto) {
+    const manuales = KPI.cat.filter(k => String(k.ORIGEN).toUpperCase() !== 'AUTO');
+    html += `<div class="chart-card full" style="margin-top:14px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <b style="font-size:13px">Carga rápida</b>
+        <span class="kpi-field" style="padding:5px 12px"><label>Fecha</label>
+          <input type="date" id="kpiFecha" value="${KPI.fecha || kpiHoyISO()}" max="${kpiHoyISO()}" onchange="KPI.fecha=this.value;renderTableroKpi()"></span>
+        <span style="font-size:11px;color:var(--muted)">Solo los manuales — dejá vacío lo que no aplique hoy. Queda registrado quién cargó.</span>
+      </div>
+      <div class="kpi-form-grid">` +
+      manuales.map(k => {
+        const f = KPI.fecha || kpiHoyISO();
+        const prev = kpiSerie(k)[f];
+        return `<div class="kpi-field"><label>${ESC_KPI(k.AREA)} · ${ESC_KPI(k.NOMBRE)}</label>
+          <input type="number" step="any" inputmode="decimal" data-kpiid="${ESC_KPI(k.KPI_ID)}" value="${prev != null ? prev : ''}" placeholder="—">
+          <span style="font-size:10px;color:var(--muted)">${ESC_KPI(k.UNIDAD)}${k.META !== '' && k.META != null ? ' · meta ' + ESC_KPI(k.META) : ''}</span></div>`;
+      }).join('') +
+      `</div>
+      <div style="display:flex;align-items:center;margin-top:14px">
+        <button class="kpi-btn" onclick="guardarKpiDiaUI(this)">Guardar día</button>
+        <span class="kpi-msg" id="kpiMsg">${KPI.msg || ''}</span>
+      </div></div>`;
+  }
+
+  // ── acciones correctivas ──
+  const accs = (KPI.acc || []).map(kpiAccNorm).filter(a => a.desc);
+  const abiertas = accs.filter(a => a.estado === 'ABIERTA');
+  const cerradas = accs.filter(a => a.estado === 'CERRADA');
+  const vencidas = abiertas.filter(a => a.cls === 'bad');
+  const aTiempo = cerradas.filter(a => a.comp && a.efe && a.efe <= a.comp);
+  const fBtn = (f, t) => `<button class="${KPI.accFiltro === f ? 'on' : ''}" onclick="setKpiAccFiltro('${f}')">${t}</button>`;
+  html += `
+    <div class="section-title kpi-blk" style="justify-content:space-between;">
+      <span style="display:flex;align-items:center;gap:10px;"><span style="width:4px;height:16px;background:linear-gradient(180deg,var(--vspt-amber),var(--vspt-orange));border-radius:2px;"></span>Acciones correctivas</span>
+      <span style="display:flex;gap:8px;align-items:center;">
+        <span class="kpi-seg">${fBtn('abiertas', 'ABIERTAS')}${fBtn('todas', 'TODAS')}${fBtn('cerradas', 'CERRADAS')}</span>
+        <button class="kpi-btn" onclick="toggleAccForm()">${KPI.accFormAbierto ? '✕ Cerrar' : '＋ Nueva acción'}</button>
+      </span>
+    </div>
+    <div class="kpi-chips">
+      <div class="kpi-chip"><div class="v">${abiertas.length}</div><div class="l">Abiertas</div></div>
+      <div class="kpi-chip"><div class="v">${cerradas.length}</div><div class="l">Cerradas</div></div>
+      <div class="kpi-chip"><div class="v" style="color:var(--vspt-crimson)">${vencidas.length}</div><div class="l">Vencidas</div></div>
+      <div class="kpi-chip"><div class="v">${cerradas.length ? Math.round(aTiempo.length / cerradas.length * 100) + '%' : '—'}</div><div class="l">Cierre a tiempo</div></div>
+    </div>`;
+
+  if (KPI.accFormAbierto) {
+    const kpiOpts = KPI.cat.map(k => `<option>${ESC_KPI(k.NOMBRE)}</option>`).join('');
+    html += `<div class="chart-card full" style="margin-bottom:14px">
+      <b style="font-size:13px">Nueva acción correctiva</b>
+      <div class="kpi-form-grid">
+        <div class="kpi-field" style="grid-column:1/-1"><label>¿Qué se hará?</label><input id="accDesc" type="text" placeholder="Descripción de la acción"></div>
+        <div class="kpi-field"><label>KPI / tema</label><select id="accKpi"><option value="">— elegir —</option>${kpiOpts}<option>Otro</option></select></div>
+        <div class="kpi-field"><label>Plazo</label><select id="accPlazo"><option>CORTO</option><option>MEDIANO</option><option>LARGO</option></select></div>
+        <div class="kpi-field"><label>Responsable</label><input id="accResp" type="text" placeholder="Nombre y apellido"></div>
+        <div class="kpi-field"><label>Fecha compromiso</label><input id="accComp" type="date" min="${kpiHoyISO()}"></div>
+      </div>
+      <div style="display:flex;align-items:center;margin-top:14px">
+        <button class="kpi-btn" onclick="guardarAccionUI(this)">Guardar acción</button>
+        <span class="kpi-msg" id="accMsg">${KPI.msg || ''}</span>
+      </div></div>`;
+  }
+
+  const visibles = (KPI.accFiltro === 'todas' ? accs : KPI.accFiltro === 'cerradas' ? cerradas : abiertas)
+    .sort((a, b) => (a.estado === b.estado ? (a.comp || '9999') > (b.comp || '9999') ? 1 : -1 : a.estado === 'ABIERTA' ? -1 : 1));
+  html += `<div class="chart-card full"><div class="kpi-tblwrap"><table class="kpi-tbl">
+    <thead><tr><th class="num">N°</th><th>KPI</th><th>Acción</th><th>Responsable</th><th>Compromiso</th><th>Estado</th><th></th></tr></thead>
+    <tbody>` +
+    (visibles.length ? visibles.map(a => `<tr>
+      <td class="num" style="color:var(--muted)">${a.n || ''}</td>
+      <td style="font-size:11.5px">${ESC_KPI(a.kpi)}</td>
+      <td style="font-weight:600">${ESC_KPI(a.desc)}</td>
+      <td>${ESC_KPI(a.resp)}</td>
+      <td class="num" style="color:var(--muted)">${a.comp ? a.comp.split('-').reverse().join('/') : '—'}</td>
+      <td><span class="kpi-st ${a.cls}">${a.chip}</span></td>
+      <td>${a.estado === 'ABIERTA' ? `<button class="kpi-btn ghost" style="padding:3px 9px" onclick="cerrarAccionUI(${a.n})">Cerrar</button>` : ''}</td>
+    </tr>`).join('') : `<tr><td colspan="7" style="color:var(--muted)">Sin acciones ${KPI.accFiltro === 'abiertas' ? 'abiertas' : ''} por ahora.</td></tr>`) +
+    `</tbody></table></div>`;
+
+  // ranking por responsable
+  const porResp = {};
+  accs.forEach(a => { if (!a.resp) return; const r = porResp[a.resp] = porResp[a.resp] || { c: 0, p: 0 }; a.estado === 'CERRADA' ? r.c++ : r.p++; });
+  const resps = Object.entries(porResp).sort((x, y) => (y[1].c + y[1].p) - (x[1].c + x[1].p)).slice(0, 10);
+  if (resps.length) {
+    const mx = Math.max(...resps.map(([, v]) => v.c + v.p));
+    html += `<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:18px 0 4px">Cumplimiento por responsable</div>
+      <div class="kpi-rank">` + resps.map(([r, v]) => `<div class="kpi-rrow"><div>${ESC_KPI(r)}</div>
+        <div class="kpi-rbar">${v.c ? `<i style="background:var(--vspt-olive);width:${(v.c / mx * 100).toFixed(1)}%"></i>` : ''}${v.p ? `<i style="background:var(--vspt-yellow);width:${(v.p / mx * 100).toFixed(1)}%"></i>` : ''}</div>
+        <div style="color:var(--muted);font-size:11px;text-align:right;white-space:nowrap">${v.c} · ${v.p} pend.</div></div>`).join('') +
+      `</div><div style="font-size:10.5px;color:var(--muted);margin-top:8px;font-weight:600">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--vspt-olive);margin-right:5px;vertical-align:-1px"></span>Cerradas
+        <span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--vspt-yellow);margin:0 5px 0 16px;vertical-align:-1px"></span>Pendientes</div>`;
+  }
+  html += `</div>`;
+  host.innerHTML = html;
+}
+
+// ── guardado ──
+async function guardarKpiDiaUI(btn) {
+  const fecha = (document.getElementById('kpiFecha') || {}).value || kpiHoyISO();
+  const valores = {};
+  document.querySelectorAll('#kpiBoardHost input[data-kpiid]').forEach(i => { if (i.value !== '') valores[i.dataset.kpiid] = i.value; });
+  const msg = document.getElementById('kpiMsg');
+  if (!Object.keys(valores).length) { if (msg) { msg.textContent = 'No hay valores para guardar.'; msg.style.color = 'var(--vspt-crimson)'; } return; }
+  btn.disabled = true; if (msg) { msg.textContent = 'Guardando…'; msg.style.color = 'var(--muted)'; }
+  try {
+    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'guardar_kpi_dia', fecha, valores }) });
+    const j = await res.json();
+    if (j.status !== 'success') throw new Error(j.msg || j.reason || 'error al guardar');
+    // upsert local para no re-pedir todo
+    Object.keys(valores).forEach(id => {
+      const prev = (KPI.dia || []).find(r => kpiFechaFlex(r.FECHA) === fecha && String(r.KPI_ID).trim() === id);
+      if (prev) prev.VALOR = valores[id]; else KPI.dia.push({ FECHA: fecha, KPI_ID: id, VALOR: valores[id] });
+    });
+    KPI.msg = `✓ ${j.guardados} valores guardados (${fecha.split('-').reverse().join('/')})`;
+    KPI.formAbierto = false;
+    renderTableroKpi();
+  } catch (e) { btn.disabled = false; if (msg) { msg.textContent = '⚠ ' + (e.message || e); msg.style.color = 'var(--vspt-crimson)'; } }
+}
+
+async function guardarAccionUI(btn) {
+  const g = id => (document.getElementById(id) || {}).value || '';
+  const body = { accion: 'guardar_accion', descripcion: g('accDesc').trim(), kpi: g('accKpi'), plazo: g('accPlazo'),
+                 responsable: g('accResp').trim(), fecha_inicio: kpiHoyISO(), fecha_compromiso: g('accComp'), estado: 'ABIERTA' };
+  const msg = document.getElementById('accMsg');
+  if (!body.descripcion) { if (msg) { msg.textContent = 'Falta la descripción.'; msg.style.color = 'var(--vspt-crimson)'; } return; }
+  btn.disabled = true; if (msg) { msg.textContent = 'Guardando…'; msg.style.color = 'var(--muted)'; }
+  try {
+    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(body) });
+    const j = await res.json();
+    if (j.status !== 'success') throw new Error(j.msg || j.reason || 'error al guardar');
+    KPI.acc.push({ N: j.n, KPI: body.kpi, DESCRIPCION: body.descripcion, PLAZO: body.plazo, RESPONSABLE: body.responsable,
+                   FECHA_INICIO: body.fecha_inicio, FECHA_COMPROMISO: body.fecha_compromiso, ESTADO: 'ABIERTA' });
+    KPI.msg = `✓ Acción N° ${j.n} creada`;
+    KPI.accFormAbierto = false;
+    renderTableroKpi();
+  } catch (e) { btn.disabled = false; if (msg) { msg.textContent = '⚠ ' + (e.message || e); msg.style.color = 'var(--vspt-crimson)'; } }
+}
+
+async function cerrarAccionUI(n) {
+  const a = (KPI.acc || []).find(r => Number(r.N) === Number(n));
+  if (!a || !confirm(`¿Cerrar la acción N° ${n}?\n"${a.DESCRIPCION}"`)) return;
+  try {
+    const body = { accion: 'guardar_accion', n: Number(n), kpi: a.KPI, descripcion: a.DESCRIPCION, plazo: a.PLAZO,
+                   responsable: a.RESPONSABLE, origen: a.ORIGEN || '', fecha_inicio: kpiFechaFlex(a.FECHA_INICIO),
+                   fecha_compromiso: kpiFechaFlex(a.FECHA_COMPROMISO), fecha_efectiva: kpiHoyISO(), estado: 'CERRADA' };
+    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(body) });
+    const j = await res.json();
+    if (j.status !== 'success') throw new Error(j.msg || j.reason || 'error');
+    a.ESTADO = 'CERRADA'; a.FECHA_EFECTIVA = kpiHoyISO();
+    renderTableroKpi();
+  } catch (e) { alert('No se pudo cerrar la acción: ' + (e.message || e)); }
+}
+
+// ── resumen para el asistente (interpreta el tablero por chat/voz) ──
+function kpiCtxResumen() {
+  if (!KPI.cat || !KPI.cat.length) return '';
+  const L = [];
+  const lbl = { ok: 'EN META', warn: 'ATENCIÓN', bad: 'FUERA DE META', na: 'SIN DATO' };
+  KPI.cat.forEach(k => {
+    const d = kpiCalc(k, 'd'), s = kpiCalc(k, 's'), m = kpiCalc(k, 'm');
+    L.push(`${k.AREA} | ${k.NOMBRE}: hoy=${kpiFmt(d.val, k.UNIDAD)}, semana=${kpiFmt(s.val, k.UNIDAD)}, mes=${kpiFmt(m.val, k.UNIDAD)}` +
+      (m.meta != null ? ` (meta ${k.META}${k.UNIDAD === '%' ? '%' : ' ' + k.UNIDAD} ${k.SENTIDO === '<=' ? 'techo' : 'piso'}, estado hoy: ${lbl[d.estado]})` : ''));
+  });
+  const accs = (KPI.acc || []).map(kpiAccNorm).filter(a => a.desc);
+  const ab = accs.filter(a => a.estado === 'ABIERTA'), ven = ab.filter(a => a.cls === 'bad');
+  L.push(`ACCIONES CORRECTIVAS: ${ab.length} abiertas (${ven.length} vencidas), ${accs.length - ab.length} cerradas.`);
+  ven.slice(0, 8).forEach(a => L.push(`  · VENCIDA N°${a.n}: ${a.desc} — ${a.resp} (comprometida ${a.comp})`));
+  let out = L.join('\n');
+  if (out.length > 3800) out = out.slice(0, 3800) + '…';
+  return out;
 }
 
 function toggleFallaFilter(tabId, filter, btn) {
@@ -2773,6 +3240,7 @@ function broadcastTheme() {
   }
   function apply(act){
     if(!act){ st('No entendí el comando.', true); return; }
+    if(act.accion==='responder'||act.a==='responder'){ st('🤖 '+(act.texto||act.v||'Sin respuesta.')); return; }
     if(act.a==='clear'||act.accion==='limpiarFiltros'){ if(typeof clearFilters==='function')clearFilters(); st('✓ Filtros restablecidos'); return; }
     if(act.a==='tab'){ if(typeof changeTab==='function'){ changeTab(act.v); st('✓ Pestaña: '+act.v.toUpperCase()); } return; }
     let f=act.f || act.filtros || null;
@@ -2882,6 +3350,14 @@ function broadcastTheme() {
         out+='## HE semanal (horas extra)\n'+_rowsCSV(['semana_iso','he_horas'], ws.map(g=>[g.w,g.he.toFixed(1)]))+'\n\n';
       }catch(e){}
     }
+    // Tablero de Comando (pestaña Objetivos): KPIs día/semana/mes + acciones correctivas.
+    try{
+      if(typeof kpiCtxResumen==='function'){
+        if(typeof cargarTableroKpi==='function' && !(typeof KPI!=='undefined' && KPI.cat)){ try{ await cargarTableroKpi(); }catch(e){} }
+        const kr=kpiCtxResumen();
+        if(kr) out+='## Tablero de Comando · Producción (KPIs y acciones correctivas — Objetivos)\n'+kr+'\n\n';
+      }
+    }catch(e){}
     return out;
   }
   async function preguntar(tx){
