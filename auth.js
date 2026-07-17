@@ -1,16 +1,16 @@
 /* =====================================================================
-   VSPT Dashboard — Control de acceso (solo correos @vspt.com.ar)
+   VSPT Dashboard — Control de acceso (correos @vspt.com.ar y @vspt.cl)
    ---------------------------------------------------------------------
    Qué hace:
      • Muestra un login de Google a pantalla completa antes de usar el panel.
-     • Solo deja pasar cuentas del dominio vspt.com.ar.
+     • Solo deja pasar cuentas de los dominios vspt.com.ar y vspt.cl.
      • Adjunta el id_token de Google a CADA pedido a la API (script.google.com)
        y RETIENE esos pedidos hasta que haya sesión iniciada.
      • Renueva el token solo (sin molestar) en pantallas que quedan prendidas.
  
    IMPORTANTE: esto es la PUERTA + la experiencia de usuario. La verificación
    REAL la hace el Apps Script (01_API.gs): sin un id_token válido de un correo
-   @vspt.com.ar, la API no devuelve datos. Por eso este archivo no es "salteable".
+   de un dominio permitido, la API no devuelve datos. Por eso este archivo no es "salteable".
 
    >>> CONFIGURACIÓN: pegá tu Client ID de Google abajo (CLIENT_ID). <<<
    (el MISMO valor tiene que ir en 01_API.gs → OAUTH_CLIENT_ID)
@@ -20,7 +20,7 @@
 
   // ----------------------- CONFIG (editar) -----------------------
   var CLIENT_ID      = "335838512985-jr2lfrqmajubg7r9721gl3cqokjiksd9.apps.googleusercontent.com";
-  var ALLOWED_DOMAIN = "vspt.com.ar";
+  var ALLOWED_DOMAINS = ["vspt.com.ar", "vspt.cl"];
   var API_MATCH      = "script.google.com";   // a qué pedidos se les adjunta el token
   // ---------------------------------------------------------------
 
@@ -81,7 +81,8 @@
         '<div style="font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:#E0D0B8;font-weight:700;">VSPT &middot; Operaciones</div>' +
         '<div style="font-size:22px;font-weight:800;margin:10px 0 6px;letter-spacing:-.3px;">OPINONA Dashboard</div>' +
         '<div style="font-size:13px;color:#c9b8c4;margin-bottom:22px;line-height:1.55;">Acceso restringido al personal de VSPT.<br>' +
-          'Inici&aacute; sesi&oacute;n con tu correo <b style="color:#F8C040;">@' + ALLOWED_DOMAIN + '</b>.</div>' +
+          'Inici&aacute; sesi&oacute;n con tu correo <b style="color:#F8C040;">' +
+          ALLOWED_DOMAINS.map(function (d) { return "@" + d; }).join('</b> o <b style="color:#F8C040;">') + '</b>.</div>' +
         '<div id="vspt-gsi-btn" style="display:flex;justify-content:center;min-height:44px;"></div>' +
         '<div id="vspt-auth-err" style="display:none;margin-top:18px;font-size:12px;color:#ff9db0;line-height:1.55;"></div>' +
       '</div>';
@@ -99,9 +100,10 @@
     var claims = decodeJwt(jwt);
     if (!claims) { showError("No se pudo leer la credencial. Reintent&aacute;."); return; }
 
-    if (domainOf(claims) !== ALLOWED_DOMAIN) {
+    if (ALLOWED_DOMAINS.indexOf(domainOf(claims)) === -1) {
       try { google.accounts.id.disableAutoSelect(); } catch (e) {}
-      showError("La cuenta <b>" + (claims.email || "") + "</b> no pertenece a @" + ALLOWED_DOMAIN +
+      showError("La cuenta <b>" + (claims.email || "") + "</b> no pertenece a " +
+                ALLOWED_DOMAINS.map(function (d) { return "@" + d; }).join(" ni ") +
                 ".<br><a href=\"#\" id=\"vspt-switch\" style=\"color:#F8C040;\">Usar otra cuenta</a>");
       var sw = document.getElementById("vspt-switch");
       if (sw) sw.onclick = function (ev) {
@@ -148,7 +150,7 @@
       cancel_on_tap_outside: false,
       context: "signin",
       itp_support: true,
-      hd: ALLOWED_DOMAIN            // pista para limitar el selector de cuentas al dominio
+      hd: "*"                       // "hd" acepta un solo dominio; "*" limita a cuentas Workspace (com.ar y cl)
     });
     if (silent) return;            // ya hay sesión guardada: GIS queda listo para refrescar, sin pedir nada
 
