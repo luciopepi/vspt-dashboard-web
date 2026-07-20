@@ -363,20 +363,20 @@
 
     <div class="filter-group">
       <label class="filter-label">Período</label>
-      <select id="f-periodo" onchange="onFilterChangeSafe()"><option value="ALL">Vista Anual (YTD)</option></select>
+      <select id="f-periodo" onchange="onTimeFilterChange('periodo')"><option value="ALL">Vista Anual (YTD)</option></select>
     </div>
 
     <div class="filter-group">
       <label class="filter-label">Fecha desde / hasta</label>
       <div class="date-row">
-        <input type="date" id="f-desde" onchange="onFilterChange()">
-        <input type="date" id="f-hasta" onchange="onFilterChange()">
+        <input type="date" id="f-desde" onchange="onTimeFilterChange('fechas')">
+        <input type="date" id="f-hasta" onchange="onTimeFilterChange('fechas')">
       </div>
     </div>
 
     <div class="filter-group">
       <label class="filter-label">Semana</label>
-      <select id="f-semana" onchange="onFilterChange()"><option value="">Todas</option></select>
+      <select id="f-semana" onchange="onTimeFilterChange('semana')"><option value="">Todas</option></select>
     </div>
 
     <div class="filter-group">
@@ -1057,6 +1057,23 @@ function applyFilters(baseData) {
 }
 
 function onFilterChange() { msSyncAll(); filteredData = applyFilters(rawData); render(); }
+
+// Período (mes), rango de fechas y semana son recortes de tiempo alternativos
+// que se combinan con AND en applyFilters: si quedan dos activos que no se
+// solapan (p. ej. Semana 29 + fechas de junio) la intersección es vacía y todo
+// el dashboard muestra S/D sin explicación. Por eso elegir uno resetea los
+// otros dos — no se pierde expresividad porque cada uno ya define el rango
+// completo que el usuario quiere ver.
+function onTimeFilterChange(src) {
+  const per = document.getElementById('f-periodo');
+  const des = document.getElementById('f-desde');
+  const has = document.getElementById('f-hasta');
+  const sem = document.getElementById('f-semana');
+  if (src === 'periodo' && per.value !== 'ALL') { des.value = ''; has.value = ''; sem.value = ''; }
+  else if (src === 'fechas' && (des.value || has.value)) { per.value = 'ALL'; sem.value = ''; }
+  else if (src === 'semana' && sem.value) { per.value = 'ALL'; des.value = ''; has.value = ''; }
+  if (src === 'periodo') onFilterChangeSafe(); else onFilterChange();
+}
 
 // Suma filas de KPI_PLANTA_MENSUAL filtradas por tabId + año + (opcional) mes.
 // Devuelve un objeto con la misma forma que procesarMetricas, solo campos de KPI cards.
@@ -2244,6 +2261,7 @@ function renderObjetivos() {
       <span style="display:flex;align-items:center;gap:10px;"><span style="width:4px;height:16px;background:linear-gradient(180deg,var(--vspt-amber),var(--vspt-orange));border-radius:2px;"></span>Tabla de Control OPINONA — ${labelPeriodo}</span>
       <button class="admin-btn ${isAdmin?'active':''}" onclick="toggleAdmin()">${isAdmin?'🔓 EDICIÓN':'🔒 SOLO LECTURA'}</button>
     </div>
+    ${opinonaCargada && !filteredData.length ? '<div class="chart-card accent full no-data" style="padding:24px;">⚠️ Sin datos para la combinación de filtros seleccionada — revisá Período, Fechas y Semana en el panel de filtros.</div>' : ''}
     <div class="chart-card accent full">
       <table class="table-obj">
         <thead><tr><th>Instalación</th><th>Meta Anual (%)</th><th>OPINONA Real (${labelPeriodo})</th><th>Δ (pp)</th><th>Desvío %</th></tr></thead>
