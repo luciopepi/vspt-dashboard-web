@@ -354,6 +354,7 @@
   <button class="tab-btn" data-tab="objetivos" onclick="changeTab('objetivos')">🎯 Objetivos</button>
   <button class="tab-btn" data-tab="calidad" onclick="changeTab('calidad')">🔬 Calidad</button>
   <button class="tab-btn" data-tab="personal" onclick="changeTab('personal')">👥 Personal</button>
+  <button class="tab-btn" data-tab="aplicaciones" onclick="changeTab('aplicaciones')">🧩 Aplicaciones</button>
 </div>
 
 <div class="main">
@@ -462,6 +463,25 @@
     </div>
     <div id="tab-personal"  class="tab-panel" style="display:none;">
       <iframe id="iframePersonal" src="about:blank" allow="microphone" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>
+    </div>
+    <!-- Aplicaciones: webapps propias del área embebidas. La lista vive en APPS
+         (ver más abajo); si mañana se suma otra, se agrega ahí y aparece sola. -->
+    <div id="tab-aplicaciones" class="tab-panel" style="display:none;">
+      <div class="section-title" style="justify-content:space-between;">
+        <span style="display:flex;align-items:center;gap:10px;">
+          <span style="width:4px;height:16px;background:linear-gradient(180deg,var(--vspt-olive),var(--vspt-amber));border-radius:2px;"></span>
+          <span id="appTitulo">Aplicaciones</span>
+          <span id="appDesc" style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted);font-size:12px;"></span>
+        </span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span id="appSelector" style="display:flex;gap:6px;"></span>
+          <a id="appNuevaVentana" href="#" target="_blank" rel="noopener" class="admin-btn" style="text-decoration:none;">↗ Abrir en ventana nueva</a>
+        </span>
+      </div>
+      <iframe id="iframeApp" src="about:blank" style="width:100%; height:calc(100vh - 215px); border:none; border-radius:10px; background:var(--card);"></iframe>
+      <div style="text-align:center;color:var(--muted);font-size:11px;margin-top:8px;">
+        Si la app no carga acá (algunos navegadores bloquean la sesión de Google dentro de un marco), abrila en ventana nueva.
+      </div>
     </div>
   </div>
 </div>
@@ -683,7 +703,40 @@ const CAT_COLORS = {
   'NoNa':                 '#701F52',
   'Tiempos de No Uso':    '#4E1742'
 };
-const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808' };
+const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808', aplicaciones:'#98A040' };
+
+// Pestaña Aplicaciones: webapps propias del área embebidas en el dashboard.
+// Para poder mostrarse acá, el doGet de cada webapp de Apps Script tiene que
+// servirse con setXFrameOptionsMode(ALLOWALL) (la de Horas Extra ya lo hace).
+// Igual siempre queda el botón "abrir en ventana nueva": si el navegador
+// bloquea cookies de terceros, la sesión de Google no entra al iframe.
+// Para sumar otra app, agregar un objeto acá y aparece sola (con selector si
+// hay más de una).
+const APPS = [
+  {
+    id:     'horas-extra',
+    nombre: 'Horas Extra',
+    desc:   'carga y aprobación de horas extra y días de compensación',
+    url:    'https://script.google.com/a/macros/vspt.com.ar/s/AKfycbxNOA4zeG2gM_-OxA0-jT8-eByoKEMBdH5l32GbLVsFUQDlRuYCfozr-MZZAi-iQRXf/exec'
+  }
+];
+let appActiva = APPS.length ? APPS[0].id : null;
+
+function abrirApp(appId) {
+  const app = APPS.find(a => a.id === appId) || APPS[0];
+  if (!app) return;
+  appActiva = app.id;
+  document.getElementById('appTitulo').textContent = app.nombre;
+  document.getElementById('appDesc').textContent = app.desc ? '· ' + app.desc : '';
+  document.getElementById('appNuevaVentana').href = app.url;
+  document.getElementById('appSelector').innerHTML = APPS.length > 1
+    ? APPS.map(a => `<button class="admin-btn ${a.id === app.id ? 'active' : ''}" onclick="abrirApp('${a.id}')">${a.nombre}</button>`).join('')
+    : '';
+  // Cargar (o recargar solo si cambió de app) para no perder lo que el
+  // usuario esté escribiendo al volver de otra pestaña.
+  const iframe = document.getElementById('iframeApp');
+  if (iframe.dataset.appId !== app.id) { iframe.dataset.appId = app.id; iframe.src = app.url; }
+}
 
 const CATS = {
   NO_USO:'Tiempos de No Uso', NONA:'NoNa', CAMBIO:'Tiempos de Cambio',
@@ -1268,6 +1321,11 @@ function changeTab(id) {
     programas: { iframeId:'iframeProgramas', src:'Dashboard_programas.html' },
     personal:  { iframeId:'iframePersonal',  src:'Dashboard_personal.html' }
   };
+  // Aplicaciones no usa EMBED (su iframe es externo y cambia según la app
+  // elegida), pero se comporta igual: sin filtros ni botella del asistente.
+  if (id === 'aplicaciones') abrirApp(appActiva);
+
+  if (EMBED[id] || id === 'aplicaciones') {
   if (EMBED[id]) {
   const iframeId = EMBED[id].iframeId;
   const src = EMBED[id].src;
@@ -1279,6 +1337,7 @@ function changeTab(id) {
     iframe.src = src;
   } else {
     try { iframe.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
+  }
   }
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('sidebarToggle').style.display = 'none';
@@ -1294,7 +1353,7 @@ function changeTab(id) {
 }
 
 function render() {
-  if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal') return;
+  if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal' || activeTab === 'aplicaciones') return;
   if (!rawData.length) return;
   if (activeTab === 'planta')    renderTab('planta', filteredData);
   else if (activeTab === 'l1')   renderTab('l1', filteredData.filter(r => getLinea(r) === 'L1'));
