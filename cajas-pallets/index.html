@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VSPT · Cajas &amp; Pallets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ===================== TOPBAR ===================== -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">vspt</div>
+      <div class="lock">
+        <b>Operaciones San Juan / Graffigna</b>
+        <span>Fraccionamiento · Cajas &amp; Pallets</span>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="box"><span class="n">1</span>Botella → Caja</button>
+      <button class="tab" data-tab="pallet"><span class="n">2</span>Caja → Pallet</button>
+    </div>
+    <div class="right">Calculadora de embalaje · v1</div>
+  </div>
+
+  <!-- ===================== VISTA CAJA ===================== -->
+  <div class="view" id="view-box" data-screen-label="Caja">
+    <!-- controles -->
+    <div class="panel left"><div class="panel-pad">
+      <div class="subhead"><span class="ic"></span>Botella 750 ml</div>
+      <div class="group">
+        <div class="glabel"><span class="eyebrow">Tipo de botella</span>
+          <span class="gv" id="bottle-code"></span></div>
+        <div class="selectfield"><select id="bottle-presets"></select></div>
+        <p class="note" id="bottle-meta" style="margin-top:8px"></p>
+      </div>
+      <div class="group">
+        <div class="slider">
+          <div class="top"><label>Diámetro máx. (D)</label>
+            <span class="val"><span id="v-D">75</span><u>mm</u></span></div>
+          <input type="range" id="r-D" min="55" max="125" step="0.5" value="75">
+        </div>
+      </div>
+      <div class="group">
+        <div class="slider">
+          <div class="top"><label>Altura botella (H)</label>
+            <span class="val"><span id="v-H">320</span><u>mm</u></span></div>
+          <input type="range" id="r-H" min="230" max="470" step="1" value="320">
+        </div>
+      </div>
+
+      <div class="subhead"><span class="ic"></span>Caja &amp; separador (colmena)</div>
+      <div class="group">
+        <div class="glabel"><span class="eyebrow">Botellas por caja</span></div>
+        <div class="seg q4" id="count-seg"></div>
+      </div>
+      <div class="group">
+        <div class="glabel"><span class="eyebrow">Disposición</span>
+          <span class="gv" id="disp-label">2 × 3</span></div>
+        <div class="seg" id="disp-seg"></div>
+      </div>
+      <div class="group">
+        <div class="glabel"><span class="eyebrow">Onda del separador</span>
+          <span class="gv" id="flute-label">B · 3 mm</span></div>
+        <div class="seg" id="flute-seg"></div>
+        <div class="manualrow">
+          <label>Espesor a mano</label>
+          <div class="ip"><input type="text" inputmode="decimal" id="n-e" value="3"><u>mm</u></div>
+        </div>
+      </div>
+      <div class="group">
+        <div class="slider">
+          <div class="top"><label>Holgura por celda (t)</label>
+            <span class="val"><input class="valnum" id="v-t" type="text" inputmode="decimal" value="2"><u>mm</u></span></div>
+          <input type="range" id="r-t" min="0" max="4" step="0.5" value="2">
+        </div>
+      </div>
+      <div class="group">
+        <div class="slider">
+          <div class="top"><label>Holgura superior</label>
+            <span class="val"><input class="valnum" id="v-top" type="text" inputmode="decimal" value="5"><u>mm</u></span></div>
+          <input type="range" id="r-top" min="0" max="12" step="1" value="5">
+        </div>
+      </div>
+      <div class="group">
+        <div class="slider">
+          <div class="top"><label>Espesor de pared (g)</label>
+            <span class="val"><input class="valnum" id="v-g" type="text" inputmode="decimal" value="3.5"><u>mm</u></span></div>
+          <input type="range" id="r-g" min="0" max="6" step="0.5" value="3.5">
+        </div>
+      </div>
+
+      <button class="cta" id="to-pallet">Usar esta caja en el pallet →</button>
+    </div></div>
+
+    <!-- escena -->
+    <div class="stage-wrap">
+      <div class="stage-badge"><span class="t">Caja FEFCO 0201</span>
+        <span class="s" id="box-stage-title">6 botellas · 2×3</span></div>
+      <canvas class="stage" id="box-canvas"></canvas>
+      <div class="stage-hint">Arrastrar para rotar · rueda para zoom</div>
+    </div>
+
+    <!-- resultados -->
+    <div class="panel right" id="box-results">
+      <div class="rhead">
+        <div class="eyebrow">Caja FEFCO 0201 · RSC</div>
+        <h2 id="box-title">6 botellas · disposición 2×3</h2>
+        <div class="dims" id="box-int-dims">237 × 157 × 305 mm <span>interna útil</span></div>
+      </div>
+      <div class="hero-stat">
+        <div class="lab">Medida externa de fabricación</div>
+        <div class="big" id="box-ext"><span id="box-ext-v">244 × 164 × 312</span><u>mm</u></div>
+        <div class="sub" id="box-ext-sub">Largo × Ancho × Alto · lo que encaja en el pallet</div>
+      </div>
+      <div class="statgrid">
+        <div class="statcell"><div class="lab">Botellas / caja</div>
+          <div class="v" id="s-count">6</div></div>
+        <div class="statcell"><div class="lab">Peso lleno</div>
+          <div class="v" id="s-weight">7.9<u>kg</u></div></div>
+        <div class="statcell"><div class="lab">Volumen caja</div>
+          <div class="v" id="s-vol">12.5<u>L</u></div></div>
+        <div class="statcell"><div class="lab">Huella</div>
+          <div class="v" id="s-foot">400<u>cm²</u></div></div>
+      </div>
+      <div class="flag ok" id="box-flag"><span>✓</span><div>Separador onda <b id="f-flute">B</b>:
+        celdas de <b id="f-cell">78×78 mm</b>. Holgura suficiente para etiqueta comercial.</div></div>
+      <div style="padding:16px 18px 30px">
+        <p class="note"><b>Regla de oro:</b> antes de fabricar el troquel, medí la botella física
+        real —con etiqueta puesta— con calibre. El roce de la etiqueta contra una celda muy
+        justa la estropea.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== VISTA PALLET ===================== -->
+  <div class="view active" id="view-pallet" data-screen-label="Pallet">
+    <!-- controles -->
+    <div class="panel left"><div class="panel-pad">
+      <div class="subhead"><span class="ic"></span>Caja (desde pestaña 1)</div>
+      <div class="group">
+        <div class="numgrid three">
+          <div class="numfield"><label>Largo ext</label>
+            <div class="ip"><input type="number" id="n-Lext" value="244"><u>mm</u></div></div>
+          <div class="numfield"><label>Ancho ext</label>
+            <div class="ip"><input type="number" id="n-Aext" value="164"><u>mm</u></div></div>
+          <div class="numfield"><label>Alto ext</label>
+            <div class="ip"><input type="number" id="n-Hext" value="312"><u>mm</u></div></div>
+        </div>
+        <p class="note" id="sync-note" style="margin-top:9px"><b>Sincronizada</b> con la caja de
+          6 botellas (2×3). Podés sobrescribir las medidas a mano.</p>
+      </div>
+
+      <div class="subhead"><span class="ic"></span>Pallet</div>
+      <div class="group">
+        <div class="glabel"><span class="eyebrow">Formato</span></div>
+        <div class="seg" id="pallet-seg"></div>
+      </div>
+      <div class="group">
+        <div class="numgrid">
+          <div class="numfield"><label>Largo P_L</label>
+            <div class="ip"><input type="number" id="n-PL" value="1200"><u>mm</u></div></div>
+          <div class="numfield"><label>Ancho P_A</label>
+            <div class="ip"><input type="number" id="n-PA" value="1000"><u>mm</u></div></div>
+        </div>
+      </div>
+      <div class="group">
+        <div class="slider">
+          <div class="top"><label>Altura base del pallet</label>
+            <span class="val"><span id="v-hp">145</span><u>mm</u></span></div>
+          <input type="range" id="r-hp" min="120" max="180" step="1" value="145">
+        </div>
+      </div>
+
+      <div class="subhead"><span class="ic"></span>Estiba</div>
+      <div class="group">
+        <div class="slider">
+          <div class="top"><label>Altura máx. de estiba</label>
+            <span class="val"><span id="v-est">1450</span><u>mm</u></span></div>
+          <input type="range" id="r-est" min="600" max="2700" step="10" value="1450">
+        </div>
+      </div>
+      <div class="group">
+        <div class="glabel"><span class="eyebrow">Patrón de apilado</span></div>
+        <div class="seg" id="pattern-seg"></div>
+      </div>
+
+      <div class="subhead"><span class="ic"></span>Contenedor</div>
+      <div class="group">
+        <div class="seg wrap" id="cont-seg"></div>
+      </div>
+
+      <div class="subhead"><span class="ic"></span>Configuraciones guardadas</div>
+      <div class="group">
+        <p class="note" style="margin-bottom:10px">Guardá el armado actual (pallet, patrón y
+          traba manual) para reutilizarlo después.</p>
+        <div class="saverow">
+          <div class="numfield ip-wrap"><div class="ip">
+            <input type="text" id="cfg-name" placeholder="Nombre de la configuración" maxlength="40"></div></div>
+          <button class="cta save-btn" id="cfg-save">Guardar</button>
+        </div>
+        <div class="cfg-list" id="cfg-list"></div>
+      </div>
+    </div></div>
+
+    <!-- escena -->
+    <div class="stage-wrap">
+      <div class="stage-badge"><span class="t" id="pallet-stage-t">Pallet Americano</span>
+        <span class="s" id="pallet-stage-title">48 cajas · 4 capas</span></div>
+      <div class="viewmodes" id="viewmodes" style="display:none"></div>
+      <div class="readonly-banner" id="ro-banner">Cambiá el patrón a «Manual» para editar la capa</div>
+      <canvas class="stage" id="pallet-canvas"></canvas>
+      <div class="stage-hint">Arrastrar para rotar · rueda para zoom</div>
+      <div class="editor-overlay" id="layer-editor"></div>
+    </div>
+
+    <!-- resultados -->
+    <div class="panel right" id="pallet-results">
+      <div class="rhead">
+        <div class="eyebrow">Carga unitaria · ISO 6780</div>
+        <h2 id="pallet-title">Pallet Americano 1200 × 1000</h2>
+        <div class="dims" id="pallet-arr">4 × 3 cajas/capa <span>· trabado</span></div>
+      </div>
+      <div class="hero-stat">
+        <div class="lab">Total de cajas por pallet</div>
+        <div class="big" id="p-total">48</div>
+        <div class="sub" id="p-total-sub">= 12 cajas/capa × 4 capas en altura</div>
+      </div>
+      <div class="statgrid">
+        <div class="statcell"><div class="lab">Cajas / capa</div>
+          <div class="v" id="p-percapa">12</div></div>
+        <div class="statcell"><div class="lab">Capas en altura</div>
+          <div class="v" id="p-layers">4</div></div>
+        <div class="statcell"><div class="lab">Botellas totales</div>
+          <div class="v" id="p-bottles">288</div></div>
+        <div class="statcell"><div class="lab">Altura armada</div>
+          <div class="v" id="p-height">1.43<u>m</u></div></div>
+        <div class="statcell"><div class="lab">Peso del pallet</div>
+          <div class="v" id="p-weight">400<u>kg</u></div></div>
+        <div class="statcell"><div class="lab">Sobrante borde</div>
+          <div class="v" id="p-over">0<u>mm</u></div></div>
+      </div>
+      <div class="eff">
+        <div class="top"><span class="lab">Eficiencia de superficie (η)</span>
+          <span class="pct" id="p-eff">100%</span></div>
+        <div class="bar"><i id="p-eff-bar" style="width:100%"></i></div>
+      </div>
+      <div class="flag ok" id="pallet-flag"><span>✓</span><div id="pallet-flag-txt">
+        Encaje válido. Ninguna caja sobresale del borde del pallet.</div></div>
+
+      <div id="cont-block" style="display:none">
+        <div class="rhead" style="border-top:1px solid var(--line)">
+          <div class="eyebrow">Contenedor de exportación</div>
+          <h2 id="cont-title" style="font-size:17px">Contenedor 40' Standard</h2>
+        </div>
+        <div class="statgrid">
+          <div class="statcell"><div class="lab">Pallets / contenedor</div>
+            <div class="v" id="c-pallets">20</div></div>
+          <div class="statcell"><div class="lab">Niveles</div>
+            <div class="v" id="c-tiers">1</div></div>
+          <div class="statcell"><div class="lab">Cajas totales</div>
+            <div class="v" id="c-boxes">960</div></div>
+          <div class="statcell"><div class="lab">Botellas totales</div>
+            <div class="v" id="c-bottles">11520</div></div>
+        </div>
+        <div class="flag ok" id="cont-flag" style="margin-bottom:24px"><span>✓</span>
+          <div id="cont-flag-txt">El pallet armado entra en altura.</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="js/bottles.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/patterns.js"></script>
+<script src="js/scene-kit.js"></script>
+<script src="js/viz-box.js"></script>
+<script src="js/viz-pallet.js"></script>
+<script src="js/manual-editor.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
