@@ -241,6 +241,16 @@
   .table-obj td { padding:14px 12px; border-bottom:1px solid var(--td-border); text-align:center; font-weight:700; }
   .table-obj tr:hover td { background:var(--tr-hover); }
   .input-obj { background:var(--card2); border:1px solid var(--vspt-yellow); color:var(--text); border-radius:6px; padding:6px 10px; font-weight:700; font-size:14px; text-align:center; width:80px; outline:none; font-family:inherit; }
+  /* Pestaña Aplicaciones: grilla de accesos directos */
+  .apps-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:16px; margin-top:4px; }
+  .app-card { display:flex; align-items:center; gap:14px; text-decoration:none; background:var(--card); border:1px solid var(--border); border-top:3px solid var(--vspt-olive); border-radius:var(--tw-rad-card,14px); padding:18px; box-shadow:var(--tw-card-shadow,0 2px 10px rgba(48,16,48,0.10)); transition:transform .18s, box-shadow .18s, border-color .18s; }
+  .app-card:hover { transform:translateY(-3px); box-shadow:0 10px 24px rgba(48,16,48,0.18); border-color:var(--vspt-olive); }
+  .app-ico { width:56px; height:56px; flex:0 0 56px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:30px; background:var(--card2); border:1px solid var(--border); overflow:hidden; }
+  .app-ico img { width:100%; height:100%; object-fit:contain; }
+  .app-nombre { font-weight:800; font-size:13px; text-transform:uppercase; letter-spacing:0.10em; color:var(--text); display:flex; align-items:center; gap:6px; }
+  .app-nombre .flecha { color:var(--muted); font-weight:400; font-size:12px; }
+  .app-card:hover .app-nombre .flecha { color:var(--vspt-olive); }
+  .app-desc { display:block; color:var(--muted); font-size:12px; line-height:1.45; margin-top:4px; }
   .admin-btn { background:transparent; border:1px solid var(--vspt-crimson); color:var(--vspt-crimson); padding:7px 14px; border-radius:8px; cursor:pointer; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.18em; font-family:inherit; transition:all .2s; }
   body.dark .admin-btn { color:#ff7a93; border-color:rgba(216,24,64,0.6); }
   .admin-btn:hover, .admin-btn.active { background:var(--vspt-crimson); color:#fff; border-color:var(--vspt-crimson); }
@@ -354,6 +364,7 @@
   <button class="tab-btn" data-tab="objetivos" onclick="changeTab('objetivos')">🎯 Objetivos</button>
   <button class="tab-btn" data-tab="calidad" onclick="changeTab('calidad')">🔬 Calidad</button>
   <button class="tab-btn" data-tab="personal" onclick="changeTab('personal')">👥 Personal</button>
+  <button class="tab-btn" data-tab="aplicaciones" onclick="changeTab('aplicaciones')">🧩 Aplicaciones</button>
 </div>
 
 <div class="main">
@@ -462,6 +473,17 @@
     </div>
     <div id="tab-personal"  class="tab-panel" style="display:none;">
       <iframe id="iframePersonal" src="about:blank" allow="microphone" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>
+    </div>
+    <!-- Aplicaciones: accesos directos a las herramientas del área. Cada tarjeta
+         es un hipervínculo que abre la app en una pestaña nueva. La lista vive
+         en la constante APPS (ver más abajo): sumar una app es agregar un
+         objeto ahí, sin tocar este HTML. -->
+    <div id="tab-aplicaciones" class="tab-panel" style="display:none;">
+      <div class="section-title">
+        Aplicaciones
+        <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted);font-size:12px;">herramientas del área · se abren en una pestaña nueva</span>
+      </div>
+      <div id="appsGrid" class="apps-grid"></div>
     </div>
   </div>
 </div>
@@ -683,7 +705,44 @@ const CAT_COLORS = {
   'NoNa':                 '#701F52',
   'Tiempos de No Uso':    '#4E1742'
 };
-const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808' };
+const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808', aplicaciones:'#98A040' };
+
+// Pestaña Aplicaciones: accesos directos a las herramientas del área.
+// Cada entrada se dibuja como una tarjeta-hipervínculo que abre la app en una
+// pestaña nueva. Para sumar una app, agregar un objeto acá — nada más:
+//   nombre / desc : título y bajada de la tarjeta
+//   url           : a dónde lleva el acceso directo
+//   icono         : logo propio (URL o data URI); tiene prioridad sobre emoji
+//   emoji         : alternativa cuando la app no tiene logo
+const ICONO_HORAS_EXTRA = 'data:image/png;base64,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';
+
+const APPS = [
+  {
+    nombre: 'Horas Extra',
+    desc:   'Carga y aprobación de horas extra y días de compensación.',
+    url:    'https://script.google.com/a/macros/vspt.com.ar/s/AKfycbxNOA4zeG2gM_-OxA0-jT8-eByoKEMBdH5l32GbLVsFUQDlRuYCfozr-MZZAi-iQRXf/exec',
+    icono:  ICONO_HORAS_EXTRA
+  },
+  {
+    nombre: 'Cajas y Pallets',
+    desc:   'Cálculo de cajas y disposición de cajas en los pallets.',
+    url:    'https://drive.google.com/file/d/1c_Fcssi2nNVNen9p4c_ozubzVR8qONE4/view?usp=sharing',
+    emoji:  '📦'
+  }
+];
+
+function renderApps() {
+  const cont = document.getElementById('appsGrid');
+  if (!cont) return;
+  cont.innerHTML = APPS.map(a => `
+    <a class="app-card" href="${a.url}" target="_blank" rel="noopener">
+      <span class="app-ico">${a.icono ? `<img src="${a.icono}" alt="">` : (a.emoji || '🧩')}</span>
+      <span>
+        <span class="app-nombre">${a.nombre} <span class="flecha">↗</span></span>
+        <span class="app-desc">${a.desc || ''}</span>
+      </span>
+    </a>`).join('');
+}
 
 const CATS = {
   NO_USO:'Tiempos de No Uso', NONA:'NoNa', CAMBIO:'Tiempos de Cambio',
@@ -1268,6 +1327,11 @@ function changeTab(id) {
     programas: { iframeId:'iframeProgramas', src:'Dashboard_programas.html' },
     personal:  { iframeId:'iframePersonal',  src:'Dashboard_personal.html' }
   };
+  // Aplicaciones no es una página embebida: es una grilla de accesos directos.
+  // Comparte con las embebidas que no usa los filtros, así que oculta el panel.
+  if (id === 'aplicaciones') renderApps();
+
+  if (EMBED[id] || id === 'aplicaciones') {
   if (EMBED[id]) {
   const iframeId = EMBED[id].iframeId;
   const src = EMBED[id].src;
@@ -1280,10 +1344,13 @@ function changeTab(id) {
   } else {
     try { iframe.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
   }
+  }
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('sidebarToggle').style.display = 'none';
-  // La página embebida trae su propio asistente (conoce SUS datos): ocultar la botella del general
-  const _vb = document.getElementById('vsptBot'); if (_vb) _vb.style.display = 'none';
+  // La página embebida trae su propio asistente (conoce SUS datos): ocultar la
+  // botella del general. En Aplicaciones no hay página embebida, así que la
+  // botella del general sigue disponible.
+  const _vb = document.getElementById('vsptBot'); if (_vb) _vb.style.display = EMBED[id] ? 'none' : '';
   if (window.speechSynthesis) speechSynthesis.cancel();
 } else {
   document.getElementById('sidebar').style.display = '';
@@ -1294,7 +1361,7 @@ function changeTab(id) {
 }
 
 function render() {
-  if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal') return;
+  if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal' || activeTab === 'aplicaciones') return;
   if (!rawData.length) return;
   if (activeTab === 'planta')    renderTab('planta', filteredData);
   else if (activeTab === 'l1')   renderTab('l1', filteredData.filter(r => getLinea(r) === 'L1'));
