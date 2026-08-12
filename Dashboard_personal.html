@@ -227,6 +227,9 @@
   .aux-title:focus{border-color:var(--vspt-crimson);background:var(--card2);color:var(--text);outline:none}
   .aux-h .del-block{cursor:pointer;color:var(--muted);font-size:12px;padding:0 5px;line-height:1}
   .aux-h .del-block:hover{color:#ff7a93}
+  .aux-drag{cursor:grab;color:var(--muted);font-size:13px;padding:0 2px;line-height:1;user-select:none}
+  .aux-drag:hover{color:var(--vspt-beige)}
+  .aux-block.dragging{opacity:.4}
   .aux-hor{width:calc(100% - 16px);margin:5px 8px 3px;display:block;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:3px 7px;font-family:inherit}
   .aux-hor:focus{border-color:var(--vspt-crimson);color:var(--text);outline:none}
   .aux-add{cursor:pointer}
@@ -937,12 +940,19 @@ function migrarEstadoBlocks(){
   ASIG.filter(a=>a.nombre&&!a.turno&&!a.linea&&ESTADO_BLOCKS[a.puesto]).forEach(a=>{ const p=persByName(a.nombre); if(p&&p.estado==="activo") p.estado=ESTADO_BLOCKS[a.puesto]; });
   ASIG=ASIG.filter(a=>!(!a.turno&&!a.linea&&ESTADO_BLOCKS[a.puesto]));
 }
+// Orden manual de los grupos auxiliares, guardado en CONFIG.aux_orden (persiste
+// en la hoja PERSONAL_CONFIG, no por semana) para que quede igual siempre,
+// sin importar quién cargue los turnos. Si un grupo todavía no fue ordenado a
+// mano, cae al orden por defecto AUX_ORDEN y, si tampoco está ahí, al final.
+function auxOrdenGuardado(){ try{ const v=JSON.parse(CONFIG.aux_orden||"[]"); return Array.isArray(v)?v:[]; }catch(e){ return []; } }
+function posAux(k,orden){ const oi=orden.indexOf(k); if(oi>=0) return oi; const di=AUX_ORDEN.indexOf(k); return di>=0?1000+di:2000; }
 function renderAux(){
   const aux = ASIG.filter(a=>a.semana===curWeek()&&!a.turno&&!a.linea&&!a.puesto.startsWith("__")&&!ESTADO_BLOCKS[a.puesto]);
   const groups={};
   aux.forEach(a=>{ const k=a.puesto||"OTROS"; (groups[k]=groups[k]||[]).push(a); });
   let keys=Object.keys(groups);
-  keys.sort((a,b)=>{ let ia=AUX_ORDEN.indexOf(a),ib=AUX_ORDEN.indexOf(b); if(ia<0)ia=99; if(ib<0)ib=99; return ia-ib||a.localeCompare(b); });
+  const orden=auxOrdenGuardado();
+  keys.sort((a,b)=>posAux(a,orden)-posAux(b,orden)||a.localeCompare(b));
   const blocks = keys.map(k=>auxBlockHtml(k, groups[k]||[])).join("");
   const estadoBlocks = Object.keys(ESTADO_BLOCKS).map(c=>estadoBlockHtml(c)).join("");
   $("#aux").innerHTML = blocks + `<button class="btn ghost aux-newgrp" onclick="agregarGrupoAux()">➕ Agregar grupo</button>` + estadoBlocks;
@@ -975,6 +985,7 @@ function persNmClick(e,b){ if(e.ctrlKey||e.metaKey||e.shiftKey){ e.preventDefaul
 function dropEstado(e,estado){
   e.preventDefault(); clearDropMarks();
   if(!dragData) return;
+  if(dragData.kind==='auxblock'){ dragData=null; return; } // un grupo solo se suelta sobre otro grupo
   const names = dragData.kind==='multi'?dragData.names.slice():[dragData.name];
   pushUndo();
   names.forEach(n=>{ removeNameFromWeek(n); setEstadoByName(n,estado); });
@@ -989,6 +1000,7 @@ function auxBlockHtml(cat, rows){
   const slots = rows.map(a=>auxSlotHtml(cat,a)).join("");
   return `<div class="aux-block" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropAux(event,'${b}')">
     <div class="aux-h">
+      <span class="aux-drag" draggable="true" ondragstart="dragStartAuxBlock(event,'${b}')" ondragend="dragEndAny(event)" title="Arrastrá para reordenar el grupo">⠿</span>
       <input class="aux-title" value="${esc(cat)}" title="Renombrar grupo" onchange="renameAux('${b}',this.value)">
       <span class="del-block" title="Eliminar grupo" onclick="borrarGrupoAux('${b}')">🗑</span>
     </div>
@@ -1171,6 +1183,7 @@ function clearDropMarks(){ document.querySelectorAll('.drop-ok').forEach(el=>el.
 function dropSlot(e,b){
   e.preventDefault(); clearDropMarks();
   if(!dragData) return;
+  if(dragData.kind==='auxblock'){ dragData=null; return; } // un grupo solo se suelta sobre otro grupo
   const key=d64(b);
   if(dragData.kind==='multi'){ const p=key.split("|"); moverGrupoALinea(dragData.names,p[0],p[1]); dragData=null; return; }
   if(dragData.kind==='slot' && dragData.key===key){ dragData=null; return; }
@@ -1189,9 +1202,35 @@ function dropSlot(e,b){
   }
   dragData=null; markDirty(); render();
 }
+function dragStartAuxBlock(e,b){
+  dragData={kind:'auxblock',cat:d64(b)};
+  e.dataTransfer.effectAllowed='move';
+  try{e.dataTransfer.setData('text/plain','');}catch(_){}
+  const blk=e.target.closest('.aux-block'); if(blk)blk.classList.add('dragging');
+}
+// reordena los grupos auxiliares (arrastrar/soltar bloques) y guarda el orden en CONFIG
+function reordenarAux(from,to){
+  const aux = ASIG.filter(a=>a.semana===curWeek()&&!a.turno&&!a.linea&&!a.puesto.startsWith("__")&&!ESTADO_BLOCKS[a.puesto]);
+  const groups={}; aux.forEach(a=>{ const k=a.puesto||"OTROS"; (groups[k]=groups[k]||[]).push(a); });
+  const orden=auxOrdenGuardado();
+  let keys=Object.keys(groups).sort((a,b)=>posAux(a,orden)-posAux(b,orden)||a.localeCompare(b));
+  const fi=keys.indexOf(from); if(fi<0) return;
+  keys.splice(fi,1);
+  const ti=keys.indexOf(to);
+  keys.splice(ti<0?keys.length:ti,0,from);
+  guardarAuxOrden(keys);
+}
+async function guardarAuxOrden(keys){
+  CONFIG.aux_orden = JSON.stringify(keys);
+  render();
+  try{ await postJSON({accion:"guardar_config",config:CONFIG}); setStatus("ORDEN DE GRUPOS GUARDADO ✓","ok"); }
+  catch(e){ setStatus("ERROR AL GUARDAR EL ORDEN","err"); }
+  setTimeout(updateUI,2000);
+}
 function dropAux(e,b){
   e.preventDefault(); clearDropMarks();
   if(!dragData) return;
+  if(dragData.kind==='auxblock'){ const from=dragData.cat, to=d64(b); dragData=null; if(from!==to) reordenarAux(from,to); return; }
   const cat=d64(b), name=dragData.name;
   if(grupoSoloFC(cat)){
     const names = dragData.kind==='multi'? (dragData.names||[]) : [name];
@@ -1209,6 +1248,7 @@ function dropAux(e,b){
 function dropPalette(e){
   e.preventDefault(); clearDropMarks();
   if(!dragData) return;
+  if(dragData.kind==='auxblock'){ dragData=null; return; } // un grupo solo se suelta sobre otro grupo
   if(dragData.kind==='palette'){ dragData=null; return; }
   if(dragData.kind==='multi'){ liberarGrupo(dragData.names); dragData=null; return; }
   pushUndo(); removeFromSource(); dragData=null; markDirty(); render();
