@@ -415,6 +415,14 @@ const CATS = {
   PLANEADO:'Tiempos Planeados', EXTERNA:'Paradas Externas',
   FALLA:'Fallas de Equipos', PRODUCCION:'Tiempo de Producción'
 };
+// "Rechazos y Reprocesos" y "Mantención por Terceros": categorías reales de
+// Clasificación_1 que no están en CATS. Su tiempo es una parada más y debe
+// descontarse del OPI (auditoría ago-2026). Corte jul-2026 para no correr el
+// OPI ya reportado antes. Espejo de Dashboard_v15.html.
+const CATS_RETRABAJO = ['Rechazos y Reprocesos', 'Mantención por Terceros'];
+const FECHA_CORTE_RETRABAJO = new Date(2026, 6, 1); // 1-jul-2026 inclusive
+const esRetrabajo = raw => CATS_RETRABAJO.includes(String(raw||'').trim());
+
 const matchCat = raw => {
   const t = String(raw||'').toLowerCase().trim();
   if (!t) return null;
@@ -734,28 +742,37 @@ function calcOPI(rows) {
                  [CATS.EXTERNA]:0, [CATS.FALLA]:0, [CATS.PRODUCCION]:0 };
   let perdidasVel = 0;
   let tot = 0;
+  let tRetrabajo = 0;
 
   rows.forEach(r => {
     const v = num(get(r,'Var. Tiempo','var_tiempo','VAR_TIEMPO','Var Tiempo'));
-    const cls = matchCat(get(r,'Clasificación_1','Clasificacion_1','clasificacion_1','CLASIFICACION_1'));
-    if (!cls) return;
+    const crudo = get(r,'Clasificación_1','Clasificacion_1','clasificacion_1','CLASIFICACION_1');
+    const cls = matchCat(crudo);
+    if (!cls && !esRetrabajo(crudo)) return;
     tot += v;
-    tPor[cls] += v;
-    // Pérdidas de velocidad: dentro de Tiempo de Producción cuando Clasificación_2 indica 'pérdida'
-    if (cls === CATS.PRODUCCION) {
-      const c2 = String(get(r,'Clasificación_2','Clasificacion_2','clasificacion_2','CLASIFICACION_2')||'').toLowerCase();
-      if (c2.includes('pérdid') || c2.includes('perdid') || c2.includes('velocidad')) perdidasVel += v;
+    if (cls) tPor[cls] += v;
+    else {
+      // Retrabajo/terceros: se descuenta como parada, solo desde el corte.
+      const f = parseFecha(get(r,'Fecha','fecha','FECHA'));
+      if (f && f >= FECHA_CORTE_RETRABAJO) tRetrabajo += v;
     }
+    // Pérdidas de velocidad: NO es una fila de paro, es una columna calculada
+    // (Var. Tiempo − N° Unidades/NOMINAL) que solo tiene valor en las filas de
+    // Tiempo de Producción. Antes se buscaba texto en Clasificación_2 y nunca
+    // matcheaba, así que este término quedaba siempre en 0.
+    perdidasVel += num(get(r,'Perdidas de Velocidad','Pérdidas de Velocidad','perdidas_velocidad','Perdidas_de_Velocidad'));
   });
 
   const tConPersonal = tot - tPor[CATS.NO_USO];
   const tEfectivo    = tConPersonal - tPor[CATS.NONA];
   const tProdDisp    = tEfectivo - tPor[CATS.CAMBIO] - tPor[CATS.PLANEADO];
   const tActualProd  = tProdDisp - tPor[CATS.EXTERNA];
-  const tOperacion   = tActualProd - tPor[CATS.FALLA];
+  const tOperacion   = tActualProd - tPor[CATS.FALLA] - tRetrabajo;
   const tTeorico     = tOperacion - perdidasVel;
 
-  // OPI verdadero (vs Tiempo con Personal)
+  // OJO: esta pestaña divide por Tiempo con Personal ("OPI verdadero"), mientras
+  // que Dashboard_v15 divide por Tiempo Efectivo. Es una diferencia de criterio
+  // deliberada y preexistente — por eso los dos OPI no coinciden exactamente.
   const opi = tConPersonal > 0 ? (tTeorico / tConPersonal) * 100 : 0;
   return { tot, tConPersonal, tTeorico, opi };
 }
