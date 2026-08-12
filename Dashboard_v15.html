@@ -758,6 +758,13 @@ const CATS = {
   FALLA:'Fallas de Equipos', PRODUCCION:'Tiempo de Producción'
 };
 
+// "Rechazos y Reprocesos" y "Mantención por Terceros": categorías reales de
+// Clasificación_1 que quedaban fuera de CATS — sumaban al total pero nunca se
+// restaban, así que inflaban el OPINONA (auditoría ago-2026). Se empiezan a
+// descontar recién desde jul-2026 para no correr el OPI ya reportado antes.
+const CATS_RETRABAJO = ['Rechazos y Reprocesos', 'Mantención por Terceros'];
+const FECHA_CORTE_RETRABAJO = new Date(2026, 6, 1); // 1-jul-2026 inclusive
+
 const parseNum = v => { if (v==null||v==='') return 0; const n=parseFloat(String(v).replace(',','.')); return isNaN(n)?0:n; };
 const get = (r, ...keys) => { for (const k of keys) if (r[k]!==undefined && r[k]!==null && r[k]!=='') return r[k]; return undefined; };
 
@@ -1156,7 +1163,7 @@ function metricasDesdeKPI(kpiRows, tabId, anio, mesNombre) {
   });
 
   const acc = {
-    tot:0, t_no_uso:0, t_nona:0, t_cambio:0, t_planeado:0, t_externa:0, t_falla:0, t_produccion:0,
+    tot:0, t_no_uso:0, t_nona:0, t_cambio:0, t_planeado:0, t_externa:0, t_falla:0, t_retrabajo:0, t_produccion:0,
     perdidas_vel:0, cajas:0, semielaborado:0, n_lotes:0, pni:0, c9l:0,
     fallas_mto:0, fallas_op:0, fallas_inv:0
   };
@@ -1168,7 +1175,7 @@ function metricasDesdeKPI(kpiRows, tabId, anio, mesNombre) {
   const tEfectivo    = tConPersonal - acc.t_nona;
   const tProdDisp    = tEfectivo - acc.t_cambio - acc.t_planeado;
   const tActualProd  = tProdDisp - acc.t_externa;
-  const tOperacion   = tActualProd - acc.t_falla;
+  const tOperacion   = tActualProd - acc.t_falla - acc.t_retrabajo;
   const tTeorico     = tOperacion - acc.perdidas_vel;
   const opi = tEfectivo > 0 ? (tTeorico / tEfectivo) * 100 : 0;
   const lotePromedio = acc.n_lotes ? acc.cajas / acc.n_lotes : 0;
@@ -1179,7 +1186,7 @@ function metricasDesdeKPI(kpiRows, tabId, anio, mesNombre) {
 
   return {
     opi, tConPersonal, tEfectivo, tProdDisp, tActualProd, tOperacion, tTeorico,
-    perdidasVel: acc.perdidas_vel,
+    perdidasVel: acc.perdidas_vel, tRetrabajo: acc.t_retrabajo,
     tiempoPorClasif: {
       [CATS.NO_USO]: acc.t_no_uso, [CATS.NONA]: acc.t_nona, [CATS.CAMBIO]: acc.t_cambio,
       [CATS.PLANEADO]: acc.t_planeado, [CATS.EXTERNA]: acc.t_externa, [CATS.FALLA]: acc.t_falla,
@@ -1193,7 +1200,7 @@ function metricasDesdeKPI(kpiRows, tabId, anio, mesNombre) {
 
 function procesarMetricas(data) {
   const tPor = { [CATS.NO_USO]:0, [CATS.NONA]:0, [CATS.CAMBIO]:0, [CATS.PLANEADO]:0, [CATS.EXTERNA]:0, [CATS.FALLA]:0, [CATS.PRODUCCION]:0 };
-  let tot = 0, perdidasVel = 0;
+  let tot = 0, perdidasVel = 0, tRetrabajo = 0;
   let cajas = 0, semielaborado = 0, pni = 0, c9lTotal = 0;
   const paros = {};
   const fallasOrg = { MTO:0, OP:0, INV:0 };
@@ -1230,6 +1237,10 @@ function procesarMetricas(data) {
 
     tot += v;
     if (tPor[cls] !== undefined) tPor[cls] += v;
+    else if (CATS_RETRABAJO.includes(cls)) {
+      const fRetr = getFecha(r);
+      if (fRetr && fRetr >= FECHA_CORTE_RETRABAJO) tRetrabajo += v;
+    }
     perdidasVel += pv;
 
     if (cajasFila > 0) {
@@ -1303,7 +1314,7 @@ function procesarMetricas(data) {
   const tEfectivo    = tConPersonal - tPor[CATS.NONA];
   const tProdDisp    = tEfectivo - tPor[CATS.CAMBIO] - tPor[CATS.PLANEADO];
   const tActualProd  = tProdDisp - tPor[CATS.EXTERNA];
-  const tOperacion   = tActualProd - tPor[CATS.FALLA];
+  const tOperacion   = tActualProd - tPor[CATS.FALLA] - tRetrabajo;
   const tTeorico     = tOperacion - perdidasVel;
   const opi = tEfectivo > 0 ? (tTeorico / tEfectivo) * 100 : 0;
 
@@ -1312,7 +1323,7 @@ function procesarMetricas(data) {
   const hlTotal = c9lTotal * (window.HL_FACTOR ?? 0.09);
 
   return {
-    tot, tConPersonal, tEfectivo, tProdDisp, tActualProd, tOperacion, tTeorico, perdidasVel,
+    tot, tConPersonal, tEfectivo, tProdDisp, tActualProd, tOperacion, tTeorico, perdidasVel, tRetrabajo,
     tiempoPorClasif: tPor, opi,
     cajas, semielaborado, pni, pctPNI, lotePromedio, cajasList, lotesPorSemana, botellasUnid,
     c9lTotal, hlTotal, hlPorFecha, hlPorFechaTurno, hlPorFechaTipo, hlPorTipo, fallasPorSemana,
@@ -1816,6 +1827,7 @@ function drawWaterfall(id, m) {
     ['− Planeados',      -m.tiempoPorClasif[CATS.PLANEADO], '#D81840'],
     ['− Ext',            -m.tiempoPorClasif[CATS.EXTERNA], '#D81840'],
     ['− Fallas',         -m.tiempoPorClasif[CATS.FALLA], '#D81840'],
+    ['− Retrab./Terc.',  -(m.tRetrabajo||0), '#D81840'],
     ['− Pérd.Vel',       -m.perdidasVel, '#D81840'],
     ['T. Teórico',       m.tTeorico, '#F08808']
   ];
