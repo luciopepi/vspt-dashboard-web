@@ -16,6 +16,7 @@
     --vspt-amber:#F8C040;
     --vspt-orange:#F08808;
     --vspt-crimson:#D81840;
+    --vspt-magenta:#B61858;
     --vspt-wine:#701F52;
     --vspt-plum:#4E1742;
     --vspt-deep-purple:#321032;
@@ -67,25 +68,28 @@
     --radar-grid:rgba(78,23,66,0.12);
     --radar-angle:rgba(78,23,66,0.12);
   }
-  body.light .header { background: linear-gradient(135deg, var(--vspt-plum) 0%, var(--vspt-wine) 100%); }
+  body.light .header { background: var(--vspt-plum); }
   body.light .filter-group select option { background: #ffffff; color: var(--vspt-plum); }
-  body.light .kpi-card::before { background: linear-gradient(90deg, var(--accent1), var(--accent2)); }
-  body.light .section-title span { background: linear-gradient(90deg, var(--accent1), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .theme-btn { background: var(--card2); border: 1px solid var(--border); color: var(--text); padding: 6px 13px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s; white-space: nowrap; }
+  
+  
+  .theme-btn { background: transparent; border: 1px solid rgba(224,208,184,0.32); color: #fff; padding: 6px 13px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s; white-space: nowrap; }
   .theme-btn:hover { background: var(--accent1); color: #fff; border-color: var(--accent1); }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Montserrat', system-ui, sans-serif; font-size: 14px; transition:background .3s,color .3s; }
   a { color: var(--accent1); }
 
   /* HEADER — compacto, NO sticky (igual que Dashboard_programas) */
-  .header { background: linear-gradient(135deg, var(--vspt-plum) 0%, var(--vspt-deep-purple) 55%, var(--vspt-wine) 100%); border-bottom: 3px solid var(--vspt-orange); padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+  .header { background: var(--vspt-deep-purple); border-bottom: 1px solid rgba(224,208,184,0.22); padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
   .header-left { display: flex; align-items: center; gap: 14px; }
-  .logo { width: 38px; height: 38px; background: linear-gradient(135deg, var(--accent1), var(--accent2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .logo { width: 38px; height: 38px; background: #fff; padding: 4px; overflow: hidden; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
   .header-title { color: #fff; font-weight: 700; font-size: 16px; letter-spacing: -0.2px; }
   .header-sub { font-size: 9px; color: var(--vspt-beige); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.22em; font-weight: 600; }
   .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .status-badge { display: flex; align-items: center; gap: 6px; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: var(--green); padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  .status-badge { display: flex; align-items: center; gap: 6px; background: transparent; border: none; color: var(--vspt-beige); padding: 5px 2px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .status-badge.err { color: #ff7a93; }
+  .status-badge.err .status-dot { background: var(--vspt-crimson); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
   .last-update { font-size: 11px; color: var(--muted); }
 
@@ -105,8 +109,8 @@
   body.light .fg input[type=date]::-webkit-calendar-picker-indicator { filter: none; opacity: 0.6; }
   .fg .date-pair { display: flex; gap: 6px; }
   .fg .date-pair input { min-width: 130px; }
-  .btn-clear { background: linear-gradient(135deg, var(--vspt-deep-purple), var(--vspt-crimson)); border: none; color: #fff; border-radius: 7px; padding: 8px 16px; font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.18em; font-family: inherit; }
-  .btn-clear:hover { opacity: 0.88; }
+  .btn-clear { background: var(--vspt-crimson); border: none; color: #fff; border-radius: 6px; padding: 8px 16px; font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.18em; font-family: inherit; }
+  .btn-clear:hover { background: var(--vspt-magenta); }
 
   /* SPINNER */
   .spinner-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; gap: 16px; }
@@ -118,23 +122,24 @@
   .kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
   .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden; transition: transform 0.2s; }
   .kpi-card:hover { transform: translateY(-2px); }
-  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--vspt-crimson), var(--vspt-wine), var(--vspt-plum)); }
-  .kpi-card.amber::before  { background: linear-gradient(90deg, var(--vspt-yellow), var(--vspt-orange)); }
-  .kpi-card.olive::before  { background: linear-gradient(90deg, var(--vspt-olive), #6e7a2a); }
-  .kpi-card.orange::before { background: linear-gradient(90deg, var(--vspt-orange), var(--vspt-crimson)); }
-  .kpi-card.crimson::before{ background: linear-gradient(90deg, var(--vspt-crimson), var(--vspt-magenta, #B61858)); }
-  .kpi-card.cnc::before    { background: linear-gradient(90deg, #16a34a, #65a30d); }
+  /* Un solo acento plano. Calidad es transversal a las lineas: crimson. */
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--tab-color, var(--vspt-crimson)); }
+  
+  
+  
+  
+  
   .kpi-icon { display: none; }
   .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
   .kpi-value { font-size: 34px; font-weight: 800; letter-spacing: -1px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text); }
-  .kpi-card.amber  .kpi-value { color: var(--vspt-amber); }
-  .kpi-card.olive  .kpi-value { color: var(--vspt-olive); }
-  .kpi-card.orange .kpi-value { color: var(--vspt-orange); }
-  .kpi-card.crimson .kpi-value { color: var(--vspt-crimson); }
-  .kpi-card.cnc .kpi-value { color: #16a34a; }
+  /* color por metrica retirado: el numero va en tinta */
+  /* color por metrica retirado: el numero va en tinta */
+  /* color por metrica retirado: el numero va en tinta */
+  /* color por metrica retirado: el numero va en tinta */
+  /* color por metrica retirado: el numero va en tinta */
   .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
-  .kpi-badge-red { display: inline-flex; align-items: center; gap: 4px; background: rgba(216,24,64,0.15); border: 1px solid rgba(216,24,64,0.4); color: var(--vspt-crimson); padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; margin-top: 6px; animation: blink 1.5s infinite; }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .kpi-badge-red { display: inline-flex; align-items: center; gap: 4px; background: rgba(216,24,64,0.15); border: 1px solid rgba(216,24,64,0.4); color: var(--vspt-crimson); padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; margin-top: 6px; }
+  
 
   /* GRID GRAFICOS */
   .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
@@ -170,13 +175,14 @@
   /* INSIGHTS */
   .insights-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
   .insight-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: flex; gap: 10px; align-items: flex-start; }
-  .insight-icon { font-size: 20px; flex-shrink: 0; }
+  .insight-icon { flex-shrink: 0; line-height: 0; padding-top: 1px; color: var(--vspt-deep-purple); }
+  body:not(.light) .insight-icon { color: var(--vspt-beige); }
   .insight-text { font-size: 12px; line-height: 1.5; color: var(--muted); }
   .insight-text strong { color: var(--text); }
-  .insight-card.green { border-left: 3px solid var(--green); }
-  .insight-card.amber { border-left: 3px solid var(--amber); }
-  .insight-card.red { border-left: 3px solid var(--red); }
-  .insight-card.blue { border-left: 3px solid var(--blue); }
+
+
+
+
 
   /* HEATMAP */
   .heatmap-container { overflow-x: auto; }
@@ -211,8 +217,8 @@
   .cnc-repro-grid b { color: var(--text); font-weight: 600; }
   @media (max-width: 640px) { .cnc-stat-row { grid-template-columns: repeat(2, 1fr); } .cnc-repro-grid { grid-template-columns: 1fr; } }
   .section-title { font-size: 12px; font-weight: 700; color: var(--text); margin: 14px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: 0.18em; }
-  .section-title::before { content: ''; width: 4px; height: 16px; background: linear-gradient(180deg, var(--vspt-amber), var(--vspt-orange)); border-radius: 2px; }
-  .section-title span { background: linear-gradient(90deg, var(--accent1), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .section-title::before { content: ''; width: 3px; height: 14px; background: var(--vspt-crimson); }
+  .section-title span { color: var(--text); }
 
   @media (max-width: 1200px) {
     .kpi-row { grid-template-columns: repeat(3, 1fr); }
@@ -235,18 +241,18 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
 @keyframes vbBalanceo{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
 @keyframes vbBounce{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
 @keyframes vbLee{0%,100%{transform:rotate(0)}50%{transform:rotate(2deg)}}
-#vsptBot-badge{position:absolute;top:2px;right:2px;width:11px;height:11px;border-radius:50%;background:#D81840;border:2px solid #fff;animation:vbPulso 1.4s ease-in-out infinite}
+#vsptBot-badge{position:absolute;top:2px;right:2px;width:11px;height:11px;border-radius:50%;background:#D81840;border:2px solid #fff}
 @keyframes vbPulso{0%,100%{box-shadow:0 0 0 0 rgba(216,24,64,.6)}50%{box-shadow:0 0 0 5px rgba(216,24,64,0)}}
 #vsptBot-panel{position:absolute;right:0;bottom:calc(100% + 10px);width:360px;max-height:70vh;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.45);overflow:hidden}
 #vsptBot-panel[hidden]{display:none}
-.vb-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(135deg,#4E1742,#D81840);color:#fff;font-size:13px;font-weight:700}
+.vb-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--vspt-plum);color:#fff;font-size:13px;font-weight:700}
 .vb-head button{margin-left:auto;background:transparent;border:none;color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0 2px}
 #vsptBot .vb-chat{flex:1;overflow-y:auto;padding:8px 12px;min-height:60px;position:relative;font-size:12px}
 #vsptBot .vb-st{display:block;padding:2px 14px;font-size:11px;color:var(--muted);min-height:14px}
 .vb-row{display:flex;gap:6px;align-items:center;padding:8px 12px;border-top:1px solid var(--border)}
 .vb-row input{flex:1;min-width:0;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:inherit}
 .vb-row button{flex:0 0 auto;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 9px;cursor:pointer;font-size:12px}
-.vb-row button.vb-go{background:linear-gradient(135deg,#4E1742,#D81840);border:none;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:6px 10px;font-size:11px}
+.vb-row button.vb-go{background:#D81840;border:none;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:6px 10px;font-size:11px}
 .vb-fig{position:relative;display:block;height:107px;width:39px;margin:0 auto;animation:vbFlotar 3s ease-in-out infinite}
 .vb-fig img{position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:100%;width:auto;opacity:0;transition:opacity .9s ease;pointer-events:none;-webkit-user-drag:none}
 #vsptBot[data-variedad="tinto"] .vb-fig img[data-v="tinto"]{opacity:1}
@@ -281,12 +287,12 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
 @media (max-width:480px){#vsptBot-panel{width:calc(100vw - 24px);max-height:80vh;right:-6px}.vb-fig{height:95px}}
 </style>
 </head>
-<body>
+<body class="light">
 
 <!-- HEADER -->
 <div class="header">
   <div class="header-left">
-    <div class="logo">🍷</div>
+    <div class="logo"><img src="assets/marca-secundaria.jpg" alt="VSPT"></div>
     <div>
       <div class="header-title">Dashboard de Calidad — Producción</div>
       <div class="header-sub">Desvíos de Calidad · Análisis Ejecutivo</div>
@@ -294,7 +300,7 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
   </div>
   <div class="header-right">
     <div class="last-update" id="lastUpdate">Cargando datos...</div>
-    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" style="display:none">☀ Modo claro</button>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" style="display:none">Modo oscuro</button>
     <div class="status-badge" id="statusBadge">
       <div class="status-dot"></div>
       <span id="statusText">Conectando...</span>
@@ -359,7 +365,7 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
 
 <div id="vsptBot" data-variedad="tinto">
   <div id="vsptBot-panel" hidden>
-    <div class="vb-head">🍷 Asistente VSPT <button id="vsptBot-close" title="Cerrar">×</button></div>
+    <div class="vb-head">Asistente VSPT <button id="vsptBot-close" title="Cerrar">×</button></div>
     <div id="asistC-chatwrap" class="vb-chat">
       <button id="asistC-chatx" title="Cerrar chat" style="display:none;position:absolute;right:8px;top:4px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1">×</button>
       <div id="asistC-chat"></div>
@@ -367,9 +373,9 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
     <span id="asistC-st" class="vb-st"></span>
     <div class="vb-row">
       <input id="asistC-in" type="text" placeholder='ej: "marcá en rojo los de Brasil" · "limpiar"' onkeydown="if(event.key==='Enter')window.__asistCexec()">
-      <button id="asistC-mic" title="Dictar por voz">🎤</button>
-      <button id="asistC-voz" title="Leer respuestas en voz alta">🔊</button>
-      <button id="asistC-stop" title="Detener lectura">⏹</button>
+      <button id="asistC-mic" title="Dictar por voz" style="display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Dictar por voz" style="display:block"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg></button>
+      <button id="asistC-voz" title="Leer respuestas en voz alta" style="display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Leer en voz alta" style="display:block"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/></svg></button>
+      <button id="asistC-stop" title="Detener lectura" style="display:flex;align-items:center;justify-content:center"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Detener lectura" style="display:block"><rect width="18" height="18" x="3" y="3" rx="2"/></svg></button>
       <button id="asistC-go" class="vb-go">Ejecutar</button>
     </div>
   </div>
@@ -700,7 +706,7 @@ function toggleTheme() {
   isDark = !isDark;
   document.body.classList.toggle('light', !isDark);
   const btn = document.getElementById('themeBtn');
-  if (btn) btn.textContent = isDark ? '☀ Modo claro' : '🌙 Modo oscuro';
+  if (btn) btn.textContent = isDark ? 'Modo claro' : 'Modo oscuro';
   renderAll();
 }
 
@@ -709,7 +715,7 @@ function applyTheme(dark) {
   isDark = dark;
   document.body.classList.toggle('light', !isDark);
   const btn = document.getElementById('themeBtn');
-  if (btn) btn.textContent = isDark ? '☀ Modo claro' : '🌙 Modo oscuro';
+  if (btn) btn.textContent = isDark ? 'Modo claro' : 'Modo oscuro';
   if (typeof renderAll === 'function') {
     try { renderAll(); } catch(e){}
   }
@@ -796,11 +802,9 @@ async function fetchData() {
     await fetchFreshCal(false);
   } catch(e) {
     document.getElementById('loadingSpinner').innerHTML =
-      '<div class="error-msg">⚠️ Error al cargar datos: ' + e.message + '<br><small>Verificá la URL del Apps Script y que sea pública.</small></div>';
+      '<div class="error-msg">Error al cargar datos: ' + e.message + '<br><small>Verificá la URL del Apps Script y que sea pública.</small></div>';
     document.getElementById('statusText').textContent = 'Error de conexión';
-    document.getElementById('statusBadge').style.background = 'rgba(239,68,68,0.12)';
-    document.getElementById('statusBadge').style.borderColor = 'rgba(239,68,68,0.3)';
-    document.getElementById('statusBadge').style.color = '#ef4444';
+    document.getElementById('statusBadge').classList.add('err');
     document.querySelector('.status-dot').style.background = '#ef4444';
   }
 }
@@ -1070,13 +1074,26 @@ function renderKPIs() {
 
   const badgeEl = document.getElementById('kpi-pend-badge');
   if(pendientes > 5) {
-    badgeEl.innerHTML = '<div class="kpi-badge-red">⚠ ' + pendientes + ' sin cerrar</div>';
+    badgeEl.innerHTML = '<div class="kpi-badge-red">' + pendientes + ' sin cerrar</div>';
   } else {
     badgeEl.innerHTML = '<div class="kpi-sub">desvíos activos</div>';
   }
 }
 
 // ─── INSIGHTS ─────────────────────────────────────────────────────────────────
+/* Iconos de trazo para los insights. Sustitucion Lucide declarada: el set Proposito
+   solo cubre calendario/botella/personas/caja y en PNG de 64px+, que a 18px mezclaria
+   rasters con los SVG inline del resto del archivo. */
+const ICO = {
+  search: '<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' aria-hidden=\'true\'><circle cx=\'11\' cy=\'11\' r=\'8\'/><path d=\'m21 21-4.3-4.3\'/></svg>',
+  calendar: '<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' aria-hidden=\'true\'><path d=\'M8 2v4\'/><path d=\'M16 2v4\'/><rect width=\'18\' height=\'18\' x=\'3\' y=\'4\' rx=\'2\'/><path d=\'M3 10h18\'/><path d=\'m9 16 2 2 4-4\'/></svg>',
+  bottle: '<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' aria-hidden=\'true\'><path d=\'M8 22h8\'/><path d=\'M7 10h10\'/><path d=\'M12 15v7\'/><path d=\'M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z\'/></svg>',
+  clock: '<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' aria-hidden=\'true\'><circle cx=\'12\' cy=\'12\' r=\'10\'/><polyline points=\'12 6 12 12 16 14\'/></svg>',
+  user: '<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' aria-hidden=\'true\'><path d=\'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\'/><circle cx=\'12\' cy=\'7\' r=\'4\'/></svg>',
+  flask: '<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' aria-hidden=\'true\'><path d=\'M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2\'/><path d=\'M6.453 15h11.094\'/><path d=\'M8.5 2h7\'/></svg>',
+  box: '<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' aria-hidden=\'true\'><path d=\'m7.5 4.27 9 5.15\'/><path d=\'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z\'/><path d=\'m3.3 7 8.7 5 8.7-5\'/><path d=\'M12 22V12\'/></svg>',
+  check: '<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' aria-hidden=\'true\'><circle cx=\'12\' cy=\'12\' r=\'10\'/><path d=\'m9 12 2 2 4-4\'/></svg>'
+};
 function renderInsights() {
   const rows = FILTERED_ROWS;
   if(!rows.length) { document.getElementById('insightsGrid').innerHTML = '<div class="no-data">Sin datos suficientes para generar insights.</div>'; return; }
@@ -1088,14 +1105,14 @@ function renderInsights() {
   const topDef = topN(defFreq, 1)[0];
   if(topDef) {
     const pct = Math.round(topDef[1]/rows.length*100);
-    insights.push({ icon:'🔍', color:'amber', text: `El defecto más frecuente es <strong>${topDef[0]}</strong>, representando el <strong>${pct}%</strong> del total de desvíos.` });
+    insights.push({ icon:ICO.search, color:'amber', text: `El defecto más frecuente es <strong>${topDef[0]}</strong>, representando el <strong>${pct}%</strong> del total de desvíos.` });
   }
 
   // 2. Mes con más desvíos
   const mesFreq = count(rows, 'Mes');
   const topMes = topN(mesFreq, 1)[0];
   if(topMes) {
-    insights.push({ icon:'📅', color:'blue', text: `El mes con mayor cantidad de desvíos fue <strong>${topMes[0]}</strong> con <strong>${topMes[1]}</strong> casos registrados.` });
+    insights.push({ icon:ICO.calendar, color:'blue', text: `El mes con mayor cantidad de desvíos fue <strong>${topMes[0]}</strong> con <strong>${topMes[1]}</strong> casos registrados.` });
   }
 
   // 3. Producto concentra botellas
@@ -1108,7 +1125,7 @@ function renderInsights() {
   const totalBot = Object.values(prodBot).reduce((a,b)=>a+b,0);
   if(topProdBot && totalBot) {
     const pct = Math.round(topProdBot[1]/totalBot*100);
-    insights.push({ icon:'🍾', color:'red', text: `El producto <strong>${topProdBot[0]}</strong> concentra el <strong>${pct}%</strong> del total de botellas afectadas.` });
+    insights.push({ icon:ICO.bottle, color:'red', text: `El producto <strong>${topProdBot[0]}</strong> concentra el <strong>${pct}%</strong> del total de botellas afectadas.` });
   }
 
   // 4. Pendientes > 15 días
@@ -1117,14 +1134,14 @@ function renderInsights() {
   if(pend.length) {
     const pct = Math.round(pendMas15.length/pend.length*100);
     const col = pct > 30 ? 'red' : pct > 10 ? 'amber' : 'green';
-    insights.push({ icon:'⏰', color: col, text: `El <strong>${pct}%</strong> de los desvíos pendientes supera los <strong>15 días</strong> sin cierre.${pct>30?' — ALERTA':''}`});
+    insights.push({ icon:ICO.clock, color: col, text: `El <strong>${pct}%</strong> de los desvíos pendientes supera los <strong>15 días</strong> sin cierre.${pct>30?' — ALERTA':''}`});
   }
 
   // 5. Responsable con mayor carga pendiente
   const respPend = count(pend, 'Solicita');
   const topResp = topN(respPend, 1)[0];
   if(topResp) {
-    insights.push({ icon:'👤', color:'amber', text: `El responsable con mayor carga pendiente es <strong>${topResp[0]}</strong> con <strong>${topResp[1]}</strong> desvíos sin cerrar.` });
+    insights.push({ icon:ICO.user, color:'amber', text: `El responsable con mayor carga pendiente es <strong>${topResp[0]}</strong> con <strong>${topResp[1]}</strong> desvíos sin cerrar.` });
   }
 
   // 6. % afecta inocuidad
@@ -1132,7 +1149,7 @@ function renderInsights() {
   if(rows.length) {
     const pct = Math.round(inoc/rows.length*100);
     const col = pct > 20 ? 'red' : pct > 5 ? 'amber' : 'green';
-    insights.push({ icon:'⚗️', color: col, text: `El <strong>${pct}%</strong> de los desvíos afecta la <strong>inocuidad del producto</strong>. (${inoc} de ${rows.length})` });
+    insights.push({ icon:ICO.flask, color: col, text: `El <strong>${pct}%</strong> de los desvíos afecta la <strong>inocuidad del producto</strong>. (${inoc} de ${rows.length})` });
   }
 
   // 7. Grupo más frecuente
@@ -1140,7 +1157,7 @@ function renderInsights() {
   const topGrp = topN(grpFreq, 1)[0];
   if(topGrp) {
     const pct = Math.round(topGrp[1]/rows.length*100);
-    insights.push({ icon:'📦', color:'blue', text: `El grupo de defecto <strong>${topGrp[0]}</strong> es el más recurrente con el <strong>${pct}%</strong> de los casos.` });
+    insights.push({ icon:ICO.box, color:'blue', text: `El grupo de defecto <strong>${topGrp[0]}</strong> es el más recurrente con el <strong>${pct}%</strong> de los casos.` });
   }
 
   // 8. Lead time promedio cerrados
@@ -1148,7 +1165,7 @@ function renderInsights() {
   if(ltCerr.length) {
     const avg = Math.round(ltCerr.reduce((a,b)=>a+b,0)/ltCerr.length);
     const col = avg > 20 ? 'red' : avg > 10 ? 'amber' : 'green';
-    insights.push({ icon:'✅', color: col, text: `El lead time promedio de cierre efectivo es <strong>${avg} días</strong> para los <strong>${ltCerr.length}</strong> desvíos cerrados.` });
+    insights.push({ icon:ICO.check, color: col, text: `El lead time promedio de cierre efectivo es <strong>${avg} días</strong> para los <strong>${ltCerr.length}</strong> desvíos cerrados.` });
   }
 
   const grid = document.getElementById('insightsGrid');
@@ -1511,7 +1528,7 @@ fetchData();
       const partes=[];
       for(const id in f){ const el=document.getElementById(id); if(el && f[id]!=null && f[id]!==''){ el.value=String(f[id]); partes.push(id.replace('f-','')+'='+f[id]); } }
       if(typeof applyFilters==='function') applyFilters();
-      if(act.amb&&act.amb.length){ act.amb.forEach(_burbujaOpts); if(!partes.length){ st('Encontré varias opciones, elegí en el chat 💬'); return; } }
+      if(act.amb&&act.amb.length){ act.amb.forEach(_burbujaOpts); if(!partes.length){ st('Encontré varias opciones,  elegí en el chat'); return; } }
       st(partes.length?('✓ '+partes.join(' · ')):'No reconocí el filtro', !partes.length); return;
     }
     st('Comando no aplicable.', true);
@@ -1532,7 +1549,7 @@ fetchData();
   }
   let _vozOn=(function(){try{return (localStorage.getItem('asist-voz')||'1')==='1';}catch(e){return true;}})();
   function _leer(txt){ if(!window.speechSynthesis||!_vozOn) return; try{ speechSynthesis.cancel(); const limpio=String(txt).replace(/[*#|]/g,'').replace(/^\s*[-–—]\s+/gm,'').replace(/-{2,}/g,' '); const u=new SpeechSynthesisUtterance(limpio); u.lang='es-AR'; u.rate=1.05; u.onstart=function(){var b=document.getElementById('vsptBot');if(b)b.classList.add('leyendo');}; u.onend=function(){var b=document.getElementById('vsptBot');if(b)b.classList.remove('leyendo');}; speechSynthesis.speak(u);}catch(e){} }
-  function _toggleVoz(){ _vozOn=!_vozOn; try{localStorage.setItem('asist-voz',_vozOn?'1':'0');}catch(e){} const b=document.getElementById('asistC-voz'); if(b)b.textContent=_vozOn?'🔊':'🔇'; if(!_vozOn&&window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} }
+  function _toggleVoz(){ _vozOn=!_vozOn; try{localStorage.setItem('asist-voz',_vozOn?'1':'0');}catch(e){} const b=document.getElementById('asistC-voz'); if(b)b.innerHTML=_vozOn?"<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Leer en voz alta' style='display:block'><path d='M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z'/><path d='M16 9a5 5 0 0 1 0 6'/><path d='M19.364 18.364a9 9 0 0 0 0-12.728'/></svg>":"<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Lectura en voz alta desactivada' style='display:block'><path d='M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z'/><line x1='22' x2='16' y1='9' y2='15'/><line x1='16' x2='22' y1='9' y2='15'/></svg>"; if(!_vozOn&&window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} }
   function _pararVoz(){ if(window.speechSynthesis){try{speechSynthesis.cancel();}catch(e){}} const _b=document.getElementById('vsptBot'); if(_b)_b.classList.remove('leyendo'); }
   function _burbuja(who,txt){ const w=document.getElementById('asistC-chatwrap'), c=document.getElementById('asistC-chat'); if(!c) return; if(w)w.style.display='block'; if(who==='a'&&window.vsptBotAviso)vsptBotAviso();
     const d=document.createElement('div'); const base='margin:5px 0;padding:6px 8px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-word;';
@@ -1607,13 +1624,13 @@ fetchData();
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!SR){ st('Tu navegador no soporta voz (usá Chrome/Edge).', true); return; }
     const b=document.getElementById('asistC-mic');
-    if(_rec){ try{_rec.stop();}catch(e){} _rec=null; if(b)b.textContent='🎤'; return; }
+    if(_rec){ try{_rec.stop();}catch(e){} _rec=null; if(b)b.innerHTML="<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Dictar por voz' style='display:block'><path d='M12 19v3'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/><rect x='9' y='2' width='6' height='13' rx='3'/></svg>"; return; }
     const r=new SR(); _rec=r; r.lang='es-AR'; r.interimResults=false; r.maxAlternatives=1;
-    r.onstart=()=>{ if(b)b.textContent='🔴'; st('Escuchando…'); };
+    r.onstart=()=>{ if(b)b.textContent='REC'; st('Escuchando…'); };
     r.onerror=e=>st(e.error==='not-allowed'?'Permiso de micrófono denegado.':'Error de voz: '+e.error,true);
-    r.onend=()=>{ if(b)b.textContent='🎤'; _rec=null; };
-    r.onresult=e=>{ const tx=e.results[0][0].transcript.trim(); const i=document.getElementById('asistC-in'); if(i)i.value=tx; st('🗣 "'+tx+'"'); ejec(); };
-    try{ r.start(); }catch(e){ st('No pude iniciar el micrófono.',true); _rec=null; if(b)b.textContent='🎤'; }
+    r.onend=()=>{ if(b)b.innerHTML="<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Dictar por voz' style='display:block'><path d='M12 19v3'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/><rect x='9' y='2' width='6' height='13' rx='3'/></svg>"; _rec=null; };
+    r.onresult=e=>{ const tx=e.results[0][0].transcript.trim(); const i=document.getElementById('asistC-in'); if(i)i.value=tx; st('"'+tx+'"'); ejec(); };
+    try{ r.start(); }catch(e){ st('No pude iniciar el micrófono.',true); _rec=null; if(b)b.innerHTML="<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Dictar por voz' style='display:block'><path d='M12 19v3'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/><rect x='9' y='2' width='6' height='13' rx='3'/></svg>"; }
   }
   async function ejec(){
     const i=document.getElementById('asistC-in'); const tx=((i&&i.value)||'').trim(); if(!tx) return;
@@ -1632,7 +1649,7 @@ fetchData();
   }
   document.getElementById('asistC-go').onclick=ejec;
   document.getElementById('asistC-mic').onclick=voz;
-  (function(){ const vz=document.getElementById('asistC-voz'); if(vz){ vz.textContent=_vozOn?'🔊':'🔇'; vz.onclick=_toggleVoz; } const sp=document.getElementById('asistC-stop'); if(sp)sp.onclick=_pararVoz;
+  (function(){ const vz=document.getElementById('asistC-voz'); if(vz){ vz.innerHTML=_vozOn?"<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Leer en voz alta' style='display:block'><path d='M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z'/><path d='M16 9a5 5 0 0 1 0 6'/><path d='M19.364 18.364a9 9 0 0 0 0-12.728'/></svg>":"<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Lectura en voz alta desactivada' style='display:block'><path d='M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z'/><line x1='22' x2='16' y1='9' y2='15'/><line x1='16' x2='22' y1='9' y2='15'/></svg>"; vz.onclick=_toggleVoz; } const sp=document.getElementById('asistC-stop'); if(sp)sp.onclick=_pararVoz;
     const cx=document.getElementById('asistC-chatx'); if(cx)cx.onclick=function(){ const w=document.getElementById('asistC-chatwrap'); if(w)w.style.display='none'; }; })();
   window.__asistCexec=ejec;
   /* ---- Widget flotante VSPT (launcher botella + panel) ---- */
