@@ -175,8 +175,9 @@
   .kpi-value.amber, .kpi-value.wine, .kpi-value.olive,
   .kpi-value.red, .kpi-value.orange, .kpi-value.cream { color:var(--text); }
   .kpi-unit { font-size:0.46em; font-weight:600; color:var(--muted); }
-  /* Única excepción: el héroe codifica cumplimiento de meta. */
-  .kpi-hero .kpi-value.olive { color:#c5cf6e; } body.light .kpi-hero .kpi-value.olive { color:#5F6A26; }
+  /* Única excepción: el héroe codifica cumplimiento de meta. Mismos colores que
+     el donut de distribución: oliva = producción, crimson = fallas. */
+  .kpi-hero .kpi-value.olive { color:var(--vspt-olive); } body.light .kpi-hero .kpi-value.olive { color:var(--vspt-olive); }
   .kpi-hero .kpi-value.red { color:var(--vspt-crimson); }
   .kpi-sub { font-size:11px; color:var(--muted); margin-top:6px; }
 
@@ -189,6 +190,31 @@
   .kpi-hero .meta strong { color:var(--text); font-weight:700; }
 
   .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+
+  /* ===== Reporte Diario: todo en una pantalla, sin scroll vertical ===== */
+  .diario-tight .kpi-row { gap:8px; margin-bottom:8px; }
+  .diario-tight .kpi-card { padding:8px 10px; }
+  .diario-tight .kpi-label { font-size:8.5px; letter-spacing:0.12em; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .diario-tight .kpi-value { font-size:20px; }
+  .diario-tight .kpi-sub { font-size:9px; margin-top:2px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .diario-tight .kpi-hero { padding:8px 10px; }
+  .diario-tight .kpi-hero .kpi-value { font-size:34px; margin-top:0; }
+  .diario-tight .kpi-hero .kpi-label { font-size:9px; letter-spacing:0.14em; }
+  .diario-tight .kpi-hero .meta { font-size:9px; margin-top:3px; }
+  .diario-tight .chart-card { padding:9px 11px; margin-bottom:0; }
+  .diario-tight .chart-title { font-size:10px; margin-bottom:6px; letter-spacing:0.12em; }
+  .diario-tight .chart-title .hint { font-size:9px; }
+  .diario-tight .table-obj { font-size:11px; }
+  .diario-tight .table-obj th { padding:4px 6px; font-size:8.5px; letter-spacing:0.4px; }
+  .diario-tight .table-obj td { padding:4px 6px; }
+  .diario-tight .table-obj tr[onclick]:hover { background:var(--tr-hover); }
+  .diario-grid   { display:grid; grid-template-columns:1.18fr 1fr 1.02fr; gap:8px; margin-bottom:8px; }
+  .diario-grid-2 { display:grid; grid-template-columns:1.35fr 1fr; gap:8px; }
+  @media (max-width:1100px) {
+    .diario-grid, .diario-grid-2 { grid-template-columns:1fr; height:auto !important; }
+    .diario-grid > *, .diario-grid-2 > * { height:auto !important; min-height:0; }
+    .diario-tight .kpi-row { grid-template-columns:repeat(3,1fr) !important; }
+  }
   .charts-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
   .chart-card { background:var(--card); border:1px solid var(--border); border-top:var(--tw-top-bar,3px) solid var(--tab-color,var(--vspt-crimson)); border-radius:var(--tw-rad-card,14px); padding:var(--tw-card-pad,18px); box-shadow:var(--tw-card-shadow, 0 2px 10px rgba(48,16,48,0.10)); }
   .chart-card.full { grid-column:1 / -1; }
@@ -359,6 +385,7 @@
   <button class="tab-btn" data-tab="l1" onclick="changeTab('l1')">Línea 1</button>
   <button class="tab-btn" data-tab="l2" onclick="changeTab('l2')">Línea 2</button>
   <button class="tab-btn" data-tab="l3" onclick="changeTab('l3')">Línea 3</button>
+  <button class="tab-btn" data-tab="diario" onclick="changeTab('diario')">Reporte Diario</button>
   <button class="tab-btn" data-tab="programas" onclick="changeTab('programas')">Programas</button>
   <button class="tab-btn" data-tab="objetivos" onclick="changeTab('objetivos')">Objetivos</button>
   <button class="tab-btn" data-tab="calidad" onclick="changeTab('calidad')">Calidad</button>
@@ -463,6 +490,7 @@
     <div id="tab-l1"        class="tab-panel" style="display:none;"></div>
     <div id="tab-l2"        class="tab-panel" style="display:none;"></div>
     <div id="tab-l3"        class="tab-panel" style="display:none;"></div>
+    <div id="tab-diario"    class="tab-panel" style="display:none;"></div>
     <div id="tab-programas" class="tab-panel" style="display:none;">
   <iframe id="iframeProgramas" src="about:blank" allow="microphone" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>
 </div>
@@ -514,7 +542,7 @@ let opiViewState = {}; // tabId -> 'M'|'W'|'D'
 // ============================================================
 const VSPT_TWEAKS = /*EDITMODE-BEGIN*/{
   "mood": "ops-floor",
-  "chromaEnergy": 60,
+  "chromaEnergy": 70,
   "geometry": "soft"
 }/*EDITMODE-END*/;
 let tweaksState = { ...VSPT_TWEAKS };
@@ -704,7 +732,7 @@ const CAT_COLORS = {
   'NoNa':                 '#701F52',
   'Tiempos de No Uso':    '#4E1742'
 };
-const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808', aplicaciones:'#98A040' };
+const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', diario:'#4E1742', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808', aplicaciones:'#98A040' };
 
 // Pestaña Aplicaciones: accesos directos a las herramientas del área.
 // Cada entrada se dibuja como una tarjeta-hipervínculo que abre la app en una
@@ -812,7 +840,17 @@ function normalizeMes(v) {
   return m ? m[1] : s;
 }
 
-function toDate(v) { if (!v) return null; const d = new Date(v); return isNaN(d)?null:d; }
+function toDate(v) {
+  if (!v) return null;
+  // 'YYYY-MM-DD' (con o sin hora) se arma como fecha LOCAL: new Date('2026-09-11')
+  // la interpreta como UTC y en UTC-3 caía al día anterior, corriendo un día
+  // todo el tablero (detectado en el Reporte Diario, ago/sep-2026).
+  const s = String(v).trim();
+  const mm = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (mm) return new Date(+mm[1], +mm[2] - 1, +mm[3], 12, 0, 0);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
 
 // Robusta: busca cuál de las columnas contiene la categoría AGRUPADORA
 function getClasif1(r) {
@@ -880,11 +918,11 @@ async function init() {
   }
 
   // El pedido de OPINONA (fase 2, lento) arranca YA, en paralelo con el KPI
-  const opiPromise = fetch(API_URL + '?tabla=opinona');
+  const opiPromise = withTimeout(fetch(API_URL + '?tabla=opinona'), 6000);
   opiPromise.catch(() => {});   // el error real se maneja al hacer await más abajo
 
   try {
-    const resK = await fetch(API_URL + '?tabla=kpi_planta_mensual');
+    const resK = await withTimeout(fetch(API_URL + '?tabla=kpi_planta_mensual'), 5000);
     const jK = await resK.json();
     if (jK.status === 'success' && Array.isArray(jK.kpi_planta_mensual)) {
       kpiData = jK.kpi_planta_mensual;
@@ -925,12 +963,183 @@ async function init() {
     console.error(err);
     if (rawData.length) { showContent(); setStatus('amber', 'CACHE · SIN CONEXIÓN'); }
     else if (kpiData.length) { showContent(); setStatus('amber', 'KPI · SIN DETALLE'); }
-    else { setStatus('red','ERROR API'); showError(err.message); }
+    else { cargarDatosDemo(err); }
   }
 }
 
-function trySet(key, val) {
-  try { localStorage.setItem(key, val); }
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATOS DE EJEMPLO — solo cuando la API no responde y no hay caché.
+   Sirve para maquetar/retocar el HTML sin conexión (el login de Google queda
+   desactivado mientras editamos, así que la API rechaza el pedido).
+   NO se guarda en localStorage para no pisar la caché de los datos reales.
+   El 10/09/2026 replica los números de la planilla; el resto es sintético.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function cargarDatosDemo(err) {
+  rawData = generarDatosDemo();
+  opinonaCargada = true;
+  showContent();
+  setupFilters(); setFiltrosBloqueados(false); onFilterChange();
+  setStatus('amber', `DATOS DE EJEMPLO · SIN API (${rawData.length} filas)`);
+  console.warn('[demo] API sin respuesta, se usan datos de ejemplo:', err && err.message);
+}
+
+function generarDatosDemo() {
+  const EQUIPOS = [
+    ['Etiquetadora Engomada','MTO','limpieza de plizadores por exceso de adhesivo'],
+    ['Etiquetadora Engomada','OP','puesta a punto angular'],
+    ['Llenadora Botellas','OP','rotura de botellas'],
+    ['Enjuagadora','MTO','control de inicio de turno'],
+    ['Encajonadora','OP','ajuste'],
+    ['Despaletizador','OP','limpieza por vidrio'],
+    ['Roscadora','OP','ajuste de cabezal n°1'],
+    ['Formadora de Cajas','MTO','cambio de ventosas'],
+    ['Lava secadora de Botellas','OP','rotura por caída de botellas'],
+    ['Zona 2 de Transporte','MTO','sensor de acumulación']
+  ];
+  const EXTERNAS = [
+    ['Falta insumos / legajos Logística','demora en retiro de producto terminado'],
+    ['Falla Sala Filtración','cambio de tanque'],
+    ['Otras Causas','personal en capacitación']
+  ];
+  const TURNOS = ['MAÑANA','TARDE','NOCHE'];
+  const rows = [];
+  let seed = 20260910;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+  const pick = a => a[Math.floor(rnd() * a.length)];
+  const semana = d => { const s = new Date(d.getFullYear(), 0, 1); return Math.ceil(((d - s) / 86400000 + s.getDay() + 1) / 7); };
+
+  const push = (d, linea, cls, sub, horas, extra) => {
+    if (!(horas > 0)) return;
+    rows.push(Object.assign({
+      'Fecha': diaYMD(d),
+      'anio': d.getFullYear(),
+      'Semana': semana(d),
+      'linea': linea,
+      'Clasificación_1': cls,
+      'Clasificación_2': sub,
+      'Var. Tiempo': Number(horas.toFixed(3)),
+      'Perdidas de Velocidad': 0,
+      'Cantidad cajas Producidas': 0,
+      'C9L': 0,
+      'Tipo Etiquetado': '',
+      'MTO/OP': '',
+      'Observaciones': '',
+      'turno_plan': pick(TURNOS)
+    }, extra || {}));
+  };
+
+  // El 10/09/2026 se carga con las filas reales de la planilla; el resto del
+  // período es sintético. Así ese día sirve para cotejar contra el tablero real.
+  const prod = (dia, linea, min, cajas, op, pv) => push(dia, linea, CATS.PRODUCCION, 'LLENADO+VESTIDO', min/60, {
+    'Tipo Etiquetado':'LLENADO+VESTIDO', 'Cantidad cajas Producidas':cajas, 'C9L':Math.round(cajas*0.5),
+    'N° Unidades':cajas*6, 'codigo_botella':'0075014', 'Var. %':1.0, 'Id. Producción':op,
+    'Perdidas de Velocidad': pv || 0
+  });
+  const falla = (dia, linea, eq, mto, obs, min) => push(dia, linea, CATS.FALLA, eq, min/60, { 'MTO/OP':mto, 'Observaciones':obs });
+
+  function diaPlanilla(dia) {
+    // — L1: OPINONA 64,6% · prod 694 · planeados 180 · fallas 176 · externas 20 · cambios 10
+    push(dia, 'L1', CATS.NO_USO, 'Turnos sin personal', 6, { 'Observaciones':'GP' });
+    push(dia, 'L1', CATS.PLANEADO, 'Colación', 45/60, { 'Observaciones':'Comedor y charla de seguridad' });
+    push(dia, 'L1', CATS.PLANEADO, 'Alistamiento', 30/60);
+    push(dia, 'L1', CATS.PLANEADO, 'Limpieza de Línea', 60/60);
+    push(dia, 'L1', CATS.PLANEADO, 'Descarga de Línea', 45/60);
+    push(dia, 'L1', CATS.CAMBIO, 'Cambio de Orden', 5/60, { 'MTO/OP':'OP' });
+    push(dia, 'L1', CATS.CAMBIO, 'Cambio de Orden', 5/60, { 'MTO/OP':'OP' });
+    push(dia, 'L1', CATS.EXTERNA, 'Falta insumos / legajos Logística', 10/60, { 'Observaciones':'demora en retiro de producto terminado', 'MTO/OP':'OP' });
+    push(dia, 'L1', CATS.EXTERNA, 'Falla Sala Filtración', 5/60, { 'Observaciones':'cambio de tanque', 'MTO/OP':'OP' });
+    push(dia, 'L1', CATS.EXTERNA, 'Otras Causas', 5/60, { 'Observaciones':'personal en capacitacion despaletizado', 'MTO/OP':'OP' });
+    falla(dia,'L1','Etiquetadora Engomada','MTO','limpieza de plizadores por exceso de adesivo en paleta frente (golpe rodillo goma con paleta)',72);
+    falla(dia,'L1','Etiquetadora Engomada','MTO','falla de etiquetado en estacion de etiqueta frente (existe OT)',20);
+    falla(dia,'L1','Etiquetadora Engomada','OP','limpieza de plizadores',10);
+    falla(dia,'L1','Despaletizador','OP','limpieza por vidrio',20);
+    falla(dia,'L1','Enjuagadora','MTO','control inicio de turno y control de pico numero 20',15);
+    falla(dia,'L1','Roscadora','OP','ajuste de cabezal n°1',15);
+    falla(dia,'L1','Encajonadora','OP','ajuste',12);
+    falla(dia,'L1','Lava secadora de Botellas','OP','rotura por caida de botellas (limpieza de maquina)',7);
+    falla(dia,'L1','Llenadora Botellas','OP','rotura de botellas',5);
+    prod(dia,'L1',350,5864,'6600221228',-0.05); prod(dia,'L1',16,270,'6600221228'); prod(dia,'L1',328,5487,'6600221229');
+
+    // — L2: 24 h sin personal
+    push(dia, 'L2', CATS.NO_USO, 'Turnos sin personal', 24, { 'Observaciones':'GP' });
+
+    // — L3: OPINONA 66,0% · prod 715 · planeados 140 · fallas 195 · cambios 30
+    push(dia, 'L3', CATS.NO_USO, 'Turnos sin personal', 6, { 'Observaciones':'GP' });
+    push(dia, 'L3', CATS.PLANEADO, 'Colación', 45/60, { 'Observaciones':'Comedor y charla de seguridad' });
+    push(dia, 'L3', CATS.PLANEADO, 'Alistamiento', 30/60);
+    push(dia, 'L3', CATS.PLANEADO, 'Limpieza de Línea', 45/60);
+    push(dia, 'L3', CATS.PLANEADO, 'Descarga de Línea', 20/60, { 'Observaciones':'Descarga de línea' });
+    push(dia, 'L3', CATS.CAMBIO, 'Cambio de Orden', 15/60, { 'MTO/OP':'OP' });
+    push(dia, 'L3', CATS.CAMBIO, 'Cambio de Orden', 15/60, { 'MTO/OP':'OP' });
+    falla(dia,'L3','Etiquetadora Engomada','MTO','Falla de angular corrección base N° 1,2 y 4',180);
+    falla(dia,'L3','Etiquetadora Engomada','OP','Puesta a punto angular',15);
+    prod(dia,'L3',255,3545,'6600221233',0.04); prod(dia,'L3',65,900,'6600221233'); prod(dia,'L3',395,5456,'6600221234');
+  }
+
+  const desde = new Date(2026, 6, 1), hasta = new Date(2026, 8, 12);
+  for (let d = new Date(desde); d <= hasta; d.setDate(d.getDate() + 1)) {
+    const dia = new Date(d);
+    const domingo = dia.getDay() === 0;
+    if (diaYMD(dia) === '2026-09-10') { diaPlanilla(dia); continue; }
+    ['L1','L2','L3'].forEach(linea => {
+      const activa = !domingo && (linea === 'L2' ? rnd() < 0.35 : rnd() < 0.92);
+      if (!activa) { push(dia, linea, CATS.NO_USO, 'Turnos sin personal', 24, { 'Observaciones':'GP' }); return; }
+
+      push(dia, linea, CATS.NO_USO, 'Turnos sin personal', 6, { 'Observaciones':'GP' });
+      push(dia, linea, CATS.PLANEADO, 'Colación', 0.75, { 'Observaciones':'Comedor y charla de seguridad' });
+      push(dia, linea, CATS.PLANEADO, 'Alistamiento', 0.5);
+      push(dia, linea, CATS.PLANEADO, 'Limpieza de Línea', 1.0);
+      push(dia, linea, CATS.PLANEADO, 'Descarga de Línea', 0.75);
+
+      const nCamb = rnd() < 0.6 ? 2 : 1;
+      let hCamb = 0;
+      for (let i = 0; i < nCamb; i++) { const h = 0.08 + rnd() * 0.2; hCamb += h; push(dia, linea, CATS.CAMBIO, 'Cambio de Orden', h, { 'MTO/OP':'OP' }); }
+
+      let hExt = 0;
+      if (rnd() < 0.45) { const e = pick(EXTERNAS); const h = 0.08 + rnd() * 0.25; hExt = h; push(dia, linea, CATS.EXTERNA, e[0], h, { 'Observaciones': e[1], 'MTO/OP':'OP' }); }
+
+      const nFallas = 2 + Math.floor(rnd() * 3);
+      let hFallas = 0;
+      for (let i = 0; i < nFallas; i++) {
+        const eq = pick(EQUIPOS);
+        const h = 0.1 + rnd() * 1.3;
+        hFallas += h;
+        push(dia, linea, CATS.FALLA, eq[0], h, { 'MTO/OP': eq[1], 'Observaciones': eq[1] + ': ' + eq[2] });
+      }
+
+      const hProd = Math.max(2, 18 - 3 - hCamb - hExt - hFallas);
+      const nOP = 2 + Math.floor(rnd() * 2);
+      for (let i = 0; i < nOP; i++) {
+        const h = hProd / nOP;
+        const cajas = Math.round(h * 950 + rnd() * 60);
+        push(dia, linea, CATS.PRODUCCION, 'LLENADO+VESTIDO', h, {
+          'Tipo Etiquetado': 'LLENADO+VESTIDO',
+          'Cantidad cajas Producidas': cajas,
+          'C9L': Math.round(cajas * 0.5),
+          'N° Unidades': cajas * 6,
+          'codigo_botella': linea === 'L3' ? '0075021' : '0075014',
+          'Perdidas de Velocidad': Number(((rnd() - 0.5) * 0.06).toFixed(3)),
+          'Var. %': 0.99 + rnd() * 0.08,
+          'Pt. No conforme': rnd() < 0.25 ? Math.round(cajas * 0.004) : 0,
+          'Id. Producción': '66002' + (10000 + Math.floor(rnd() * 9000))
+        });
+      }
+    });
+  }
+  return rows;
+}
+
+// La API queda inaccesible cuando el login de Google está desactivado (retoques
+// al HTML) o sin red: sin un tope de espera el fetch cuelga y el panel se queda
+// en "SINCRONIZANDO...". Con el tope, cae a caché o a datos de ejemplo.
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('sin respuesta de la API (' + (ms/1000) + 's)')), ms))
+  ]);
+}
+
+function trySet(key, val) {  try { localStorage.setItem(key, val); }
   catch(e) { console.warn('[cache] no se pudo guardar', key, '-', e.name); }
 }
 
@@ -1385,6 +1594,7 @@ function render() {
   else if (activeTab === 'l1')   renderTab('l1', filteredData.filter(r => getLinea(r) === 'L1'));
   else if (activeTab === 'l2')   renderTab('l2', filteredData.filter(r => getLinea(r) === 'L2'));
   else if (activeTab === 'l3')   renderTab('l3', filteredData.filter(r => getLinea(r) === 'L3'));
+  else if (activeTab === 'diario') renderDiario();
   else if (activeTab === 'objetivos') renderObjetivos();
 }
 
@@ -2321,6 +2531,422 @@ function drawLoteSemana(id, lotesPorSemana, color) {
   });
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   REPORTE DIARIO — recorte de un día sobre la misma base OPINONA.
+   Replica los bloques del tablero de la planilla (Resumen / Distribución de
+   paros / Paros por máquina / Paradas externas / Tiempos de cambio / Pareto).
+   No usa los filtros laterales: la única entrada es la fecha elegida acá.
+   ══════════════════════════════════════════════════════════════════════════ */
+let diarioFecha = null;
+let diarioLinea = 'planta';
+const DIARIO_H = { donut:260, pareto:240, row:300, row2:300 };
+
+const diaYMD = d => { const p = n => String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); };
+const diaMin = h => Math.round(h * 60);
+
+function diarioFechas() {
+  const s = new Set();
+  rawData.forEach(r => { const f = getFecha(r); if (f) s.add(diaYMD(f)); });
+  return [...s].sort();
+}
+function setDiarioFecha(v) { if (v) { diarioFecha = v; renderDiario(); } }
+function stepDiario(delta) {
+  const fs = diarioFechas(); const i = fs.indexOf(diarioFecha);
+  const ni = Math.min(Math.max((i < 0 ? fs.length - 1 : i) + delta, 0), fs.length - 1);
+  if (fs[ni]) setDiarioFecha(fs[ni]);
+}
+function setDiarioLinea(l) { diarioLinea = l; renderDiario(); }
+
+// Recalcula alturas al cambiar el tamaño de ventana (y al cruzar el corte de 1100px)
+let _diarioResize;
+window.addEventListener('resize', () => {
+  if (activeTab !== 'diario') return;
+  clearTimeout(_diarioResize);
+  _diarioResize = setTimeout(renderDiario, 250);
+});
+
+function renderDiario() {
+  const container = document.getElementById('tab-diario');
+  if (!container) return;
+  if (!rawData.length) { container.innerHTML = '<div class="no-data">Cargando detalle OPINONA…</div>'; return; }
+
+  const fechas = diarioFechas();
+  if (!fechas.length) { container.innerHTML = '<div class="no-data">Sin fechas en la base</div>'; return; }
+  if (!diarioFecha || !fechas.includes(diarioFecha)) diarioFecha = fechas[fechas.length - 1];
+
+  const lineFilter = r => diarioLinea === 'planta' ? true : getLinea(r) === diarioLinea.toUpperCase();
+  const dayRows = rawData.filter(r => { const f = getFecha(r); return f && diaYMD(f) === diarioFecha && lineFilter(r); });
+
+  const fechaObj = new Date(diarioFecha + 'T12:00:00');
+  const fechaTxt = fechaObj.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const themeColor = THEME_COLOR[diarioLinea] || THEME_COLOR.diario;
+  // Por debajo de 1100px los grids se apilan (media query): ahí la altura fija
+  // recortaría las tarjetas, así que se deja fluir la página con scroll normal.
+  const unaPantalla = window.innerWidth > 1100;
+  const vh = window.innerHeight || 900;
+  const avail = Math.max(360, vh - 330);
+  DIARIO_H.row = Math.round(avail * 0.47);
+  DIARIO_H.row2 = avail - DIARIO_H.row - 8;
+  DIARIO_H.donut = Math.max(150, DIARIO_H.row - 34);
+  DIARIO_H.pareto = Math.max(150, DIARIO_H.row2 - 34);
+  if (!unaPantalla) { DIARIO_H.donut = 240; DIARIO_H.pareto = 260; }
+  const hRow  = unaPantalla ? `height:${DIARIO_H.row}px;`  : '';
+  const hRow2 = unaPantalla ? `height:${DIARIO_H.row2}px;` : '';
+  // La pestaña toma el color de la línea elegida (mismo código que Planta/L1/L2/L3)
+  document.documentElement.style.setProperty('--tab-color', themeColor);
+  const btnDiario = document.querySelector('.tab-btn[data-tab="diario"]');
+  if (btnDiario) btnDiario.style.setProperty('--tab-color', themeColor);
+  const target = targets[diarioLinea === 'planta' ? 'planta' : diarioLinea]?.anual ?? 40;
+
+  const lineBtns = [['planta','Planta'],['l1','L1'],['l2','L2'],['l3','L3']]
+    .map(([k,l]) => `<button type="button" class="opi-view-btn ${diarioLinea===k?'on':''}" onclick="setDiarioLinea('${k}')"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${THEME_COLOR[k]};margin-right:6px;vertical-align:-1px;box-shadow:0 0 0 1px rgba(0,0,0,.18);"></span>${l}</button>`).join('');
+
+  const head = `
+    <div class="chart-card full" style="margin-bottom:8px;padding:7px 12px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:9px;font-weight:700;letter-spacing:0.16em;color:var(--muted);">REPORTE DIARIO</span>
+        <span style="font-size:14px;font-weight:800;color:var(--text);text-transform:capitalize;">${fechaTxt}</span>
+        <div style="display:flex;align-items:center;gap:5px;">
+          <button type="button" class="opi-view-btn" onclick="stepDiario(-1)" title="Día anterior con datos">‹</button>
+          <input type="date" class="input-obj" style="width:132px;" value="${diarioFecha}" min="${fechas[0]}" max="${fechas[fechas.length-1]}" onchange="setDiarioFecha(this.value)">
+          <button type="button" class="opi-view-btn" onclick="stepDiario(1)" title="Día siguiente con datos">›</button>
+        </div>
+        <span class="opi-view-switch" style="display:inline-flex;gap:5px;">${lineBtns}</span>
+      </div>
+    </div>`;
+
+  if (!dayRows.length) { container.innerHTML = head + '<div class="no-data">Sin registros para ese día en ' + (diarioLinea==='planta'?'la planta':diarioLinea.toUpperCase()) + '</div>'; return; }
+
+  const m = procesarMetricas(dayRows);
+  const kpiCls = m.opi >= target ? 'olive' : 'red';
+  const heroCls = m.opi >= target ? '' : 'below';
+
+  // OPINONA del mes a la fecha, misma línea — referencia para el día
+  const mesRows = rawData.filter(r => {
+    const f = getFecha(r);
+    return f && lineFilter(r) && f.getFullYear() === fechaObj.getFullYear() && f.getMonth() === fechaObj.getMonth() && diaYMD(f) <= diarioFecha;
+  });
+  const mMes = procesarMetricas(mesRows);
+
+  // ── Detalle de fallas del día: agrupado por equipo, con subtotal ──
+  const fallaKey = {};
+  dayRows.filter(r => getClasif1(r) === CATS.FALLA).forEach(r => {
+    const eq = getClasif2(r) || 'Sin clasificar';
+    const mto = getMTO(r) || '—';
+    const obs = String(get(r,'Observaciones','observaciones') || '').trim() || '—';
+    const k = eq + '||' + mto + '||' + obs;
+    if (!fallaKey[k]) fallaKey[k] = { eq, mto, obs, h:0 };
+    fallaKey[k].h += getVarTiempo(r);
+  });
+  const fallasList = Object.values(fallaKey);
+  const fallasTotal = fallasList.reduce((s,x) => s + x.h, 0);
+  const grupos = {};
+  fallasList.forEach(x => { (grupos[x.eq] = grupos[x.eq] || []).push(x); });
+  const gruposOrd = Object.entries(grupos)
+    .map(([eq, items]) => ({ eq, items: items.sort((a,b)=>b.h-a.h), total: items.reduce((s,x)=>s+x.h,0) }))
+    .sort((a,b) => b.total - a.total);
+
+  let parosRows = '';
+  gruposOrd.forEach(g => {
+    const eqEsc = g.eq.replace(/'/g, "\\'");
+    g.items.forEach((x,i) => {
+      parosRows += `<tr onclick="openModalDiarioClasif(CATS.FALLA,'${eqEsc}')" style="cursor:pointer;" title="Ver registros del equipo">
+        <td style="font-weight:${i===0?700:500};">${i===0 ? g.eq : ''}</td>
+        <td style="font-size:11px;font-weight:700;color:var(--muted);">${x.mto}</td>
+        <td style="text-align:left;font-weight:400;font-style:italic;opacity:.85;white-space:normal;">${x.obs}</td>
+        <td>${diaMin(x.h).toLocaleString('es-AR')}</td>
+        <td style="color:var(--muted);">${fallasTotal ? (x.h/fallasTotal*100).toFixed(0) : 0}%</td>
+      </tr>`;
+    });
+    if (g.items.length > 1) {
+      parosRows += `<tr style="background:var(--tr-hover);">
+        <td style="padding-left:22px;font-weight:800;">Subtotal ${g.eq}</td><td></td><td></td>
+        <td style="font-weight:800;">${diaMin(g.total).toLocaleString('es-AR')}</td>
+        <td style="font-weight:800;">${fallasTotal ? (g.total/fallasTotal*100).toFixed(0) : 0}%</td>
+      </tr>`;
+    }
+  });
+  if (parosRows) parosRows += `<tr style="background:${themeColor}1f;">
+    <td style="font-weight:800;">Total General</td><td></td><td></td>
+    <td style="font-weight:800;">${diaMin(fallasTotal).toLocaleString('es-AR')}</td>
+    <td style="font-weight:800;">100%</td></tr>`;
+
+  // ── Paradas externas del día ──
+  const extEntries = Object.entries(m.paradasExtEq).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+  const extTotal = extEntries.reduce((s,[,v]) => s+v, 0);
+  const extObs = {};
+  dayRows.filter(r => getClasif1(r) === CATS.EXTERNA).forEach(r => {
+    const eq = getClasif2(r) || 'Sin clasificar';
+    const o = String(get(r,'Observaciones','observaciones')||'').trim();
+    if (o) { extObs[eq] = extObs[eq] || new Set(); extObs[eq].add(o); }
+  });
+  const extRows = extEntries.map(([eq,v]) => `<tr onclick="openModalDiarioClasif(CATS.EXTERNA,'${eq.replace(/'/g,"\\'")}')" style="cursor:pointer;" title="Ver registros de la parada">
+      <td>${eq}<div style="font-weight:400;font-size:11px;font-style:italic;opacity:.75;margin-top:2px;white-space:normal;">${extObs[eq] ? [...extObs[eq]].join(' · ') : '—'}</div></td>
+      <td>${diaMin(v).toLocaleString('es-AR')}</td>
+      <td style="color:var(--muted);">${extTotal ? (v/extTotal*100).toFixed(0) : 0}%</td>
+    </tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--muted);font-weight:400;">Sin paradas externas en el día</td></tr>';
+
+  // ── Tiempos de cambio del día ──
+  const cambAgg = {};
+  dayRows.filter(r => getClasif1(r) === CATS.CAMBIO).forEach(r => {
+    const k = getClasif2(r) || 'Sin clasificar';
+    if (!cambAgg[k]) cambAgg[k] = { h:0, n:0 };
+    cambAgg[k].h += getVarTiempo(r); cambAgg[k].n++;
+  });
+  const cambEntries = Object.entries(cambAgg).sort((a,b) => b[1].h - a[1].h);
+  const cambTotH = cambEntries.reduce((s,[,x]) => s + x.h, 0);
+  const cambTotN = cambEntries.reduce((s,[,x]) => s + x.n, 0);
+  const cambRows = cambEntries.map(([k,x]) => `<tr onclick="openModalDiarioClasif(CATS.CAMBIO,'${k.replace(/'/g,"\\'")}')" style="cursor:pointer;" title="Ver registros del cambio">
+      <td>${k}</td><td>${diaMin(x.h).toLocaleString('es-AR')}</td><td style="color:var(--muted);">${x.n}</td>
+      <td style="color:var(--muted);">${Math.round(diaMin(x.h)/x.n).toLocaleString('es-AR')}</td>
+    </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);font-weight:400;">Sin cambios de orden en el día</td></tr>';
+
+  // ── Composición del tiempo del día: las 5 categorías OPINONA ──
+  // Base: Tiempo Efectivo de Trabajo (excluye No Uso). Clic → detalle del día.
+  const casc = [CATS.PRODUCCION, CATS.PLANEADO, CATS.FALLA, CATS.EXTERNA, CATS.CAMBIO]
+    .map(k => ({ k, h: m.tiempoPorClasif[k] || 0 }));
+  const cascTot = casc.reduce((s,x) => s + x.h, 0);
+  const cascMax = Math.max(...casc.map(x => x.h), 0.001);
+  const CASC_LABEL = {
+    [CATS.PRODUCCION]:'Tpo de Producción', [CATS.PLANEADO]:'Tpo Planeado', [CATS.FALLA]:'Falla Equipos',
+    [CATS.EXTERNA]:'Pdas Externas', [CATS.CAMBIO]:'Tpos de Cambio'
+  };
+  const cascRows = casc.map(({k, h}) => `<tr onclick="openModalDiarioClasif('${k.replace(/'/g,"\\'")}')" style="cursor:pointer;" title="${k} — ver registros del día">
+      <td style="font-weight:700;white-space:nowrap;width:1%;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${CAT_COLORS[k]||'#B61858'};margin-right:6px;vertical-align:0;"></span>${CASC_LABEL[k]||k}</td>
+      <td style="width:1%;font-weight:800;white-space:nowrap;">${diaMin(h).toLocaleString('es-AR')}</td>
+      <td>
+        <div style="height:11px;border-radius:3px;background:var(--tr-hover);min-width:26px;">
+          <div style="height:11px;border-radius:3px;background:${CAT_COLORS[k]||'#B61858'};width:${h/cascMax*100}%;"></div>
+        </div>
+      </td>
+      <td style="width:1%;font-weight:800;white-space:nowrap;">${cascTot ? (h/cascTot*100).toFixed(1) : '0.0'}%</td>
+    </tr>`).join('') + `<tr style="background:var(--tr-hover);">
+      <td style="font-weight:800;white-space:nowrap;width:1%;">Tpo Efectivo</td>
+      <td style="font-weight:800;white-space:nowrap;width:1%;">${diaMin(cascTot).toLocaleString('es-AR')}</td>
+      <td style="font-size:9px;color:var(--muted);font-weight:600;white-space:nowrap;">${cascTot.toFixed(2)} h</td>
+      <td style="font-weight:800;width:1%;">100%</td>
+    </tr>`;
+
+  // ── Pareto acumulado del mes (fallas de equipos) ──
+  const parMes = {};
+  mesRows.filter(r => getClasif1(r) === CATS.FALLA).forEach(r => {
+    const eq = getClasif2(r) || 'Sin clasificar';
+    parMes[eq] = (parMes[eq] || 0) + getVarTiempo(r);
+  });
+  const parOrd = Object.entries(parMes).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
+
+  container.innerHTML = head + `
+    <div class="diario-tight">
+    <div class="kpi-row" style="grid-template-columns:repeat(6,1fr);">
+      <div class="kpi-card kpi-hero ${heroCls}" style="grid-column:span 2;">
+        <div class="kpi-label">OPINONA DEL DÍA · ${diarioLinea === 'planta' ? 'PLANTA' : diarioLinea.toUpperCase()}</div>
+        <div class="kpi-value ${kpiCls}">${m.opi.toFixed(1)}%</div>
+        <div class="meta">Meta ${target}% · Δ ${(m.opi - target >= 0 ? '+' : '')}${(m.opi - target).toFixed(1)} pp · mes ${mMes.opi.toFixed(1)}%</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">T. Efectivo</div>
+        <div class="kpi-value amber">${m.tEfectivo.toFixed(2)} <span style="font-size:12px;opacity:.6">h</span></div>
+        <div class="kpi-sub">Teórico ${m.tTeorico.toFixed(2)} h</div>
+      </div>
+      <div class="kpi-card olive">
+        <div class="kpi-label">Cajas</div>
+        <div class="kpi-value olive">${m.cajas.toLocaleString('es-AR')}</div>
+        <div class="kpi-sub">${m.hlTotal.toFixed(0)} HL</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Fallas de Equipos</div>
+        <div class="kpi-value red">${diaMin(m.tiempoPorClasif[CATS.FALLA]).toLocaleString('es-AR')} <span style="font-size:12px;opacity:.6">min</span></div>
+        <div class="kpi-sub">MTO ${diaMin(m.fallasOrg.MTO).toLocaleString('es-AR')} · OP ${diaMin(m.fallasOrg.OP).toLocaleString('es-AR')}</div>
+      </div>
+      <div class="kpi-card orange" onclick="openModalDiarioVel()" style="cursor:pointer;" title="Ver detalle de pérdidas de velocidad">
+        <div class="kpi-label">Pérd. de Velocidad</div>
+        <div class="kpi-value orange">${(m.perdidasVel >= 0 ? '−' : '+') + Math.abs(diaMin(m.perdidasVel)).toLocaleString('es-AR')} <span style="font-size:12px;opacity:.6">min</span></div>
+        <div class="kpi-sub">${Math.abs(m.perdidasVel).toFixed(2)} h · clic = detalle</div>
+      </div>
+    </div>
+
+    <div class="diario-grid" id="diario-row1" style="${hRow}">
+      <div class="chart-card" style="overflow:auto;">
+        <div class="chart-title">Composición del Tiempo Efectivo <span class="hint">min · clic = detalle · abajo: OPINONA 7 días</span></div>
+        <table class="table-obj" style="table-layout:auto;"><tbody>${cascRows}</tbody></table>
+        <div id="chart-diario-semana" style="margin-top:6px;"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Distribución de Paros <span class="hint">clic = detalle</span></div>
+        <div id="chart-diario-donut"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;min-height:0;">
+        <div class="chart-card" style="flex:1;min-height:0;overflow:auto;">
+          <div class="chart-title">Paradas Externas <span class="hint">del día</span></div>
+          <table class="table-obj">
+            <thead><tr><th>Tipo de parada</th><th>Min</th><th>%</th></tr></thead>
+            <tbody>${extRows}
+              ${extTotal ? `<tr style="background:var(--tr-hover);"><td style="font-weight:800;">Total</td><td style="font-weight:800;">${diaMin(extTotal).toLocaleString('es-AR')}</td><td style="font-weight:800;">100%</td></tr>` : ''}
+            </tbody>
+          </table>
+        </div>
+        <div class="chart-card" style="flex:1;min-height:0;overflow:auto;">
+          <div class="chart-title">Tiempos de Cambio <span class="hint">del día</span></div>
+          <table class="table-obj">
+            <thead><tr><th>Tipo de cambio</th><th>Min</th><th>Cant.</th><th>Prom.</th></tr></thead>
+            <tbody>${cambRows}
+              ${cambTotN ? `<tr style="background:var(--tr-hover);"><td style="font-weight:800;">Total</td><td style="font-weight:800;">${diaMin(cambTotH).toLocaleString('es-AR')}</td><td style="font-weight:800;">${cambTotN}</td><td style="font-weight:800;">${Math.round(diaMin(cambTotH)/cambTotN).toLocaleString('es-AR')}</td></tr>` : ''}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="diario-grid-2" id="diario-row2" style="${hRow2}">
+      <div class="chart-card" style="min-height:0;display:flex;flex-direction:column;">
+        <div class="chart-title">Paros por Máquina · del día <span class="hint">agrupado con subtotal · clic = detalle</span></div>
+        <div style="overflow:auto;flex:1;min-height:0;">
+          <table class="table-obj">
+            <thead><tr><th>Equipo</th><th>Mot.</th><th style="text-align:left;width:40%;">Observación</th><th>Min</th><th>%</th></tr></thead>
+            <tbody>${parosRows || '<tr><td colspan="5" style="text-align:center;color:var(--muted);font-weight:400;">Sin fallas de equipos en el día</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Pareto del Mes <span class="hint">al ${fechaObj.getDate()}/${fechaObj.getMonth()+1} · corte 80% · clic = detalle</span></div>
+        <div id="chart-diario-pareto"></div>
+      </div>
+    </div>
+    </div>`;
+
+  // Con el grid en 3/2 columnas, mide el espacio real bajo los KPIs y reparte
+  // las dos filas para que entre todo en una pantalla.
+  const r1 = document.getElementById('diario-row1');
+  const r2 = document.getElementById('diario-row2');
+  if (unaPantalla && r1 && r2) {
+    const libre = window.innerHeight - r1.getBoundingClientRect().top - 22;
+    if (libre > 300) {
+      DIARIO_H.row  = Math.round((libre - 8) * 0.47);
+      DIARIO_H.row2 = libre - 8 - DIARIO_H.row;
+      DIARIO_H.donut  = Math.max(150, DIARIO_H.row  - 34);
+      DIARIO_H.pareto = Math.max(150, DIARIO_H.row2 - 34);
+      r1.style.height = DIARIO_H.row + 'px';
+      r2.style.height = DIARIO_H.row2 + 'px';
+    }
+  }
+
+  // ── Evolución del OPINONA en los 7 días hasta la fecha elegida ──
+  const semanaSerie = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(fechaObj); d.setDate(d.getDate() - i);
+    const ymd = diaYMD(d);
+    const rs = rawData.filter(r => { const f = getFecha(r); return f && diaYMD(f) === ymd && lineFilter(r); });
+    const opi = rs.length ? procesarMetricas(rs).opi : null;
+    semanaSerie.push({ ymd, label: d.toLocaleDateString('es-AR', { weekday:'short' }).replace('.','') + ' ' + d.getDate(), opi: (opi && opi > 0) ? Number(opi.toFixed(1)) : null });
+  }
+
+  drawDiarioDonut('chart-diario-donut', m.paros);
+  drawDiarioPareto('chart-diario-pareto', parOrd, themeColor);
+  drawDiarioSemana('chart-diario-semana', semanaSerie, target, themeColor);
+}
+
+/* Mini serie: OPINONA diario de los últimos 7 días contra la meta (punteada). */
+function drawDiarioSemana(id, serie, target, color) {
+  const el = document.querySelector('#'+id);
+  if (!el) return;
+  const card = el.closest('.chart-card');
+  const tabla = card ? card.querySelector('.table-obj') : null;
+  const unaPantalla = window.innerWidth > 1100;
+  // En una pantalla ocupa el blanco que sobra bajo la tabla; apilado usa alto fijo.
+  let libre = 104;
+  if (unaPantalla && card && tabla) {
+    libre = card.clientHeight - (tabla.getBoundingClientRect().bottom - card.getBoundingClientRect().top) - 14;
+    if (libre < 52) { el.innerHTML = ''; el.style.height = '0px'; return; }
+    libre = Math.min(libre, 140);
+  }
+  if (!serie.some(s => s.opi != null)) { el.innerHTML = ''; el.style.height = '0px'; return; }
+  const vals = serie.filter(s => s.opi != null).map(s => s.opi);
+  el.style.height = libre + 'px';
+
+  drawChart(id, {
+    series: [{ name:'OPINONA', data: serie.map(s => s.opi) }],
+    chart: { type:'line', height: libre, toolbar:{show:false}, foreColor:getTextColor(),
+      fontFamily:'Montserrat', sparkline:{enabled:false}, animations:{enabled:false} },
+    colors: [color],
+    stroke: { width:2.5, curve:'straight' },
+    markers: { size:3, colors:[color], strokeWidth:0, hover:{size:5} },
+    dataLabels: { enabled:false },
+    xaxis: { categories: serie.map(s => s.label), labels:{ style:{fontSize:'8.5px'}, rotate:0 },
+      axisTicks:{show:false}, axisBorder:{show:false}, tooltip:{enabled:false} },
+    yaxis: { labels:{ style:{fontSize:'8.5px'}, formatter: v => v.toFixed(0)+'%' }, tickAmount:3,
+      // El rango incluye la meta, sino la l\u00ednea punteada cae fuera del gr\u00e1fico
+      min: Math.max(0, Math.floor((Math.min(target, ...vals) - 6) / 5) * 5),
+      max: Math.ceil((Math.max(target, ...vals) + 6) / 5) * 5 },
+    grid: { borderColor:getGridColor(), strokeDashArray:4, padding:{left:0,right:4,top:0,bottom:0},
+      xaxis:{lines:{show:false}} },
+    annotations: { yaxis:[{ y:target, borderColor:'#98A040', strokeDashArray:5, borderWidth:1.5,
+      label:{ text:'meta '+target+'%', position:'left', offsetX:42, style:{ background:'transparent', color:'#98A040', fontSize:'8.5px', fontWeight:700 } } }] },
+    tooltip: { theme: isDark?'dark':'light', y:{ formatter: v => v == null ? 'sin datos' : v.toFixed(1)+'%' } },
+    noData: { text:'', style:{fontSize:'10px'} }
+  });
+}
+
+function drawDiarioDonut(id, parosObj) {
+  const entries = Object.entries(parosObj).filter(([,v]) => v > 0)
+    .sort(([ka,va],[kb,vb]) => ka === CATS.PRODUCCION ? -1 : kb === CATS.PRODUCCION ? 1 : vb - va);
+  const el = document.querySelector('#'+id);
+  if (!entries.length) { if (el) el.innerHTML = '<div class="no-data">Sin datos en el día</div>'; return; }
+  const total = entries.reduce((a,[,v]) => a+v, 0);
+  const prodHrs = parosObj[CATS.PRODUCCION] || 0;
+  drawChart(id, {
+    series: entries.map(([,v]) => Number(diaMin(v))),
+    labels: entries.map(([k]) => k),
+    chart: { type:'donut', height: DIARIO_H.donut, foreColor:getTextColor(), fontFamily:'Montserrat',
+      events: { dataPointSelection: (e, c, cfg) => openModalDiarioClasif(cfg.w.config.labels[cfg.dataPointIndex]) } },
+    colors: entries.map(([k]) => CAT_COLORS[k] || '#B61858'),
+    stroke: { width:2, colors:[isDark?'#2a1626':'#FFFFFF'] },
+    legend: { position:'bottom', fontSize:'10px', fontWeight:600, itemMargin:{horizontal:5,vertical:1}, labels:{colors:getTextColor()}, markers:{width:8,height:8,radius:2} },
+    dataLabels: { enabled:true, formatter: v => v >= 5 ? v.toFixed(0)+'%' : '', style:{ fontSize:'10px', fontWeight:700, fontFamily:'Montserrat', colors:['#fff'] } },
+    tooltip: { theme: isDark?'dark':'light', y:{ formatter: v => v.toLocaleString('es-AR') + ' min' } },
+    plotOptions: { pie:{ donut:{ size:'66%', labels:{ show:true,
+      name:{ fontSize:'10px', fontWeight:600, color:getTextColor(), offsetY:-4 },
+      value:{ color:getTextColor(), fontSize:'17px', fontWeight:700, fontFamily:'Montserrat', offsetY:3, formatter: v => parseFloat(v).toLocaleString('es-AR') + ' min' },
+      total:{ show:true, label:'Producción', color:'#98A040', fontSize:'10px', fontWeight:700,
+        formatter: () => (total > 0 ? (prodHrs/total*100).toFixed(1) : '0') + '%  ·  ' + diaMin(prodHrs).toLocaleString('es-AR') + ' min' } } } } }
+  });
+}
+
+function drawDiarioPareto(id, parOrd, color) {
+  const el = document.querySelector('#'+id);
+  if (!parOrd.length) { if (el) el.innerHTML = '<div class="no-data">Sin fallas de equipos en el mes</div>'; return; }
+  const total = parOrd.reduce((s,[,v]) => s+v, 0);
+  let cum = 0;
+  const cats = [], bars = [], cums = [], colors = [];
+  parOrd.forEach(([k,v]) => {
+    cum += v;
+    const c = total ? cum/total*100 : 0;
+    cats.push(k); bars.push(diaMin(v)); cums.push(Number(c.toFixed(1)));
+    colors.push(c <= 80.5 ? '#D81840' : '#B9A79E');
+  });
+  drawChart(id, {
+    series: [
+      { name:'Minutos', type:'column', data:bars },
+      { name:'% acumulado', type:'line', data:cums }
+    ],
+    chart: { type:'line', height: DIARIO_H.pareto, foreColor:getTextColor(), fontFamily:'Montserrat', toolbar:{show:false},
+      events: { dataPointSelection: (e, c, cfg) => { if (cfg.seriesIndex === 0) openModalDiarioClasif(CATS.FALLA, cats[cfg.dataPointIndex], 'mes'); } } },
+    colors: [color, '#F8C040'],
+    plotOptions: { bar:{ columnWidth:'58%', borderRadius:3, distributed:false } },
+    stroke: { width:[0,3], curve:'straight' },
+    markers: { size:[0,3], colors:['#F8C040'], strokeWidth:0 },
+    dataLabels: { enabled:false },
+    xaxis: { categories:cats, labels:{ rotate:-45, style:{ fontSize:'8.5px', fontWeight:600 }, trim:true, maxHeight:64, hideOverlappingLabels:false } },
+    yaxis: [
+      { labels:{ style:{fontSize:'9px'}, formatter: v => Math.round(v).toLocaleString('es-AR') } },
+      { opposite:true, max:100, min:0, labels:{ style:{fontSize:'9px'}, formatter: v => v.toFixed(0)+'%' } }
+    ],
+    annotations: { yaxis:[{ y:80, yAxisIndex:1, borderColor:'#98A040', strokeDashArray:4, label:{ text:'80%', style:{ background:'#98A040', color:'#fff', fontSize:'10px', fontWeight:700 } } }] },
+    legend: { show:false },
+    grid: { borderColor:getGridColor(), strokeDashArray:4, padding:{left:2,right:2,top:0,bottom:0} },
+    tooltip: { theme: isDark?'dark':'light', shared:true, y:[{ formatter: v => v.toLocaleString('es-AR')+' min' }, { formatter: v => v.toFixed(1)+'%' }] }
+  });
+}
+
 function drawChart(id, opts) {
   if (charts[id]) { try { charts[id].destroy(); } catch(e){} }
   const el = document.querySelector('#' + id);
@@ -2562,7 +3188,7 @@ async function openModalPerdidasVel() {
   document.getElementById('modal-body').innerHTML = html;
 }
 
-async function openModalProduccion(lineId) {
+async function openModalProduccion(lineId, opts) {
   // Mostrar modal de carga mientras trae el plan
   document.getElementById('modal-body').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:center;min-height:120px;gap:12px;color:var(--muted);">
@@ -2572,7 +3198,7 @@ async function openModalProduccion(lineId) {
 
   await cargarPlanLookup();
 
-  const rows = filteredData.filter(r => {
+  const rows = (opts && opts.rows) ? opts.rows.slice() : filteredData.filter(r => {
     if (getClasif1(r) !== CATS.PRODUCCION) return false;
     if (lineId && getLinea(r) !== lineId) return false;
     return true;
@@ -2585,7 +3211,7 @@ async function openModalProduccion(lineId) {
   let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
     <div>
       <h2 style="font-size:18px;font-weight:800;color:${catColor};text-transform:uppercase;">Tiempo de Producción</h2>
-      <div style="color:var(--muted);font-size:12px;margin-top:4px;">${lineId || 'Planta'} · todos los registros del período · ordenados de mayor a menor horas</div>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;text-transform:capitalize;">${(opts && opts.subtitulo) || ((lineId || 'Planta') + ' · todos los registros del período · ordenados de mayor a menor horas')}</div>
       <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">${totalH.toFixed(2)} h · ${totalCaj.toLocaleString('es-AR')} cajas · ${rows.length} órdenes</div>
     </div>
     <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
@@ -2648,21 +3274,21 @@ let _cambiosState = { rows: [], lineId: null, tipo: '__ALL__' };
 
 function setCambiosTipo(t) { _cambiosState.tipo = t; renderCambios(); }
 
-function openModalCambios(lineId) {
-  const rows = filteredData.filter(r => {
+function openModalCambios(lineId, opts) {
+  const rows = (opts && opts.rows) ? opts.rows.slice() : filteredData.filter(r => {
     if (getClasif1(r) !== CATS.CAMBIO) return false;
     if (lineId && getLinea(r) !== lineId) return false;
     return true;
   });
   rows.sort((a, b) => getVarTiempo(b) - getVarTiempo(a));
-  _cambiosState = { rows, lineId, tipo: '__ALL__' };
+  _cambiosState = { rows, lineId, tipo: '__ALL__', subtitulo: opts && opts.subtitulo };
   renderCambios();
   document.getElementById('detail-modal').style.display = 'flex';
 }
 
 function renderCambios() {
   const catColor = CAT_COLORS[CATS.CAMBIO] || '#F08808';
-  const { rows: allRows, lineId, tipo } = _cambiosState;
+  const { rows: allRows, lineId, tipo, subtitulo } = _cambiosState;
 
   // Tipos disponibles (Clasificación_2) con su conteo, ordenados por frecuencia
   const tipoCount = {};
@@ -2700,14 +3326,14 @@ function renderCambios() {
   let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:20px;">
     <div>
       <h2 style="font-size:18px;font-weight:800;color:${catColor};text-transform:uppercase;">Tiempos de Cambio</h2>
-      <div style="color:var(--muted);font-size:12px;margin-top:4px;">${lineId || 'Planta'} · ${tipo === '__ALL__' ? 'todos los tipos' : tipo} · ordenados de mayor a menor duración</div>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;text-transform:capitalize;">${subtitulo ? subtitulo : (lineId || 'Planta')} · ${tipo === '__ALL__' ? 'todos los tipos' : tipo} · ordenados de mayor a menor duración</div>
     </div>
     <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
   </div>
   ${filterChips}
   <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
     ${stat('Tiempo promedio de cambio', prom.toFixed(2) + ' h', (prom * 60).toFixed(0) + ' min por cambio')}
-    ${stat('Cantidad de cambios', rows.length.toLocaleString('es-AR'), 'registros en el período')}
+    ${stat('Cantidad de cambios', rows.length.toLocaleString('es-AR'), subtitulo ? 'registros' : 'registros en el período')}
     ${stat('Tiempo total', totalH.toFixed(2) + ' h', 'acumulado en cambios')}
     ${stat('Cambio más largo', maxH.toFixed(2) + ' h', (maxH * 60).toFixed(0) + ' min')}
   </div>
@@ -2745,6 +3371,125 @@ function renderCambios() {
     });
   }
   html += `</tbody></table></div>`;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+/* Detalle del Reporte Diario — mismo modal que el resto del tablero, pero
+   acotado a la fecha y línea elegidas en la pestaña (no usa filteredData).
+   scope 'mes' = del 1 al día elegido (para el pareto acumulado). */
+function openModalDiarioClasif(clasif, subcat, scope) {
+  const fechaObj = new Date(diarioFecha + 'T12:00:00');
+  const periodo = scope === 'mes'
+    ? 'del 1 al ' + fechaObj.getDate() + ' de ' + fechaObj.toLocaleDateString('es-AR', { month:'long' })
+    : fechaObj.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' });
+  const lineaTxt = diarioLinea === 'planta' ? 'Planta' : diarioLinea.toUpperCase();
+  const rows = rawData.filter(r => {
+    if (getClasif1(r) !== clasif) return false;
+    if (diarioLinea !== 'planta' && getLinea(r) !== diarioLinea.toUpperCase()) return false;
+    if (subcat && (getClasif2(r) || 'Sin clasificar') !== subcat) return false;
+    const f = getFecha(r);
+    if (!f) return false;
+    if (scope === 'mes') {
+      return f.getFullYear() === fechaObj.getFullYear() && f.getMonth() === fechaObj.getMonth() && diaYMD(f) <= diarioFecha;
+    }
+    return diaYMD(f) === diarioFecha;
+  }).sort((a, b) => getVarTiempo(b) - getVarTiempo(a));
+
+  // Producción y Cambios usan el mismo detalle que las pestañas de línea.
+  if (clasif === CATS.PRODUCCION) {
+    openModalProduccion(diarioLinea === 'planta' ? null : diarioLinea.toUpperCase(), {
+      rows, subtitulo: lineaTxt + ' · ' + periodo + ' · ordenados de mayor a menor horas'
+    });
+    return;
+  }
+  if (clasif === CATS.CAMBIO) {
+    openModalCambios(diarioLinea === 'planta' ? null : diarioLinea.toUpperCase(), {
+      rows, subtitulo: lineaTxt + ' · ' + periodo
+    });
+    return;
+  }
+
+  const totalH = rows.reduce((a, r) => a + getVarTiempo(r), 0);
+  const catColor = CAT_COLORS[clasif] || 'var(--vspt-amber)';
+  const isFalla = clasif === CATS.FALLA;
+  const subLabel = isFalla ? 'Equipo' : clasif === CATS.EXTERNA ? 'Causa' : 'Descripción';
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:${catColor};text-transform:uppercase;">${subcat ? subcat : clasif}</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;text-transform:capitalize;">${subcat ? clasif + ' · ' : ''}${lineaTxt} · ${periodo}</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">Total: ${diaMin(totalH).toLocaleString('es-AR')} min · ${totalH.toFixed(2)} h · ${rows.length} registros</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div><div style="overflow:auto;max-height:62vh;"><table><thead><tr>
+    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Min</th><th>${subLabel}</th>
+    ${isFalla ? '<th>MTO/OP</th>' : ''}
+    <th style="width:36%;">Observaciones</th>
+  </tr></thead><tbody>`;
+
+  if (!rows.length) {
+    html += `<tr><td colspan="${isFalla ? 7 : 6}" style="text-align:center;padding:24px;opacity:.6;">Sin registros</td></tr>`;
+  } else {
+    rows.forEach(r => {
+      const f = getFecha(r);
+      html += `<tr>
+        <td>${f ? f.toLocaleDateString('es-AR') : '—'}</td>
+        <td><strong>${getLinea(r)||'—'}</strong></td>
+        <td>${get(r,'Turno','Turno ','turno')||getTurnoFromPlan(r)||'—'}</td>
+        <td style="font-weight:700;color:${catColor};">${diaMin(getVarTiempo(r)).toLocaleString('es-AR')}</td>
+        <td>${getClasif2(r)||'—'}</td>
+        ${isFalla ? `<td>${getMTO(r)||'—'}</td>` : ''}
+        <td style="font-style:italic;opacity:.8;white-space:normal;">${get(r,'Observaciones','observaciones')||'—'}</td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+/* Pérdidas de velocidad del día — una fila por orden de producción. */
+function openModalDiarioVel() {
+  const fechaObj = new Date(diarioFecha + 'T12:00:00');
+  const rows = rawData.filter(r => {
+    if (getClasif1(r) !== CATS.PRODUCCION) return false;
+    if (diarioLinea !== 'planta' && getLinea(r) !== diarioLinea.toUpperCase()) return false;
+    const f = getFecha(r);
+    return f && diaYMD(f) === diarioFecha;
+  }).sort((a, b) => Math.abs(getPerdidas(b)) - Math.abs(getPerdidas(a)));
+  const totalH = rows.reduce((a, r) => a + getPerdidas(r), 0);
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:var(--vspt-orange);text-transform:uppercase;">Pérdidas de Velocidad</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;text-transform:capitalize;">${diarioLinea === 'planta' ? 'Planta' : diarioLinea.toUpperCase()} · ${fechaObj.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})}</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">${(totalH >= 0 ? '−' : '+')}${Math.abs(diaMin(totalH)).toLocaleString('es-AR')} min · ${Math.abs(totalH).toFixed(2)} h · ${rows.length} órdenes</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div><div style="overflow:auto;max-height:62vh;"><table><thead><tr>
+    <th>Línea</th><th>Turno</th><th>OP</th><th>Cajas</th><th>Horas prod.</th><th>Pérd. veloc.</th><th>Var. %</th><th style="width:28%;">Observaciones</th>
+  </tr></thead><tbody>`;
+
+  if (!rows.length) {
+    html += '<tr><td colspan="8" style="text-align:center;padding:24px;opacity:.6;">Sin órdenes de producción en el día</td></tr>';
+  } else {
+    rows.forEach(r => {
+      const pv = getPerdidas(r);
+      const vp = parseNum(get(r,'Var. %','Var %','var_pct')) * 100;
+      html += `<tr>
+        <td><strong>${getLinea(r)||'—'}</strong></td>
+        <td>${get(r,'Turno','Turno ','turno')||getTurnoFromPlan(r)||'—'}</td>
+        <td>${get(r,'Id. Producción','Id Produccion','id_produccion')||'—'}</td>
+        <td>${getCajas(r).toLocaleString('es-AR')}</td>
+        <td>${getVarTiempo(r).toFixed(2)} h</td>
+        <td style="font-weight:700;color:var(--vspt-orange);">${(pv >= 0 ? '−' : '+')}${Math.abs(diaMin(pv)).toLocaleString('es-AR')} min</td>
+        <td style="font-weight:700;color:${vp >= 100 ? 'var(--vspt-olive)' : 'var(--vspt-crimson)'};">${vp ? vp.toFixed(1) + '%' : '—'}</td>
+        <td style="font-style:italic;opacity:.8;white-space:normal;">${get(r,'Observaciones','observaciones')||'—'}</td>
+      </tr>`;
+    });
+  }
+  html += '</tbody></table></div>';
   document.getElementById('modal-body').innerHTML = html;
   document.getElementById('detail-modal').style.display = 'flex';
 }
