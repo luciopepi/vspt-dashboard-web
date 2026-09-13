@@ -179,6 +179,12 @@
      el donut de distribución: oliva = producción, crimson = fallas. */
   .kpi-hero .kpi-value.olive { color:var(--vspt-olive); } body.light .kpi-hero .kpi-value.olive { color:var(--vspt-olive); }
   .kpi-hero .kpi-value.red { color:var(--vspt-crimson); }
+  /* Semáforo de Prod. No Conforme: el valor sí codifica cumplimiento de meta.
+     Clase propia porque .olive/.red están aplanadas a propósito fuera del héroe. */
+  .kpi-card .kpi-value.nc-ok  { color:var(--vspt-olive); }
+  .kpi-card .kpi-value.nc-bad { color:var(--vspt-crimson); }
+  body.light .kpi-card .kpi-value.nc-ok  { color:var(--vspt-olive); }
+  body.light .kpi-card .kpi-value.nc-bad { color:var(--vspt-crimson); }
   .kpi-sub { font-size:11px; color:var(--muted); margin-top:6px; }
 
   .kpi-hero { text-align:center; border:1px solid var(--border); background:var(--card); padding:var(--tw-hero-pad,26px 18px); }
@@ -189,7 +195,24 @@
   .kpi-hero .meta { font-size:11px; color:var(--muted); margin-top:12px; font-weight:600; letter-spacing:0.04em; }
   .kpi-hero .meta strong { color:var(--text); font-weight:700; }
 
+  .serie-reset { background:transparent; border:1px solid var(--border); color:var(--muted); font-family:Montserrat,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; padding:4px 9px; border-radius:6px; cursor:pointer; transition:border-color .15s, color .15s; }
+  .serie-reset:hover { border-color:var(--vspt-crimson); color:var(--vspt-crimson); }
+  .serie-hint { font-size:9.5px; font-weight:600; color:var(--muted); letter-spacing:0.06em; text-transform:none; }
   .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  /* Bloque superior: KPIs (3/4) + Distribución de Tiempos (1/4) */
+  .top-grid { display:grid; grid-template-columns:2fr minmax(0,1fr); gap:14px; margin-bottom:18px; align-items:stretch; }
+  .top-grid > .chart-card { display:flex; flex-direction:column; }
+  .top-grid > .chart-card > div:last-child { flex:1; min-height:0; }
+  /* Planta: además de la distribución de tiempos, la carga por línea también va arriba */
+  .top-grid.top-grid-3 { grid-template-columns:2fr minmax(0,1fr) minmax(0,1fr); }
+  /* Tarjeta doble: dos indicadores en una sola tarjeta, separados por una hairline */
+  .kpi-card.kpi-dual { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .kpi-card.kpi-dual > * + * { border-left:1px solid var(--border); padding-left:14px; }
+  .top-grid > * { min-width:0; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); grid-auto-rows:1fr; gap:12px; min-width:0; height:100%; }
+  /* Fila 3/4 + 1/4 (Pareto de fallas + Paradas externas) */
+  .charts-grid-31 { display:grid; grid-template-columns:3fr minmax(0,1fr); gap:14px; margin-bottom:14px; }
+  .charts-grid-31 > * { min-width:0; }
 
   /* ===== Reporte Diario: todo en una pantalla, sin scroll vertical ===== */
   .diario-tight .kpi-row { gap:8px; margin-bottom:8px; }
@@ -216,7 +239,7 @@
     .diario-tight .kpi-row { grid-template-columns:repeat(3,1fr) !important; }
   }
   .charts-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
-  .chart-card { background:var(--card); border:1px solid var(--border); border-top:var(--tw-top-bar,3px) solid var(--tab-color,var(--vspt-crimson)); border-radius:var(--tw-rad-card,14px); padding:var(--tw-card-pad,18px); box-shadow:var(--tw-card-shadow, 0 2px 10px rgba(48,16,48,0.10)); }
+  .chart-card { min-width:0; background:var(--card); border:1px solid var(--border); border-top:var(--tw-top-bar,3px) solid var(--tab-color,var(--vspt-crimson)); border-radius:var(--tw-rad-card,14px); padding:var(--tw-card-pad,18px); box-shadow:var(--tw-card-shadow, 0 2px 10px rgba(48,16,48,0.10)); }
   .chart-card.full { grid-column:1 / -1; }
   .chart-card.accent { border-top-color:var(--vspt-yellow); }
   .chart-card.wine   { border-top-color:var(--vspt-wine); }
@@ -340,13 +363,14 @@
   .tw-reset { background:transparent; border:1px solid var(--border); color:var(--muted); padding:8px 14px; border-radius:8px; font-family:inherit; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.18em; cursor:pointer; transition:all .2s; }
   .tw-reset:hover { border-color:var(--vspt-crimson); color:var(--vspt-crimson); }
 
-  @media (max-width:1400px) { .kpi-row { grid-template-columns:repeat(3,1fr); } }
+  @media (max-width:1400px) { .kpi-row { grid-template-columns:repeat(3,1fr); } .kpi-grid { grid-template-columns:repeat(3,1fr); } }
   @media (max-width:1100px) {
     .main { flex-direction:column; }
     .sidebar { width:100%; min-width:0; border-right:none; border-bottom:1px solid var(--border); }
     .sidebar.collapsed { margin-left:0; display:none; }
     .kpi-row { grid-template-columns:repeat(2,1fr); }
-    .charts-grid, .charts-grid-3 { grid-template-columns:1fr; }
+    .charts-grid, .charts-grid-3, .charts-grid-31, .top-grid, .top-grid.top-grid-3 { grid-template-columns:1fr; }
+    .kpi-grid { grid-template-columns:repeat(2,1fr); }
   }
   .filter-locked { opacity:0.45; pointer-events:none; }
   .filter-locked select, .filter-locked input { cursor:not-allowed; }
@@ -714,7 +738,10 @@ const history2025 = {
   l3:     { meses:[43.2,59.0,45.1,54.1,55.5,48.7,66.0,50.5,62.4,53.8,58.9,67.9], ytd:56.0 }
 };
 
-let targets = { planta:{anual:42}, l1:{anual:32}, l2:{anual:60}, l3:{anual:65} };
+let targets = { planta:{anual:42,noConf:1}, l1:{anual:32,noConf:1}, l2:{anual:60,noConf:1}, l3:{anual:65,noConf:1} };
+// Meta de Prod. No Conforme: es un techo (menor es mejor). Default 1% anual.
+const NO_CONF_DEFAULT = 1;
+function noConfTarget(tabId) { return targets[tabId]?.noConf ?? NO_CONF_DEFAULT; }
 
 const MESES_ORDEN = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const MESES_ABR   = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
@@ -763,6 +790,18 @@ const APPS = [
     desc:   'Mapa del almacén y stock por calle de semielaborados.',
     url:    'almacen.html',
     icoSvg: "<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Almacén' style='display:block'><path d='M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z'/><path d='M6 18h12'/><path d='M6 14h12'/></svg>"
+  },
+  {
+    nombre: 'Tiempos de Operación',
+    desc:   'App de carga de los tiempos de operación (AppSheet).',
+    url:    'https://www.appsheet.com/newshortcut/cf914748-20b6-4a2d-83d3-2fc83d03cabe',
+    icoSvg: "<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Tiempos de operación' style='display:block'><rect width='14' height='20' x='5' y='2' rx='2'/><path d='M12 7v4l2.5 1.5'/><path d='M9 18h6'/></svg>"
+  },
+  {
+    nombre: 'Base de Tiempos de Operación',
+    desc:   'Planilla de Sheets donde la app guarda los registros.',
+    url:    'https://docs.google.com/spreadsheets/d/1T9JRFq8pFjCRdgwgv12XlPyoQqhKEg8HKwcPV0_KeHg/edit?usp=sharing',
+    icoSvg: "<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Base de datos en Sheets' style='display:block'><rect width='16' height='18' x='4' y='3' rx='2'/><path d='M4 9h16'/><path d='M4 15h16'/><path d='M10 3v18'/></svg>"
   }
 ];
 
@@ -901,6 +940,11 @@ async function init() {
   document.documentElement.style.setProperty('--tab-color', THEME_COLOR[activeTab] || '#F9C13F');
   const st = localStorage.getItem(TARGETS_KEY);
   if (st) targets = JSON.parse(st);
+  // Targets viejos guardados en localStorage no traen noConf
+  ['planta','l1','l2','l3'].forEach(k => {
+    if (!targets[k]) targets[k] = { anual:40, noConf:NO_CONF_DEFAULT };
+    if (targets[k].noConf == null) targets[k].noConf = NO_CONF_DEFAULT;
+  });
   const sbState = localStorage.getItem('vspt_sidebar_collapsed');
   if (sbState === '1') { document.getElementById('sidebar').classList.add('collapsed'); document.querySelector('.main').classList.add('sb-collapsed'); document.getElementById('sidebarToggle').innerText = '›'; }
 
@@ -1450,6 +1494,8 @@ function procesarMetricas(data) {
   const hlPorTipo = {};
   const fallasPorSemana = {}; // { semana: horas }
   const lotesPorSemana = {}; // { semana: { suma, count } }
+  const fallasPorFecha = {}; // { 'YYYY-MM-DD': horas }   ← base de la serie D/S/M
+  const lotesPorFecha = {};  // { 'YYYY-MM-DD': { suma, count } }
   const botellasUnid = {}; // { codigo_botella: N° unidades producidas }
 
   data.forEach(r => {
@@ -1489,6 +1535,13 @@ function procesarMetricas(data) {
           lotesPorSemana[sem].suma += cajasFila;
           lotesPorSemana[sem].count++;
         }
+        const fLote = getFecha(r);
+        if (fLote) {
+          const kLote = diaYMD(fLote);
+          if (!lotesPorFecha[kLote]) lotesPorFecha[kLote] = { suma:0, count:0 };
+          lotesPorFecha[kLote].suma += cajasFila;
+          lotesPorFecha[kLote].count++;
+        }
       }
     }
 
@@ -1524,6 +1577,8 @@ function procesarMetricas(data) {
     if (cls === CATS.FALLA) {
       const sem = Number(get(r,'Semana','semana'));
       if (sem >= 1 && sem <= 53) fallasPorSemana[sem] = (fallasPorSemana[sem]||0) + v;
+      const fFalla = getFecha(r);
+      if (fFalla) { const kF = diaYMD(fFalla); fallasPorFecha[kF] = (fallasPorFecha[kF]||0) + v; }
     }
 
     if (lineas[linea] !== undefined && cls !== CATS.NO_USO) lineas[linea] += v;
@@ -1562,6 +1617,7 @@ function procesarMetricas(data) {
     tiempoPorClasif: tPor, opi,
     cajas, semielaborado, pni, pctPNI, lotePromedio, cajasList, lotesPorSemana, botellasUnid,
     c9lTotal, hlTotal, hlPorFecha, hlPorFechaTurno, hlPorFechaTipo, hlPorTipo, fallasPorSemana,
+    fallasPorFecha, lotesPorFecha,
     paros, fallasOrg, fallasEqMTO, fallasEqOP, paradasExtEq, lineas
   };
 }
@@ -1640,6 +1696,50 @@ function onFilterChangeSafe() {
   else renderKPIsOnly();
 }
 
+/* Tarjetas KPI compartidas por la vista completa y la vista sólo-KPI.
+   Volumen Envasado y Cajas Producidas viven en la misma tarjeta (C9L en chico);
+   Prod. No Conforme muestra el % contra la meta anual de Objetivos. */
+function kpiCardsHTML(m, tabId, target, isPlanta, lineId, heroCls, kpiGlobalClass) {
+  const ncTarget = noConfTarget('planta');   // el indicador es general, no por línea
+  const ncOk = m.pctPNI <= ncTarget;
+  const ncCls = ncOk ? 'nc-ok' : 'nc-bad';
+  return `
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-hero ${heroCls}" style="grid-column:span 2;">
+        <div class="kpi-label">OPINONA ${isPlanta ? 'PLANTA' : lineId}</div>
+        <div class="kpi-value ${kpiGlobalClass}">${m.opi.toFixed(1)}%</div>
+        <div class="meta">META: <strong>${target}%</strong> · Δ ${(m.opi - target >= 0 ? '+' : '')}${(m.opi - target).toFixed(1)} pp</div>
+      </div>
+      <div class="kpi-card kpi-dual" style="grid-column:span 2;">
+        <div>
+          <div class="kpi-label">Volumen Envasado</div>
+          <div class="kpi-value orange">${Math.round(m.hlTotal).toLocaleString('es-AR')} <span style="font-size:14px;opacity:.6">HL</span></div>
+          <div class="kpi-sub">${m.cajas.toLocaleString('es-AR')} cajas · C9L: ${m.c9lTotal.toLocaleString('es-AR')}</div>
+        </div>
+        <div>
+          <div class="kpi-label">Semielaborado Envasado</div>
+          <div class="kpi-value cream">${m.semielaborado.toLocaleString('es-AR')} <span style="font-size:14px;opacity:.6">bot</span></div>
+          <div class="kpi-sub">Tipo Etiquetado = LLENADO</div>
+        </div>
+      </div>
+      <div class="kpi-card" style="grid-column:span 2;">
+        <div class="kpi-label">Prod. No Conforme <span style="opacity:.55;font-weight:600;">meta ≤ ${ncTarget}%</span></div>
+        <div class="kpi-value ${ncCls}">${m.pctPNI.toFixed(2)}<span style="font-size:14px;opacity:.6">%</span></div>
+        <div class="kpi-sub">${Math.round(m.pni).toLocaleString('es-AR')} C9L no conformes</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Fallas MTO</div>
+        <div class="kpi-value red">${m.fallasOrg.MTO.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
+        <div class="kpi-sub">OP: ${m.fallasOrg.OP.toFixed(1)} h · INV: ${m.fallasOrg.INV.toFixed(1)} h</div>
+      </div>
+      <div class="kpi-card amber" onclick="openModalPerdidasVel()" style="cursor:pointer;" title="Ver detalle de pérdidas de velocidad">
+        <div class="kpi-label">Pérdidas de Velocidad ↗</div>
+        <div class="kpi-value amber">${m.perdidasVel.toFixed(2)} <span style="font-size:14px;opacity:.6">h</span></div>
+        <div class="kpi-sub">Var. % &lt; 70% · toca para ver detalle</div>
+      </div>
+    </div>`;
+}
+
 function renderTabKPIsOnly(tabId) {
   const container = document.getElementById('tab-'+tabId);
   if (!container) return;
@@ -1655,56 +1755,7 @@ function renderTabKPIsOnly(tabId) {
   const heroCls = m.opi >= target ? '' : 'below';
 
   container.innerHTML = `
-    <div class="kpi-row">
-      <div class="kpi-card kpi-hero ${heroCls}" style="grid-column:span 2;">
-        <div class="kpi-label">OPINONA ${isPlanta ? 'PLANTA' : lineId}</div>
-        <div class="kpi-value ${kpiGlobalClass}">${m.opi.toFixed(1)}%</div>
-        <div class="meta">META: <strong>${target}%</strong> · Δ ${(m.opi - target >= 0 ? '+' : '')}${(m.opi - target).toFixed(1)} pp</div>
-      </div>
-      <div class="kpi-card amber">
-        <div class="kpi-label">T. Efectivo / T. Teórico</div>
-        <div class="kpi-value amber">${m.tEfectivo.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
-        <div class="kpi-sub">Teórico: ${m.tTeorico.toFixed(1)} h</div>
-      </div>
-      <div class="kpi-card olive">
-        <div class="kpi-label">Cajas Producidas</div>
-        <div class="kpi-value olive">${m.cajas.toLocaleString('es-AR')}</div>
-        <div class="kpi-sub">Lote prom: ${Math.round(m.lotePromedio).toLocaleString('es-AR')}</div>
-      </div>
-      <div class="kpi-card red">
-        <div class="kpi-label">Prod. No Conforme</div>
-        <div class="kpi-value red">${Math.round(m.pni).toLocaleString('es-AR')} <span style="font-size:14px;opacity:.6">C9L</span></div>
-        <div class="kpi-sub">${m.pctPNI.toFixed(2)}% del total C9L</div>
-      </div>
-    </div>
-
-    <div class="kpi-row">
-      <div class="kpi-card cream">
-        <div class="kpi-label">Semielaborado Envasado</div>
-        <div class="kpi-value cream">${m.semielaborado.toLocaleString('es-AR')} <span style="font-size:14px;opacity:.6">bot</span></div>
-        <div class="kpi-sub">Tipo Etiquetado = LLENADO</div>
-      </div>
-      <div class="kpi-card orange">
-        <div class="kpi-label">Volumen Envasado</div>
-        <div class="kpi-value orange">${m.hlTotal.toFixed(1)} <span style="font-size:14px;opacity:.6">HL</span></div>
-        <div class="kpi-sub">C9L total: ${m.c9lTotal.toLocaleString('es-AR')}</div>
-      </div>
-      <div class="kpi-card wine">
-        <div class="kpi-label">T. con Personal</div>
-        <div class="kpi-value wine">${m.tConPersonal.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
-        <div class="kpi-sub">No Uso: ${m.tiempoPorClasif[CATS.NO_USO].toFixed(1)} h</div>
-      </div>
-      <div class="kpi-card red">
-        <div class="kpi-label">Fallas MTO</div>
-        <div class="kpi-value red">${m.fallasOrg.MTO.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
-        <div class="kpi-sub">OP: ${m.fallasOrg.OP.toFixed(1)} h · INV: ${m.fallasOrg.INV.toFixed(1)} h</div>
-      </div>
-      <div class="kpi-card amber" onclick="openModalPerdidasVel()" style="cursor:pointer;" title="Ver detalle de pérdidas de velocidad">
-        <div class="kpi-label">Pérdidas de Velocidad ↗</div>
-        <div class="kpi-value amber">${m.perdidasVel.toFixed(2)} <span style="font-size:14px;opacity:.6">h</span></div>
-        <div class="kpi-sub">Var. % &lt; 70% · toca para ver detalle</div>
-      </div>
-    </div>
+    ${kpiCardsHTML(m, tabId, target, isPlanta, lineId, heroCls, kpiGlobalClass)}
 
     <div class="section-title">Evolución Anual — 2025 vs 2026</div>
     <div class="chart-card full" style="margin-bottom:14px;">
@@ -1802,55 +1853,17 @@ function renderTab(tabId, data) {
   const heroCls = m.opi >= target ? '' : 'below';
 
   container.innerHTML = `
-    <div class="kpi-row">
-      <div class="kpi-card kpi-hero ${heroCls}" style="grid-column:span 2;">
-        <div class="kpi-label">OPINONA ${isPlanta ? 'PLANTA' : lineId}</div>
-        <div class="kpi-value ${kpiGlobalClass}">${m.opi.toFixed(1)}%</div>
-        <div class="meta">META: <strong>${target}%</strong> · Δ ${(m.opi - target >= 0 ? '+' : '')}${(m.opi - target).toFixed(1)} pp</div>
+    <div class="top-grid ${isPlanta ? 'top-grid-3' : ''}">
+      ${kpiCardsHTML(m, tabId, target, isPlanta, lineId, heroCls, kpiGlobalClass)}
+      <div class="chart-card">
+        <div class="chart-title">${tabBadge} Distribución de Tiempos (h) <span class="hint">click para ver detalle</span></div>
+        <div id="chart-${tabId}-donut" style="height:300px;cursor:pointer;"></div>
       </div>
-      <div class="kpi-card amber">
-        <div class="kpi-label">T. Efectivo / T. Teórico</div>
-        <div class="kpi-value amber">${m.tEfectivo.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
-        <div class="kpi-sub">Teórico: ${m.tTeorico.toFixed(1)} h</div>
-      </div>
-      <div class="kpi-card olive">
-        <div class="kpi-label">Cajas Producidas</div>
-        <div class="kpi-value olive">${m.cajas.toLocaleString('es-AR')}</div>
-        <div class="kpi-sub">Lote prom: ${Math.round(m.lotePromedio).toLocaleString('es-AR')}</div>
-      </div>
-      <div class="kpi-card red">
-        <div class="kpi-label">Prod. No Conforme</div>
-        <div class="kpi-value red">${Math.round(m.pni).toLocaleString('es-AR')} <span style="font-size:14px;opacity:.6">C9L</span></div>
-        <div class="kpi-sub">${m.pctPNI.toFixed(2)}% del total C9L</div>
-      </div>
-    </div>
-
-    <div class="kpi-row">
-      <div class="kpi-card cream">
-        <div class="kpi-label">Semielaborado Envasado</div>
-        <div class="kpi-value cream">${m.semielaborado.toLocaleString('es-AR')} <span style="font-size:14px;opacity:.6">bot</span></div>
-        <div class="kpi-sub">Tipo Etiquetado = LLENADO</div>
-      </div>
-      <div class="kpi-card orange">
-        <div class="kpi-label">Volumen Envasado</div>
-        <div class="kpi-value orange">${m.hlTotal.toFixed(1)} <span style="font-size:14px;opacity:.6">HL</span></div>
-        <div class="kpi-sub">C9L total: ${m.c9lTotal.toLocaleString('es-AR')}</div>
-      </div>
-      <div class="kpi-card wine">
-        <div class="kpi-label">T. con Personal</div>
-        <div class="kpi-value wine">${m.tConPersonal.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
-        <div class="kpi-sub">No Uso: ${m.tiempoPorClasif[CATS.NO_USO].toFixed(1)} h</div>
-      </div>
-      <div class="kpi-card red">
-        <div class="kpi-label">Fallas MTO</div>
-        <div class="kpi-value red">${m.fallasOrg.MTO.toFixed(1)} <span style="font-size:14px;opacity:.6">h</span></div>
-        <div class="kpi-sub">OP: ${m.fallasOrg.OP.toFixed(1)} h · INV: ${m.fallasOrg.INV.toFixed(1)} h</div>
-      </div>
-      <div class="kpi-card amber" onclick="openModalPerdidasVel()" style="cursor:pointer;" title="Ver detalle de pérdidas de velocidad">
-        <div class="kpi-label">Pérdidas de Velocidad ↗</div>
-        <div class="kpi-value amber">${m.perdidasVel.toFixed(2)} <span style="font-size:14px;opacity:.6">h</span></div>
-        <div class="kpi-sub">Var. % &lt; 70% · toca para ver detalle</div>
-      </div>
+      ${isPlanta ? `
+      <div class="chart-card">
+        <div class="chart-title">${tabBadge} Carga de Trabajo por Línea (h) <span class="hint">click para ir a la línea</span></div>
+        <div id="chart-${tabId}-lineas" style="height:300px;cursor:pointer;"></div>
+      </div>` : ''}
     </div>
 
     <div class="section-title">Evolución Anual — 2025 vs 2026</div>
@@ -1861,6 +1874,7 @@ function renderTab(tabId, data) {
           <button type="button" class="opi-view-btn ${(opiViewState[tabId]||'M')==='D'?'on':''}" data-view="D" onclick="setOpiView('${tabId}','D')">Diario</button>
           <button type="button" class="opi-view-btn ${(opiViewState[tabId]||'M')==='W'?'on':''}" data-view="W" onclick="setOpiView('${tabId}','W')">Semanal</button>
           <button type="button" class="opi-view-btn ${(opiViewState[tabId]||'M')==='M'?'on':''}" data-view="M" onclick="setOpiView('${tabId}','M')">Mensual</button>
+          <button type="button" class="serie-reset" onclick="resetSerie('chart-${tabId}-evo')" title="Volver al rango completo">Reset</button>
         </span>
       </div>
       <div id="chart-${tabId}-evo" style="height:320px;"></div>
@@ -1868,47 +1882,37 @@ function renderTab(tabId, data) {
 
     <div class="section-title">Volumen Envasado</div>
     <div class="chart-card full" style="margin-bottom:14px;">
-      <div class="chart-title">${tabBadge} Hectolitros por Fecha <span class="hint">HL = C9L × 9 / 100 · suma de Vestido + Llenado + Llenado+Vestido</span></div>
+      <div class="chart-title" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span>${tabBadge} Hectolitros por Fecha <span class="hint">HL = C9L × 9 / 100 · Vestido + Llenado + Llenado+Vestido</span></span>
+        ${serieToolsHTML(`chart-${tabId}-hl`, 'D')}
+      </div>
       <div id="chart-${tabId}-hl" style="height:260px;"></div>
     </div>
 
-    <div class="section-title">Composición de Tiempos</div>
-    <div class="${isPlanta ? 'charts-grid-3' : 'charts-grid'}">
-      ${isPlanta ? `
+    <div class="section-title">Análisis de Fallas</div>
+    <div class="charts-grid-31">
       <div class="chart-card">
-        <div class="chart-title">${tabBadge} Carga de Trabajo por Línea (h) <span class="hint">click para ir a la línea</span></div>
-        <div id="chart-${tabId}-lineas" style="height:300px;cursor:pointer;"></div>
-      </div>` : ''}
-      <div class="chart-card">
-        <div class="chart-title">${tabBadge} Distribución de Tiempos (h) <span class="hint">Producción + paros · excluye No Uso · click para ver detalle</span></div>
-        <div id="chart-${tabId}-donut" style="height:340px;cursor:pointer;"></div>
+        <div class="chart-title" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <span>${tabBadge} Pareto Fallas de Equipos <span class="hint">Top 80% · click para detalle</span></span>
+          <span style="display:inline-flex;gap:6px;margin-left:auto;">
+            <button type="button" class="falla-filter-btn on" data-tab="${tabId}" data-filter="MTO" onclick="toggleFallaFilter('${tabId}','MTO',this)">MTO</button>
+            <button type="button" class="falla-filter-btn on" data-tab="${tabId}" data-filter="OP"  onclick="toggleFallaFilter('${tabId}','OP',this)">OP</button>
+          </span>
+        </div>
+        <div id="chart-${tabId}-mto" style="height:320px;cursor:pointer;"></div>
       </div>
       <div class="chart-card">
         <div class="chart-title">${tabBadge} Paradas Externas por Equipo <span class="hint">click para detalle</span></div>
-        <div id="chart-${tabId}-paradas" style="height:300px;cursor:pointer;"></div>
+        <div id="chart-${tabId}-paradas" style="height:320px;cursor:pointer;"></div>
       </div>
     </div>
 
-    <div class="section-title">Análisis de Fallas</div>
-    <div class="chart-card full">
+    <div class="chart-card full" style="margin-bottom:14px;">
       <div class="chart-title" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-        <span>${tabBadge} Pareto Fallas de Equipos <span class="hint">Top 80% · click para detalle</span></span>
-        <span style="display:inline-flex;gap:6px;margin-left:auto;">
-          <button type="button" class="falla-filter-btn on" data-tab="${tabId}" data-filter="MTO" onclick="toggleFallaFilter('${tabId}','MTO',this)">MTO</button>
-          <button type="button" class="falla-filter-btn on" data-tab="${tabId}" data-filter="OP"  onclick="toggleFallaFilter('${tabId}','OP',this)">OP</button>
-        </span>
+        <span>${tabBadge} Tiempo de Fallas de Equipos <span class="hint">con línea de tendencia</span></span>
+        ${serieToolsHTML(`chart-${tabId}-fallasem`, 'W')}
       </div>
-      <div id="chart-${tabId}-mto" style="height:320px;cursor:pointer;"></div>
-    </div>
-    <button class="collapse-btn" onclick="toggleCollapse('collapse-${tabId}-fallasem', this)" aria-expanded="false">
-      <span class="collapse-label">Evolución de Fallas de Equipos por Semana</span>
-      <span class="collapse-arrow">▼</span>
-    </button>
-    <div class="collapsible" id="collapse-${tabId}-fallasem" style="display:none;">
-      <div class="chart-card full">
-        <div class="chart-title">${tabBadge} Tiempo de Fallas de Equipos por Semana <span class="hint">con línea de tendencia</span></div>
-        <div id="chart-${tabId}-fallasem" style="height:300px;"></div>
-      </div>
+      <div id="chart-${tabId}-fallasem" style="height:300px;"></div>
     </div>
 
     <div class="section-title">Lotes de Producción</div>
@@ -1918,12 +1922,15 @@ function renderTab(tabId, data) {
     </div>
 
     <button class="collapse-btn" onclick="toggleCollapse('collapse-${tabId}-lotesem', this)" aria-expanded="false">
-      <span class="collapse-label">Evolución del Tamaño de Lote Promedio por Semana</span>
+      <span class="collapse-label">Evolución del Tamaño de Lote Promedio</span>
       <span class="collapse-arrow">▼</span>
     </button>
     <div class="collapsible" id="collapse-${tabId}-lotesem" style="display:none;">
       <div class="chart-card full">
-        <div class="chart-title">${tabBadge} Lote Promedio por Semana <span class="hint">con línea de tendencia</span></div>
+        <div class="chart-title" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <span>${tabBadge} Lote Promedio <span class="hint">con línea de tendencia</span></span>
+          ${serieToolsHTML(`chart-${tabId}-lotesem`, 'W')}
+        </div>
         <div id="chart-${tabId}-lotesem" style="height:300px;"></div>
       </div>
     </div>
@@ -1939,6 +1946,8 @@ function renderTab(tabId, data) {
     </div>
   `;
 
+  serieRedraw[`chart-${tabId}-evo`] = () => drawEvolutivo(`chart-${tabId}-evo`, tabId, target, themeColor);
+  serieRedraw[`chart-${tabId}-hl`]  = () => drawHL(`chart-${tabId}-hl`, m.hlPorFechaTipo, themeColor);
   drawEvolutivo(`chart-${tabId}-evo`, tabId, target, themeColor);
   drawHL(`chart-${tabId}-hl`, m.hlPorFechaTipo, themeColor);
 
@@ -1963,7 +1972,7 @@ function renderTab(tabId, data) {
   if (paradasArr.length) {
     drawChart(`chart-${tabId}-paradas`, {
       series: [{ data: paradasArr }],
-      chart: { type:'treemap', height:300, toolbar:{show:false}, fontFamily:'Montserrat',
+      chart: { type:'treemap', height:320, toolbar:{show:false}, fontFamily:'Montserrat',
         events: { dataPointSelection: (e,c,cfg) => openModal(isPlanta?null:lineId, cfg.w.config.series[cfg.seriesIndex].data[cfg.dataPointIndex].x, CATS.EXTERNA) }
       },
       colors: [themeColor],
@@ -1982,11 +1991,12 @@ function renderTab(tabId, data) {
   drawHistograma(`chart-${tabId}-hist`, m.cajasList, themeColor);
 
   // Colapsables: dibujar solo si están visibles (o se dibujan al abrir)
-  pendingCharts[`chart-${tabId}-fallasem`] = () => drawFallaSemana(`chart-${tabId}-fallasem`, m.fallasPorSemana, '#D81840');
-  pendingCharts[`chart-${tabId}-lotesem`]  = () => drawLoteSemana(`chart-${tabId}-lotesem`, m.lotesPorSemana, themeColor);
+  serieRedraw[`chart-${tabId}-fallasem`] = () => drawFallaSemana(`chart-${tabId}-fallasem`, m.fallasPorFecha, '#D81840');
+  drawFallaSemana(`chart-${tabId}-fallasem`, m.fallasPorFecha, '#D81840');
+  pendingCharts[`chart-${tabId}-lotesem`]  = () => drawLoteSemana(`chart-${tabId}-lotesem`, m.lotesPorFecha, themeColor);
+  serieRedraw[`chart-${tabId}-lotesem`]  = pendingCharts[`chart-${tabId}-lotesem`];
   pendingCharts[`chart-${tabId}-botellas`] = () => drawBotellasPareto(`chart-${tabId}-botellas`, m.botellasUnid, themeColor);
 
-  if (document.getElementById(`collapse-${tabId}-fallasem`)?.style.display === 'block') pendingCharts[`chart-${tabId}-fallasem`]();
   if (document.getElementById(`collapse-${tabId}-lotesem`)?.style.display === 'block')  pendingCharts[`chart-${tabId}-lotesem`]();
   if (document.getElementById(`collapse-${tabId}-botellas`)?.style.display === 'block') pendingCharts[`chart-${tabId}-botellas`]();
 }
@@ -2013,7 +2023,7 @@ function drawDonut(id, parosObj) {
   drawChart(id, {
     series: entries.map(([,v]) => Number(v.toFixed(2))),
     labels: entries.map(([k]) => k),
-    chart: { type:'donut', height:340, foreColor:getTextColor(), fontFamily:'Montserrat',
+    chart: { type:'donut', height:300, foreColor:getTextColor(), fontFamily:'Montserrat',
       events: { dataPointSelection: (e, c, cfg) => {
         const label = cfg.w.config.labels[cfg.dataPointIndex];
         const tabId = id.split('-')[1];
@@ -2023,7 +2033,7 @@ function drawDonut(id, parosObj) {
     },
     colors,
     stroke: { width:2, colors:[isDark?'#2a1626':'#FFFFFF'] },
-    legend: { position:'bottom', fontSize:'11px', fontWeight:600, itemMargin:{horizontal:6,vertical:3}, labels:{colors:getTextColor()}, markers:{width:10,height:10,radius:3} },
+    legend: { position:'bottom', fontSize:'9.5px', fontWeight:600, itemMargin:{horizontal:5,vertical:1}, offsetY:2, labels:{colors:getTextColor()}, markers:{width:8,height:8,radius:2} },
     dataLabels: {
       enabled:true,
       formatter: (v) => v >= 4 ? v.toFixed(1)+'%' : '',
@@ -2081,6 +2091,7 @@ function drawWaterfall(id, m) {
 
 function setOpiView(tabId, view) {
   opiViewState[tabId] = view;
+  delete serieZoom['chart-'+tabId+'-evo'];   // el rango depende de la granularidad
   // Actualizar estado visual de botones sin re-renderizar todo el tab
   const sw = document.querySelector(`.opi-view-switch[data-tab="${tabId}"]`);
   if (sw) sw.querySelectorAll('.opi-view-btn').forEach(b => b.classList.toggle('on', b.dataset.view === view));
@@ -2097,6 +2108,242 @@ function applyFiltersForYear(year) {
   const d = applyFilters(rawData);
   activeYear = saved;
   return d;
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   SERIES TEMPORALES INTERACTIVAS
+   - Switch Diario / Semanal / Mensual por gráfico (serieView[id]).
+   - Rueda del mouse sobre el gráfico: zoom del eje de tiempo.
+   - Arrastre sobre la franja del eje de tiempo (cursor ↔): desplaza el rango.
+   - Arrastre sobre la franja del eje de valores (cursor ↕): escala el máximo.
+   - Botón RESET en el título: vuelve al rango completo.
+   Todos los gráficos de serie usan eje datetime en las tres vistas, que es lo
+   que permite mover min/max sin redibujar.
+   ═════════════════════════════════════════════════════════════════ */
+const serieView   = {};   // id -> 'D' | 'W' | 'M'
+const serieZoom   = {};   // id -> { xmin, xmax, ymax }
+const serieFull   = {};   // id -> { xmin, xmax }  rango completo de datos
+const serieRedraw = {};   // id -> función que redibuja con el estado actual
+let serieDrag = null;
+let serieGlobalReady = false;
+
+function serieViewOf(id, def) { return serieView[id] || def; }
+
+function setSerieView(id, v) {
+  serieView[id] = v;
+  delete serieZoom[id];
+  const sw = document.querySelector('.serie-switch[data-chart="' + id + '"]');
+  if (sw) sw.querySelectorAll('.opi-view-btn').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  if (serieRedraw[id]) serieRedraw[id]();
+}
+
+function resetSerie(id) { delete serieZoom[id]; if (serieRedraw[id]) serieRedraw[id](); }
+
+/* Switch + Reset para el encabezado de la tarjeta */
+function serieToolsHTML(id, def) {
+  const v = serieViewOf(id, def);
+  const b = (k, l) => '<button type="button" class="opi-view-btn ' + (v === k ? 'on' : '') + '" data-view="' + k + '" onclick="setSerieView(\'' + id + '\',\'' + k + '\')">' + l + '</button>';
+  return '<span class="serie-switch" data-chart="' + id + '" style="display:inline-flex;gap:6px;margin-left:auto;align-items:center;">' +
+    '<span class="serie-hint">rueda: zoom · arrastrar ejes: mover/escalar</span>' +
+    b('D','Diario') + b('W','Semanal') + b('M','Mensual') +
+    '<button type="button" class="serie-reset" onclick="resetSerie(\'' + id + '\')" title="Volver al rango completo">Reset</button></span>';
+}
+
+/* Inicio del bucket (timestamp local) según granularidad */
+function serieBucketTs(d, view) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  if (view === 'W') { const dow = (x.getDay() + 6) % 7; x.setDate(x.getDate() - dow); }
+  else if (view === 'M') { x.setDate(1); }
+  return x.getTime();
+}
+
+const MESES_ABR_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+function serieIsoWeek(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dy = (t.getUTCDay() + 6) % 7;
+  t.setUTCDate(t.getUTCDate() - dy + 3);
+  const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  const dy0 = (y0.getUTCDay() + 6) % 7;
+  y0.setUTCDate(y0.getUTCDate() - dy0 + 3);
+  return 1 + Math.round((t - y0) / (7 * 864e5));
+}
+
+/* Etiqueta del eje de tiempo: fecha (diario), N° de semana (semanal) o mes (mensual) */
+function serieAxisLabel(ts, view) {
+  const d = new Date(Number(ts));
+  if (isNaN(d.getTime())) return '';
+  if (view === 'M') return MESES_ABR_ES[d.getMonth()] + " '" + String(d.getFullYear()).slice(2);
+  if (view === 'W') return 'S' + serieIsoWeek(d);
+  return d.getDate() + ' ' + MESES_ABR_ES[d.getMonth()];
+}
+
+function serieTooltipX(view) {
+  return { formatter: ts => {
+    const d = new Date(Number(ts));
+    if (isNaN(d.getTime())) return String(ts);
+    if (view === 'M') return d.toLocaleDateString('es-AR', { month:'long', year:'numeric' });
+    if (view === 'W') return 'Semana ' + serieIsoWeek(d) + ' · desde ' + d.toLocaleDateString('es-AR');
+    return d.toLocaleDateString('es-AR');
+  } };
+}
+
+function serieViewLabel(view) { return view === 'D' ? 'día' : view === 'W' ? 'semana' : 'mes'; }
+
+/* Agrega { 'YYYY-MM-DD': número | {suma,count} } a los buckets de la vista */
+function serieAgg(mapDiario, view, mode) {
+  const acc = {};
+  Object.entries(mapDiario || {}).forEach(([ymd, val]) => {
+    const d = new Date(ymd + 'T12:00:00');
+    if (isNaN(d.getTime())) return;
+    const ts = serieBucketTs(d, view);
+    if (!acc[ts]) acc[ts] = { s:0, n:0 };
+    if (val && typeof val === 'object') { acc[ts].s += val.suma; acc[ts].n += val.count; }
+    else { acc[ts].s += val; acc[ts].n += 1; }
+  });
+  return Object.keys(acc).map(Number).sort((a,b) => a-b)
+    .map(ts => ({ x: ts, y: mode === 'avg' ? (acc[ts].n ? acc[ts].s / acc[ts].n : 0) : acc[ts].s }));
+}
+
+/* Configuración del eje de tiempo, con el zoom vigente aplicado */
+function serieXAxis(id, view, extra) {
+  const z = serieZoom[id] || {};
+  return Object.assign({
+    type:'datetime',
+    title:{ text: view === 'D' ? 'Fecha' : view === 'W' ? 'Número de Semana' : 'Mes',
+      style:{ fontSize:'10px', color:getTextColor(), fontWeight:600 } },
+    min: z.xmin, max: z.xmax,
+    labels:{ datetimeUTC:false, style:{ fontSize:'10.5px', colors:getTextColor() },
+      formatter: (value, timestamp) => serieAxisLabel(timestamp != null ? timestamp : value, view) },
+    tooltip:{ enabled:false }
+  }, extra || {});
+}
+
+function serieSetFull(id, pts) {
+  if (!pts.length) { delete serieFull[id]; return; }
+  const pad = pts.length > 1 ? (pts[pts.length-1].x - pts[0].x) * 0.02 : 864e5;
+  serieFull[id] = { xmin: pts[0].x - pad, xmax: pts[pts.length-1].x + pad };
+}
+
+function applySerieZoom(id) {
+  const c = charts[id]; if (!c) return;
+  const z = serieZoom[id] || {};
+  const opts = { xaxis:{ min: z.xmin, max: z.xmax } };
+  // Apex normaliza yaxis a array: sólo escalamos cuando hay un único eje de valores.
+  // updateOptions reemplaza el elemento del array, así que reenviamos su config completa
+  // (formatter de etiquetas incluido) con el nuevo máximo. El min va a 0 y forceNiceScale
+  // se apaga: en las series sin piso en 0 (lote promedio) Apex mantenía su min automático
+  // y recalculaba los ticks por encima del máximo pedido.
+  if (c.w.config.yaxis && c.w.config.yaxis.length === 1) {
+    opts.yaxis = [Object.assign({}, c.w.config.yaxis[0], {
+      max: z.ymax,
+      min: z.ymax != null ? 0 : undefined,
+      forceNiceScale: z.ymax == null
+    })];
+  }
+  try { c.updateOptions(opts, false, false); } catch(e) {}
+}
+
+function initSerieGlobalHandlers() {
+  if (serieGlobalReady) return;
+  serieGlobalReady = true;
+  window.addEventListener('mousemove', ev => {
+    const d = serieDrag; if (!d) return;
+    const full = serieFull[d.id] || {};
+    const z = serieZoom[d.id] || (serieZoom[d.id] = {});
+    if (d.zone === 'x') {
+      const span = d.max - d.min;
+      if (!(span > 0)) return;
+      let nmin = d.min - (ev.clientX - d.x) * (span / (d.gw || 1));
+      let nmax = nmin + span;
+      if (full.xmin != null && nmin < full.xmin) { nmin = full.xmin; nmax = nmin + span; }
+      if (full.xmax != null && nmax > full.xmax) { nmax = full.xmax; nmin = nmax - span; }
+      z.xmin = nmin; z.xmax = nmax;
+    } else {
+      // arrastrar hacia arriba comprime la escala (máximo menor), hacia abajo la expande
+      const f = 1 + (ev.clientY - d.y) / (d.gh || 300);
+      z.ymax = Math.max(d.ymax * Math.min(Math.max(f, 0.15), 6), d.ymax * 0.05);
+    }
+    applySerieZoom(d.id);
+  });
+  window.addEventListener('mouseup', () => {
+    if (!serieDrag) return;
+    serieDrag = null;
+    document.body.style.userSelect = '';
+  });
+}
+
+/* Rueda + arrastre de ejes sobre el contenedor de un gráfico */
+function attachSerieInteraction(id) {
+  initSerieGlobalHandlers();
+  const el = document.querySelector('#' + id);
+  if (!el || el.dataset.serieBound === '1') return;
+  el.dataset.serieBound = '1';
+
+  const geom = ev => {
+    const c = charts[id]; if (!c || !c.w) return null;
+    const g = c.w.globals;
+    const r = el.getBoundingClientRect();
+    return { g, x: ev.clientX - r.left, y: ev.clientY - r.top };
+  };
+  const zoneOf = q => {
+    if (!q) return null;
+    const { g, x, y } = q;
+    const gx0 = g.translateX, gx1 = g.translateX + g.gridWidth;
+    const gy0 = g.translateY, gy1 = g.translateY + g.gridHeight;
+    if (y > gy1 - 2 && x >= gx0 - 14) return 'x';
+    if (x < gx0 && y >= gy0 - 8 && y <= gy1 + 8) return 'y';
+    if (x >= gx0 && x <= gx1 && y >= gy0 && y <= gy1) return 'plot';
+    return null;
+  };
+
+  el.addEventListener('mousemove', ev => {
+    if (serieDrag) return;
+    if (!serieFull[id]) { el.style.cursor = ''; return; }
+    const z = zoneOf(geom(ev));
+    el.style.cursor = z === 'x' ? 'ew-resize' : z === 'y' ? 'ns-resize' : '';
+  });
+
+  el.addEventListener('mousedown', ev => {
+    const q = geom(ev); const zone = zoneOf(q);
+    if (zone !== 'x' && zone !== 'y') return;
+    if (!serieFull[id]) return;
+    ev.preventDefault();
+    const full = serieFull[id] || {};
+    const z = serieZoom[id] || (serieZoom[id] = {});
+    const c = charts[id];
+    serieDrag = {
+      id, zone, x: ev.clientX, y: ev.clientY,
+      min: z.xmin != null ? z.xmin : full.xmin,
+      max: z.xmax != null ? z.xmax : full.xmax,
+      ymax: z.ymax != null ? z.ymax : (c ? c.w.globals.maxY : 1),
+      gw: q.g.gridWidth, gh: q.g.gridHeight
+    };
+    document.body.style.userSelect = 'none';
+  });
+
+  el.addEventListener('wheel', ev => {
+    const q = geom(ev); const zone = zoneOf(q);
+    if (zone !== 'plot' && zone !== 'x') return;
+    const full = serieFull[id]; if (!full) return;
+    ev.preventDefault();
+    const z = serieZoom[id] || (serieZoom[id] = {});
+    const min = z.xmin != null ? z.xmin : full.xmin;
+    const max = z.xmax != null ? z.xmax : full.xmax;
+    const span = max - min; if (!(span > 0)) return;
+    const fullSpan = full.xmax - full.xmin;
+    const frac = Math.min(1, Math.max(0, (q.x - q.g.translateX) / (q.g.gridWidth || 1)));
+    const center = min + span * frac;
+    const minSpan = Math.min(3 * 864e5, fullSpan);
+    let ns = Math.max(Math.min(span * (ev.deltaY < 0 ? 0.8 : 1.25), fullSpan), minSpan);
+    let nmin = center - (center - min) * (ns / span);
+    let nmax = nmin + ns;
+    if (nmin < full.xmin) { nmin = full.xmin; nmax = nmin + ns; }
+    if (nmax > full.xmax) { nmax = full.xmax; nmin = Math.max(full.xmin, nmax - ns); }
+    if (nmax - nmin >= fullSpan - 1) { delete z.xmin; delete z.xmax; }
+    else { z.xmin = nmin; z.xmax = nmax; }
+    applySerieZoom(id);
+  }, { passive:false });
 }
 
 function drawEvolutivo(id, tabId, target, themeColor) {
@@ -2117,39 +2364,19 @@ function drawEvolutivo(id, tabId, target, themeColor) {
       return;
     }
 
+    // Buckets por día o por semana ISO, siempre sobre el eje de tiempo
     const buckets = {};
-    const sortKeys = [];
-
-    if (view === 'D') {
-      data.forEach(r => {
-        const d = getFecha(r);
-        if (!d) return;
-        const key = d.toISOString().slice(0,10);
-        if (!buckets[key]) { buckets[key] = []; sortKeys.push(key); }
-        buckets[key].push(r);
-      });
-    } else {
-      data.forEach(r => {
-        const w = Number(get(r,'Semana','semana'));
-        if (!(w >= 1 && w <= 53)) return;
-        const key = String(w);
-        if (!buckets[key]) { buckets[key] = []; sortKeys.push(key); }
-        buckets[key].push(r);
-      });
-    }
-
-    const keys = view === 'D'
-      ? [...new Set(sortKeys)].sort()
-      : [...new Set(sortKeys)].sort((a,b) => Number(a) - Number(b));
-
-    const points = keys.map(k => {
-      const m = procesarMetricas(buckets[k]);
-      return Number(m.opi.toFixed(1));
+    data.forEach(r => {
+      const d = getFecha(r);
+      if (!d) return;
+      const ts = serieBucketTs(d, view);
+      if (!buckets[ts]) buckets[ts] = [];
+      buckets[ts].push(r);
     });
 
-    const seriesData = view === 'D'
-      ? keys.map((k,i) => ({ x: new Date(k).getTime(), y: points[i] }))
-      : points;
+    const tsKeys = Object.keys(buckets).map(Number).sort((a,b) => a-b);
+    const seriesData = tsKeys.map(ts => ({ x: ts, y: Number(procesarMetricas(buckets[ts]).opi.toFixed(1)) }));
+    serieSetFull(id, seriesData);
 
     drawChart(id, {
       series: [{ name: view==='D' ? 'OPI Diario' : 'OPI Semanal', type:'line', data: seriesData }],
@@ -2157,26 +2384,26 @@ function drawEvolutivo(id, tabId, target, themeColor) {
       colors: [themeColor],
       stroke: { width:3, curve:'smooth' },
       markers: { size:4 },
-      xaxis: view === 'D'
-        ? { type:'datetime', labels:{ style:{fontSize:'11px',colors:getTextColor()}, datetimeFormatter:{year:'yyyy', month:"MMM 'yy", day:'dd MMM'} } }
-        : { categories: keys.map(w => 'S'+w), labels:{ style:{fontSize:'11px',colors:getTextColor()} }, title:{ text:'Semana', style:{fontSize:'10px',color:getTextColor()} } },
-      yaxis: { labels:{formatter: v => v ? v.toFixed(0)+'%' : '', style:{colors:getTextColor()}} },
+      xaxis: serieXAxis(id, view),
+      yaxis: { max: (serieZoom[id]||{}).ymax, labels:{formatter: v => v ? v.toFixed(0)+'%' : '', style:{colors:getTextColor()}} },
       grid: { borderColor:getGridColor(), strokeDashArray:4, padding:{left:10,right:20,top:10} },
       annotations: { yaxis:[{ y:target, borderColor:themeColor, strokeDashArray:6, borderWidth:2, label:{ position:'left', offsetX:80, offsetY:-2, text:'Meta '+target+'%', style:{color:'#fff',background:themeColor,fontSize:'10px',fontWeight:700} } }] },
       dataLabels: { enabled:true, formatter: v => v ? v.toFixed(1)+'%' : '', style:{fontSize:'10px',fontWeight:700}, background:{enabled:true, borderRadius:3, padding:3, borderWidth:1} },
       legend: { show:false },
       tooltip: {
         theme: isDark?'dark':'light',
-        x: view === 'D' ? { format:'dd MMM yyyy' } : { formatter: (val, opts) => 'Semana '+keys[opts.dataPointIndex] },
+        x: serieTooltipX(view),
         y: { formatter: v => v!=null ? v+'%' : '—' }
       }
     });
+    attachSerieInteraction(id);
     return;
   }
 
   // ============================
   // Vista MENSUAL (default): comparativa 2025 vs 2026 + YTD, respetando filtros NO-año
   // ============================
+  delete serieFull[id];
   const lineByYear = { 2025: new Array(12).fill(null), 2026: new Array(12).fill(null) };
   const ytdByYear  = { 2025: null, 2026: null };
 
@@ -2239,12 +2466,23 @@ function drawEvolutivo(id, tabId, target, themeColor) {
 
 function drawHL(id, hlPorFechaTipo, color) {
   const el = document.querySelector('#'+id);
-  const keys = Object.keys(hlPorFechaTipo).sort();
+  const view = serieViewOf(id, 'D');
+  // Buckets por día / semana ISO / mes, sumando cada tipo de etiquetado
+  const agg = {};
+  Object.entries(hlPorFechaTipo).forEach(([ymd, porTipo]) => {
+    const d = new Date(ymd + 'T12:00:00');
+    if (isNaN(d.getTime())) return;
+    const ts = serieBucketTs(d, view);
+    if (!agg[ts]) agg[ts] = {};
+    Object.entries(porTipo).forEach(([t,v]) => { agg[ts][t] = (agg[ts][t]||0) + v; });
+  });
+  const keys = Object.keys(agg).map(Number).sort((a,b) => a-b);
   if (!keys.length) { if (el) el.innerHTML = '<div class="no-data">Sin volumen envasado en el período</div>'; return; }
+  serieSetFull(id, keys.map(x => ({ x })));
 
   // Recolectar todos los tipos presentes y ordenarlos por volumen total descendente
   const tipoTotales = {};
-  keys.forEach(k => Object.entries(hlPorFechaTipo[k]).forEach(([t,v]) => { tipoTotales[t] = (tipoTotales[t]||0) + v; }));
+  keys.forEach(k => Object.entries(agg[k]).forEach(([t,v]) => { tipoTotales[t] = (tipoTotales[t]||0) + v; }));
   const tipos = Object.entries(tipoTotales).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([t])=>t);
 
   // Paleta consistente VSPT — mismo color para mismo tipo siempre
@@ -2262,11 +2500,11 @@ function drawHL(id, hlPorFechaTipo, color) {
 
   const series = tipos.map(t => ({
     name: t || 'Sin tipo',
-    data: keys.map(k => ({ x: k, y: Number((hlPorFechaTipo[k][t]||0).toFixed(1)) }))
+    data: keys.map(k => ({ x: k, y: Number((agg[k][t]||0).toFixed(1)) }))
   }));
 
   // Total por fecha para anotación opcional
-  const totalDiario = keys.map(k => Object.values(hlPorFechaTipo[k]).reduce((a,b)=>a+b,0));
+  const totalDiario = keys.map(k => Object.values(agg[k]).reduce((a,b)=>a+b,0));
   const sumTotal = totalDiario.reduce((a,b)=>a+b,0);
 
   drawChart(id, {
@@ -2275,20 +2513,23 @@ function drawHL(id, hlPorFechaTipo, color) {
     colors: tipos.map(colorFor),
     plotOptions: { bar:{ borderRadius:3, columnWidth:'65%' } },
     stroke: { width:0 },
-    xaxis: { type:'datetime', labels:{ style:{fontSize:'11px'}, datetimeFormatter:{year:'yyyy', month:"MMM 'yy", day:'dd MMM'} } },
-    yaxis: { labels:{ formatter: v => v.toFixed(0)+' HL' } },
+    xaxis: serieXAxis(id, view),
+    yaxis: { max: (serieZoom[id]||{}).ymax, labels:{ formatter: v => v.toFixed(0)+' HL' } },
     grid: { borderColor:getGridColor(), strokeDashArray:4 },
     dataLabels: { enabled:false },
     legend: { position:'top', horizontalAlign:'right', fontSize:'11px', fontWeight:600, markers:{width:12,height:12} },
     tooltip: {
       theme:isDark?'dark':'light',
       shared:true, intersect:false,
-      x:{ format:'dd/MM/yyyy' },
+      x: serieTooltipX(view),
       y:{ formatter: v => v.toFixed(1)+' HL' },
       custom: ({series:s, dataPointIndex, w}) => {
         const date = w.globals.labels[dataPointIndex];
-        const d = new Date(date);
-        const fStr = isNaN(d) ? date : d.toLocaleDateString('es-AR');
+        const d = new Date(Number(date) || date);
+        const fStr = isNaN(d.getTime()) ? date
+          : view === 'M' ? d.toLocaleDateString('es-AR', { month:'long', year:'numeric' })
+          : view === 'W' ? 'Semana ' + serieIsoWeek(d) + ' · desde ' + d.toLocaleDateString('es-AR')
+          : d.toLocaleDateString('es-AR');
         let total = 0;
         let rows = '';
         w.config.series.forEach((ser, i) => {
@@ -2311,6 +2552,8 @@ function drawHL(id, hlPorFechaTipo, color) {
       }
     }
   });
+
+  attachSerieInteraction(id);
 
   // Anotación de total acumulado en el título del card
   const card = el?.closest('.chart-card');
@@ -2444,118 +2687,110 @@ function toggleCollapse(id, btn) {
   }
 }
 
-function drawFallaSemana(id, fallasPorSemana, color) {
+function drawFallaSemana(id, fallasPorFecha, color) {
   const el = document.querySelector('#'+id);
-  const semanas = Object.keys(fallasPorSemana).map(Number).sort((a,b)=>a-b);
-  if (semanas.length < 2) { if (el) el.innerHTML = '<div class="no-data">Se necesitan al menos 2 semanas con datos</div>'; return; }
+  const view = serieViewOf(id, 'W');
+  const puntos = serieAgg(fallasPorFecha, view, 'sum');
+  if (puntos.length < 2) { if (el) el.innerHTML = '<div class="no-data">Se necesitan al menos 2 ' + (view==='D'?'días':view==='W'?'semanas':'meses') + ' con datos</div>'; return; }
+  serieSetFull(id, puntos);
 
-  const puntos = semanas.map(s => ({ x: s, y: fallasPorSemana[s] }));
-
+  // Regresión lineal sobre el índice del bucket (independiente de la granularidad)
   const n = puntos.length;
   let sx=0, sy=0, sxy=0, sxx=0;
-  puntos.forEach(p => { sx+=p.x; sy+=p.y; sxy+=p.x*p.y; sxx+=p.x*p.x; });
+  puntos.forEach((p,i) => { sx+=i; sy+=p.y; sxy+=i*p.y; sxx+=i*i; });
   const denom = n*sxx - sx*sx;
   const slope = denom !== 0 ? (n*sxy - sx*sy) / denom : 0;
   const intercept = (sy - slope*sx) / n;
   const meanY = sy/n;
   let ssTot=0, ssRes=0;
-  puntos.forEach(p => { const yHat = slope*p.x + intercept; ssTot += (p.y-meanY)**2; ssRes += (p.y-yHat)**2; });
+  puntos.forEach((p,i) => { const yHat = slope*i + intercept; ssTot += (p.y-meanY)**2; ssRes += (p.y-yHat)**2; });
   const r2 = ssTot>0 ? 1 - ssRes/ssTot : 0;
 
-  const xMin = semanas[0], xMax = semanas[semanas.length-1];
   const tendencia = [
-    { x: xMin, y: Math.max(0, slope*xMin + intercept) },
-    { x: xMax, y: Math.max(0, slope*xMax + intercept) }
+    { x: puntos[0].x, y: Math.max(0, intercept) },
+    { x: puntos[n-1].x, y: Math.max(0, slope*(n-1) + intercept) }
   ];
   // Tendencia al alza en fallas = MALO (rojo); a la baja = BUENO (oliva)
   const trendColor = slope <= 0 ? '#9AA423' : '#D81840';
-  const trendLabel = `Tendencia (${slope>=0?'+':''}${slope.toFixed(2)} h/sem · R²=${r2.toFixed(2)})`;
+  const trendLabel = `Tendencia (${slope>=0?'+':''}${slope.toFixed(2)} h/${serieViewLabel(view)} · R²=${r2.toFixed(2)})`;
 
   drawChart(id, {
     series: [
       { name:'Horas de falla', type:'column', data: puntos.map(p => ({ x:p.x, y:Number(p.y.toFixed(2)) })) },
       { name:trendLabel, type:'line', data: tendencia.map(p => ({ x:p.x, y:Number(p.y.toFixed(2)) })) }
     ],
-    chart: { type:'line', height:300, toolbar:{show:false}, foreColor:getTextColor() },
+    chart: { type:'line', height:300, toolbar:{show:false}, foreColor:getTextColor(), fontFamily:'Montserrat' },
     stroke: { width:[0,2], dashArray:[0,6] },
     colors: [color, trendColor],
     plotOptions: { bar:{ borderRadius:3, columnWidth:'55%' } },
-    xaxis: {
-      type:'numeric', min:1, max:52, tickAmount:13,
-      title:{ text:'Número de Semana', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
-      labels:{ style:{fontSize:'10px'}, formatter:v=>'S'+Math.round(v) }
-    },
+    xaxis: serieXAxis(id, view),
     yaxis: {
+      max: (serieZoom[id]||{}).ymax,
       title:{ text:'Horas de falla', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
       labels:{ formatter:v=>v.toFixed(1)+' h' }
     },
     tooltip: {
+      theme: isDark?'dark':'light',
       shared:true, intersect:false,
-      x: { formatter:v => 'Semana '+Math.round(v) },
-      y: { formatter:v => v.toFixed(2)+' h' }
+      x: serieTooltipX(view),
+      y: { formatter:v => v!=null ? v.toFixed(2)+' h' : '—' }
     },
     legend: { position:'top', horizontalAlign:'right', fontSize:'11px', fontWeight:600, markers:{width:10,height:10} },
     grid: { borderColor:getGridColor(), strokeDashArray:4 }
   });
+  attachSerieInteraction(id);
 }
 
-function drawLoteSemana(id, lotesPorSemana, color) {
+function drawLoteSemana(id, lotesPorFecha, color) {
   const el = document.querySelector('#'+id);
-  const semanas = Object.keys(lotesPorSemana).map(Number).sort((a,b)=>a-b);
-  if (semanas.length < 2) { if (el) el.innerHTML = '<div class="no-data">Se necesitan al menos 2 semanas con datos</div>'; return; }
+  const view = serieViewOf(id, 'W');
+  const puntos = serieAgg(lotesPorFecha, view, 'avg');
+  if (puntos.length < 2) { if (el) el.innerHTML = '<div class="no-data">Se necesitan al menos 2 ' + (view==='D'?'días':view==='W'?'semanas':'meses') + ' con datos</div>'; return; }
+  serieSetFull(id, puntos);
 
-  // Promedio por semana
-  const puntos = semanas.map(s => ({ x: s, y: lotesPorSemana[s].suma / lotesPorSemana[s].count }));
-
-  // Regresión lineal: y = a·x + b
   const n = puntos.length;
   let sx=0, sy=0, sxy=0, sxx=0;
-  puntos.forEach(p => { sx+=p.x; sy+=p.y; sxy+=p.x*p.y; sxx+=p.x*p.x; });
+  puntos.forEach((p,i) => { sx+=i; sy+=p.y; sxy+=i*p.y; sxx+=i*i; });
   const denom = n*sxx - sx*sx;
   const slope = denom !== 0 ? (n*sxy - sx*sy) / denom : 0;
   const intercept = (sy - slope*sx) / n;
-
-  // r² para info
   const meanY = sy/n;
   let ssTot=0, ssRes=0;
-  puntos.forEach(p => { const yHat = slope*p.x + intercept; ssTot += (p.y-meanY)**2; ssRes += (p.y-yHat)**2; });
+  puntos.forEach((p,i) => { const yHat = slope*i + intercept; ssTot += (p.y-meanY)**2; ssRes += (p.y-yHat)**2; });
   const r2 = ssTot>0 ? 1 - ssRes/ssTot : 0;
 
-  const xMin = semanas[0], xMax = semanas[semanas.length-1];
   const tendencia = [
-    { x: xMin, y: slope*xMin + intercept },
-    { x: xMax, y: slope*xMax + intercept }
+    { x: puntos[0].x, y: intercept },
+    { x: puntos[n-1].x, y: slope*(n-1) + intercept }
   ];
-
   const trendColor = slope >= 0 ? '#9AA423' : '#D81840';
-  const trendLabel = `Tendencia (${slope>=0?'+':''}${slope.toFixed(1)} cajas/sem · R²=${r2.toFixed(2)})`;
+  const trendLabel = `Tendencia (${slope>=0?'+':''}${slope.toFixed(1)} cajas/${serieViewLabel(view)} · R²=${r2.toFixed(2)})`;
 
   drawChart(id, {
     series: [
       { name:'Lote promedio', type:'line', data: puntos.map(p => ({ x:p.x, y:Math.round(p.y) })) },
       { name:trendLabel, type:'line', data: tendencia.map(p => ({ x:p.x, y:Math.round(p.y) })) }
     ],
-    chart: { type:'line', height:300, toolbar:{show:false}, foreColor:getTextColor(), animations:{enabled:true} },
+    chart: { type:'line', height:300, toolbar:{show:false}, foreColor:getTextColor(), fontFamily:'Montserrat' },
     stroke: { curve:['straight','straight'], width:[3,2], dashArray:[0,6] },
     markers: { size:[5,0], strokeWidth:0, hover:{size:7} },
     colors: [color, trendColor],
-    xaxis: {
-      type:'numeric', min:1, max:52, tickAmount:13,
-      title:{ text:'Número de Semana', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
-      labels:{ style:{fontSize:'10px'}, formatter:v=>'S'+Math.round(v) }
-    },
+    xaxis: serieXAxis(id, view),
     yaxis: {
+      max: (serieZoom[id]||{}).ymax,
       title:{ text:'Cajas / lote', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
       labels:{ style:{fontSize:'10px'}, formatter:v=>Math.round(v).toLocaleString('es-AR') }
     },
     tooltip: {
-      shared:false, intersect:true,
-      x: { formatter:v => 'Semana '+Math.round(v) },
-      y: { formatter:v => Math.round(v).toLocaleString('es-AR')+' cajas' }
+      theme: isDark?'dark':'light',
+      shared:true, intersect:false,
+      x: serieTooltipX(view),
+      y: { formatter:v => v!=null ? Math.round(v).toLocaleString('es-AR')+' cajas' : '—' }
     },
     legend: { position:'top', horizontalAlign:'right', fontSize:'11px', fontWeight:600, markers:{width:10,height:10} },
     grid: { borderColor:getGridColor(), strokeDashArray:4 }
   });
+  attachSerieInteraction(id);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -3028,6 +3263,35 @@ function renderObjetivos() {
     </tr>`;
   });
   html += `</tbody></table></div>`;
+
+  // Producto No Conforme: el indicador es general (no por línea), así que va una sola fila
+  const ncTgt = noConfTarget('planta');
+  const mNC = procesarMetricas(filteredData);
+  const ncReal = mNC.pctPNI;
+  const ncOk = ncReal <= ncTgt;
+  const ncDif = ncReal - ncTgt;
+  const ncMetaTd = isAdmin
+    ? `<input type="number" step="0.05" min="0" class="input-obj" value="${ncTgt}" onchange="saveTargetNoConf('planta', this.value)">`
+    : `<span style="font-size:16px;">${ncTgt}%</span>`;
+  html += `
+    <div class="section-title" style="margin-top:22px;">
+      <span style="display:flex;align-items:center;gap:10px;"><span style="width:4px;height:16px;background:linear-gradient(180deg,var(--vspt-crimson),var(--vspt-wine));border-radius:2px;"></span>Producto No Conforme — ${labelPeriodo}</span>
+    </div>
+    <div class="chart-card accent full">
+      <table class="table-obj">
+        <thead><tr><th>Indicador</th><th>Meta Anual (% máx.)</th><th>Real (${labelPeriodo})</th><th>Δ (pp)</th><th>C9L no conformes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:800;text-transform:uppercase;font-size:13px;">Producto No Conforme</td>
+            <td>${ncMetaTd}</td>
+            <td><span class="kpi-value ${ncOk ? 'nc-ok' : 'nc-bad'}" style="font-size:20px;">${ncReal.toFixed(2)}%</span></td>
+            <td><span style="color:var(--${ncOk?'vspt-olive':'vspt-red'});font-weight:800;">${(ncDif>=0?'+':'')+ncDif.toFixed(2)}</span></td>
+            <td style="font-weight:700;">${Math.round(mNC.pni).toLocaleString('es-AR')}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+
   container.innerHTML = html;
 }
 
@@ -3040,6 +3304,13 @@ function toggleAdmin() {
 function saveTarget(id, val) {
   const n = parseFloat(val); if (isNaN(n)) return;
   targets[id].anual = n;
+  localStorage.setItem(TARGETS_KEY, JSON.stringify(targets));
+  renderObjetivos(); render();
+}
+
+function saveTargetNoConf(id, val) {
+  const n = parseFloat(val); if (isNaN(n) || n < 0) return;
+  targets[id].noConf = n;
   localStorage.setItem(TARGETS_KEY, JSON.stringify(targets));
   renderObjetivos(); render();
 }
