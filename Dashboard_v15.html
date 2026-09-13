@@ -917,12 +917,17 @@ async function init() {
     } catch(e) {}
   }
 
+  // auth.js retiene los pedidos a la API hasta que haya login. Esperamos esa
+  // puerta ANTES de arrancar los cronómetros: si no, el timeout mide el rato
+  // que la persona tarda en loguearse y aborta pedidos que iban a responder bien.
+  await apiGateReady();
+
   // El pedido de OPINONA (fase 2, lento) arranca YA, en paralelo con el KPI
-  const opiPromise = withTimeout(fetch(API_URL + '?tabla=opinona'), 6000);
+  const opiPromise = withTimeout(fetch(API_URL + '?tabla=opinona'), TIMEOUT_OPINONA);
   opiPromise.catch(() => {});   // el error real se maneja al hacer await más abajo
 
   try {
-    const resK = await withTimeout(fetch(API_URL + '?tabla=kpi_planta_mensual'), 5000);
+    const resK = await withTimeout(fetch(API_URL + '?tabla=kpi_planta_mensual'), TIMEOUT_KPI);
     const jK = await resK.json();
     if (jK.status === 'success' && Array.isArray(jK.kpi_planta_mensual)) {
       kpiData = jK.kpi_planta_mensual;
@@ -963,14 +968,18 @@ async function init() {
     console.error(err);
     if (rawData.length) { showContent(); setStatus('amber', 'CACHE · SIN CONEXIÓN'); }
     else if (kpiData.length) { showContent(); setStatus('amber', 'KPI · SIN DETALLE'); }
-    else { cargarDatosDemo(err); }
+    else if (DEMO_MODE) { cargarDatosDemo(err); }
+    else { setStatus('red', 'ERROR API'); showError(err.message); }
   }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DATOS DE EJEMPLO — solo cuando la API no responde y no hay caché.
+   DATOS DE EJEMPLO — SOLO bajo pedido explícito con ?demo=1 en la URL.
    Sirve para maquetar/retocar el HTML sin conexión (el login de Google queda
    desactivado mientras editamos, así que la API rechaza el pedido).
+   Nunca se activa solo: si la API falla en producción el tablero muestra
+   ERROR API, porque mostrar números sintéticos como si fueran reales es peor
+   que no mostrar nada.
    NO se guarda en localStorage para no pisar la caché de los datos reales.
    El 10/09/2026 replica los números de la planilla; el resto es sintético.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -1131,7 +1140,25 @@ function generarDatosDemo() {
 
 // La API queda inaccesible cuando el login de Google está desactivado (retoques
 // al HTML) o sin red: sin un tope de espera el fetch cuelga y el panel se queda
-// en "SINCRONIZANDO...". Con el tope, cae a caché o a datos de ejemplo.
+// en "SINCRONIZANDO...". Con el tope, cae a caché o muestra ERROR API.
+// Apps Script tarda bastante en servir OPINONA completo (arranque en frío +
+// payload grande): con topes de 5-6s el tablero abortaba pedidos que iban a
+// responder bien y se quedaba sin datos. El tope queda sólo como red de
+// seguridad para una API realmente caída.
+const TIMEOUT_OPINONA = 60000;
+const TIMEOUT_KPI     = 30000;
+
+// Los datos de ejemplo son una herramienta de maquetado, NO un fallback de
+// producción: si se cargan solos, el tablero muestra números inventados como si
+// fueran reales. Sólo se activan pidiéndolos a mano con ?demo=1 en la URL.
+const DEMO_MODE = /[?&]demo=1\b/.test(location.search);
+
+// Se resuelve cuando auth.js ya tiene sesión y deja salir los pedidos a la API.
+// Si auth.js no está cargado (AUTH-OFF mientras retocamos el HTML) sigue de largo.
+function apiGateReady() {
+  return window.VSPT_API_READY || Promise.resolve();
+}
+
 function withTimeout(promise, ms) {
   return Promise.race([
     promise,
