@@ -29,6 +29,11 @@
   var tokenExp = 0;            // vencimiento en ms (epoch)
   var releaseApi;             // libera los fetch a la API una vez logueado
   var apiReady = new Promise(function (res) { releaseApi = res; });
+  // El panel necesita saber cuándo se abrió la puerta: los pedidos a la API
+  // quedan encolados acá hasta que haya login, así que un timeout que arranque
+  // al cargar la página estaría midiendo el tiempo que tarda la PERSONA en
+  // loguearse, no el que tarda la API en responder.
+  window.VSPT_API_READY = apiReady;
   var refreshIv = null;
 
   // -------- persistencia de sesión (para no re-loguear al cambiar de página) --------
