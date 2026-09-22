@@ -1533,6 +1533,7 @@ function procesarMetricas(data) {
   const fallasPorSemana = {}; // { semana: horas }
   const lotesPorSemana = {}; // { semana: { suma, count } }
   const fallasPorFecha = {}; // { 'YYYY-MM-DD': horas }   ← base de la serie D/S/M
+  const efectivoPorFecha = {}; // { 'YYYY-MM-DD': horas de Tiempo Efectivo } ← base del % de fallas
   const lotesPorFecha = {};  // { 'YYYY-MM-DD': { suma, count } }
   const botellasUnid = {}; // { codigo_botella: N° unidades producidas }
 
@@ -1555,6 +1556,11 @@ function procesarMetricas(data) {
     }
 
     tot += v;
+    // Tiempo Efectivo por día = todo menos No Uso y NoNa (misma fórmula que tEfectivo)
+    if (cls !== CATS.NO_USO && cls !== CATS.NONA) {
+      const fEf = getFecha(r);
+      if (fEf) { const kE = diaYMD(fEf); efectivoPorFecha[kE] = (efectivoPorFecha[kE]||0) + v; }
+    }
     if (tPor[cls] !== undefined) tPor[cls] += v;
     else if (CATS_RETRABAJO.includes(cls)) {
       const fRetr = getFecha(r);
@@ -1655,7 +1661,7 @@ function procesarMetricas(data) {
     tiempoPorClasif: tPor, opi,
     cajas, semielaborado, pni, pctPNI, lotePromedio, cajasList, lotesPorSemana, botellasUnid,
     c9lTotal, hlTotal, hlPorFecha, hlPorFechaTurno, hlPorFechaTipo, hlPorTipo, fallasPorSemana,
-    fallasPorFecha, lotesPorFecha,
+    fallasPorFecha, efectivoPorFecha, lotesPorFecha,
     paros, fallasOrg, fallasEqMTO, fallasEqOP, paradasExtEq, lineas
   };
 }
@@ -1948,6 +1954,7 @@ function renderTab(tabId, data) {
     <div class="chart-card full" style="margin-bottom:14px;">
       <div class="chart-title" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
         <span>${tabBadge} Tiempo de Fallas de Equipos <span class="hint">con línea de tendencia</span></span>
+        ${fallaModeHTML(`chart-${tabId}-fallasem`)}
         ${serieToolsHTML(`chart-${tabId}-fallasem`, 'W')}
       </div>
       <div id="chart-${tabId}-fallasem" style="height:300px;"></div>
@@ -2029,8 +2036,8 @@ function renderTab(tabId, data) {
   drawHistograma(`chart-${tabId}-hist`, m.cajasList, themeColor);
 
   // Colapsables: dibujar solo si están visibles (o se dibujan al abrir)
-  serieRedraw[`chart-${tabId}-fallasem`] = () => drawFallaSemana(`chart-${tabId}-fallasem`, m.fallasPorFecha, '#D81840');
-  drawFallaSemana(`chart-${tabId}-fallasem`, m.fallasPorFecha, '#D81840');
+  serieRedraw[`chart-${tabId}-fallasem`] = () => drawFallaSemana(`chart-${tabId}-fallasem`, m.fallasPorFecha, '#D81840', m.efectivoPorFecha);
+  drawFallaSemana(`chart-${tabId}-fallasem`, m.fallasPorFecha, '#D81840', m.efectivoPorFecha);
   pendingCharts[`chart-${tabId}-lotesem`]  = () => drawLoteSemana(`chart-${tabId}-lotesem`, m.lotesPorFecha, themeColor);
   serieRedraw[`chart-${tabId}-lotesem`]  = pendingCharts[`chart-${tabId}-lotesem`];
   pendingCharts[`chart-${tabId}-botellas`] = () => drawBotellasPareto(`chart-${tabId}-botellas`, m.botellasUnid, themeColor);
@@ -2187,6 +2194,29 @@ function serieToolsHTML(id, def) {
     '<button type="button" class="serie-reset" onclick="resetSerie(\'' + id + '\')" title="Volver al rango completo">Reset</button></span>';
 }
 
+/* ── Fallas: horas absolutas vs. % del Tiempo Efectivo ──────────────────────
+   'H' = horas de falla (vista original). 'P' = horas de falla / Tiempo Efectivo
+   del mismo bucket × 100. Permite distinguir "fallan más" de "trabajan más". */
+const fallaModeState = {}; // { chartId: 'H' | 'P' }
+function fallaModeOf(id) { return fallaModeState[id] || 'H'; }
+
+function fallaModeHTML(id) {
+  const v = fallaModeOf(id);
+  const b = (k, l, t) => '<button type="button" class="opi-view-btn ' + (v === k ? 'on' : '') + '" data-falla-mode="' + k + '" title="' + t + '" onclick="setFallaMode(\'' + id + '\',\'' + k + '\')">' + l + '</button>';
+  return '<span class="opi-view-switch falla-mode-switch" data-chart="' + id + '" style="display:inline-flex;gap:6px;align-items:center;">' +
+    b('H','Horas','Horas de falla acumuladas') +
+    b('P','% T. Efectivo','Horas de falla sobre el Tiempo Efectivo de Trabajo del período') +
+    '</span>';
+}
+
+function setFallaMode(id, mode) {
+  fallaModeState[id] = mode;
+  delete serieZoom[id]; // las escalas Y no son comparables entre horas y %
+  const sw = document.querySelector('.falla-mode-switch[data-chart="' + id + '"]');
+  if (sw) sw.querySelectorAll('.opi-view-btn').forEach(b => b.classList.toggle('on', b.dataset.fallaMode === mode));
+  if (serieRedraw[id]) serieRedraw[id]();
+}
+
 /* Inicio del bucket (timestamp local) según granularidad */
 function serieBucketTs(d, view) {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -2243,21 +2273,52 @@ function serieAgg(mapDiario, view, mode) {
     .map(ts => ({ x: ts, y: mode === 'avg' ? (acc[ts].n ? acc[ts].s / acc[ts].n : 0) : acc[ts].s }));
 }
 
+/* Dominio del eje de tiempo según los filtros vigentes:
+   sin filtro → año completo; mes elegido → del 1 al último día de ese mes;
+   rango desde/hasta → ese rango. Devuelve extremos ya llevados al bucket. */
+function serieDomain(view) {
+  const per = document.getElementById('f-periodo')?.value || 'ALL';
+  const des = document.getElementById('f-desde')?.value || '';
+  const has = document.getElementById('f-hasta')?.value || '';
+  let start, end;
+  if (des || has) {
+    start = new Date((des || has) + 'T12:00:00');
+    end   = new Date((has || des) + 'T12:00:00');
+  } else if (per !== 'ALL') {
+    const mi = MESES_ORDEN.indexOf(per);
+    if (mi < 0) return null;
+    start = new Date(activeYear, mi, 1, 12);
+    end   = new Date(activeYear, mi + 1, 0, 12);
+  } else {
+    start = new Date(activeYear, 0, 1, 12);
+    end   = new Date(activeYear, 11, 31, 12);
+  }
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+  // Media caja de aire a cada lado para que la primera y la última columna entren completas
+  const pad = view === 'D' ? 432e5 : view === 'W' ? 3.024e8 : 1.296e9; // 12 h · 3,5 d · 15 d
+  return { xmin: serieBucketTs(start, view) - pad, xmax: serieBucketTs(end, view) + pad };
+}
+
 /* Configuración del eje de tiempo, con el zoom vigente aplicado */
 function serieXAxis(id, view, extra) {
   const z = serieZoom[id] || {};
+  const dom = serieDomain(view) || {};
   return Object.assign({
     type:'datetime',
     title:{ text: view === 'D' ? 'Fecha' : view === 'W' ? 'Número de Semana' : 'Mes',
       style:{ fontSize:'10px', color:getTextColor(), fontWeight:600 } },
-    min: z.xmin, max: z.xmax,
+    min: z.xmin != null ? z.xmin : dom.xmin,
+    max: z.xmax != null ? z.xmax : dom.xmax,
     labels:{ datetimeUTC:false, style:{ fontSize:'10.5px', colors:getTextColor() },
       formatter: (value, timestamp) => serieAxisLabel(timestamp != null ? timestamp : value, view) },
     tooltip:{ enabled:false }
   }, extra || {});
 }
 
-function serieSetFull(id, pts) {
+function serieSetFull(id, pts, view) {
+  // El rango "completo" al que vuelve Reset es el del filtro (año o mes), no el de los datos
+  const dom = view ? serieDomain(view) : null;
+  if (dom) { serieFull[id] = dom; return; }
   if (!pts.length) { delete serieFull[id]; return; }
   const pad = pts.length > 1 ? (pts[pts.length-1].x - pts[0].x) * 0.02 : 864e5;
   serieFull[id] = { xmin: pts[0].x - pad, xmax: pts[pts.length-1].x + pad };
@@ -2414,7 +2475,7 @@ function drawEvolutivo(id, tabId, target, themeColor) {
 
     const tsKeys = Object.keys(buckets).map(Number).sort((a,b) => a-b);
     const seriesData = tsKeys.map(ts => ({ x: ts, y: Number(procesarMetricas(buckets[ts]).opi.toFixed(1)) }));
-    serieSetFull(id, seriesData);
+    serieSetFull(id, seriesData, view);
 
     drawChart(id, {
       series: [{ name: view==='D' ? 'OPI Diario' : 'OPI Semanal', type:'line', data: seriesData }],
@@ -2516,7 +2577,7 @@ function drawHL(id, hlPorFechaTipo, color) {
   });
   const keys = Object.keys(agg).map(Number).sort((a,b) => a-b);
   if (!keys.length) { if (el) el.innerHTML = '<div class="no-data">Sin volumen envasado en el período</div>'; return; }
-  serieSetFull(id, keys.map(x => ({ x })));
+  serieSetFull(id, keys.map(x => ({ x })), view);
 
   // Recolectar todos los tipos presentes y ordenarlos por volumen total descendente
   const tipoTotales = {};
@@ -2725,14 +2786,24 @@ function toggleCollapse(id, btn) {
   }
 }
 
-function drawFallaSemana(id, fallasPorFecha, color) {
+function drawFallaSemana(id, fallasPorFecha, color, efectivoPorFecha) {
   const el = document.querySelector('#'+id);
   const view = serieViewOf(id, 'W');
-  const puntos = serieAgg(fallasPorFecha, view, 'sum');
-  if (puntos.length < 2) { if (el) el.innerHTML = '<div class="no-data">Se necesitan al menos 2 ' + (view==='D'?'días':view==='W'?'semanas':'meses') + ' con datos</div>'; return; }
-  serieSetFull(id, puntos);
+  const modo = fallaModeOf(id);
+  const pct = modo === 'P' && efectivoPorFecha;
+  let puntos = serieAgg(fallasPorFecha, view, 'sum');
 
-  // Regresión lineal sobre el índice del bucket (independiente de la granularidad)
+  if (pct) {
+    // % = horas de falla del bucket / Tiempo Efectivo del mismo bucket.
+    // Se parte del Tiempo Efectivo para no perder buckets con 0 h de falla.
+    const fMap = {}; puntos.forEach(p => { fMap[p.x] = p.y; });
+    puntos = serieAgg(efectivoPorFecha, view, 'sum')
+      .filter(p => p.y > 0)
+      .map(p => ({ x: p.x, y: (fMap[p.x] || 0) / p.y * 100, ef: p.y, h: fMap[p.x] || 0 }));
+  }
+
+  if (!puntos.length) { if (el) el.innerHTML = '<div class="no-data">Sin fallas registradas en el período</div>'; return; }
+  serieSetFull(id, puntos, view);
   const n = puntos.length;
   let sx=0, sy=0, sxy=0, sxx=0;
   puntos.forEach((p,i) => { sx+=i; sy+=p.y; sxy+=i*p.y; sxx+=i*i; });
@@ -2750,13 +2821,14 @@ function drawFallaSemana(id, fallasPorFecha, color) {
   ];
   // Tendencia al alza en fallas = MALO (rojo); a la baja = BUENO (oliva)
   const trendColor = slope <= 0 ? '#9AA423' : '#D81840';
-  const trendLabel = `Tendencia (${slope>=0?'+':''}${slope.toFixed(2)} h/${serieViewLabel(view)} · R²=${r2.toFixed(2)})`;
+  const unidad = pct ? 'pp' : 'h';
+  const trendLabel = `Tendencia (${slope>=0?'+':''}${slope.toFixed(2)} ${unidad}/${serieViewLabel(view)} · R²=${r2.toFixed(2)})`;
+  const serieName = pct ? '% del Tiempo Efectivo' : 'Horas de falla';
+  const serieBarra = { name:serieName, type:'column', data: puntos.map(p => ({ x:p.x, y:Number(p.y.toFixed(2)), ef:p.ef, h:p.h })) };
+  const serieTrend = { name:trendLabel, type:'line', data: tendencia.map(p => ({ x:p.x, y:Number(p.y.toFixed(2)) })) };
 
   drawChart(id, {
-    series: [
-      { name:'Horas de falla', type:'column', data: puntos.map(p => ({ x:p.x, y:Number(p.y.toFixed(2)) })) },
-      { name:trendLabel, type:'line', data: tendencia.map(p => ({ x:p.x, y:Number(p.y.toFixed(2)) })) }
-    ],
+    series: n > 1 ? [serieBarra, serieTrend] : [serieBarra],
     chart: { type:'line', height:300, toolbar:{show:false}, foreColor:getTextColor(), fontFamily:'Montserrat' },
     stroke: { width:[0,2], dashArray:[0,6] },
     colors: [color, trendColor],
@@ -2764,14 +2836,19 @@ function drawFallaSemana(id, fallasPorFecha, color) {
     xaxis: serieXAxis(id, view),
     yaxis: {
       max: (serieZoom[id]||{}).ymax,
-      title:{ text:'Horas de falla', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
-      labels:{ formatter:v=>v.toFixed(1)+' h' }
+      title:{ text: pct ? '% del Tiempo Efectivo' : 'Horas de falla', style:{fontSize:'11px', color:getTextColor(), fontWeight:600} },
+      labels:{ formatter:v => pct ? v.toFixed(1)+'%' : v.toFixed(1)+' h' }
     },
     tooltip: {
       theme: isDark?'dark':'light',
       shared:true, intersect:false,
       x: serieTooltipX(view),
-      y: { formatter:v => v!=null ? v.toFixed(2)+' h' : '—' }
+      y: { formatter:(v,o) => {
+        if (v == null) return '—';
+        if (!pct) return v.toFixed(2)+' h';
+        const p = o && o.seriesIndex === 0 ? puntos[o.dataPointIndex] : null;
+        return v.toFixed(2)+'%' + (p ? ` (${p.h.toFixed(2)} h de falla / ${p.ef.toFixed(2)} h efectivas)` : '');
+      } }
     },
     legend: { position:'top', horizontalAlign:'right', fontSize:'11px', fontWeight:600, markers:{width:10,height:10} },
     grid: { borderColor:getGridColor(), strokeDashArray:4 }
@@ -2783,8 +2860,8 @@ function drawLoteSemana(id, lotesPorFecha, color) {
   const el = document.querySelector('#'+id);
   const view = serieViewOf(id, 'W');
   const puntos = serieAgg(lotesPorFecha, view, 'avg');
-  if (puntos.length < 2) { if (el) el.innerHTML = '<div class="no-data">Se necesitan al menos 2 ' + (view==='D'?'días':view==='W'?'semanas':'meses') + ' con datos</div>'; return; }
-  serieSetFull(id, puntos);
+  if (!puntos.length) { if (el) el.innerHTML = '<div class="no-data">Sin lotes en el período</div>'; return; }
+  serieSetFull(id, puntos, view);
 
   const n = puntos.length;
   let sx=0, sy=0, sxy=0, sxx=0;
@@ -2805,10 +2882,12 @@ function drawLoteSemana(id, lotesPorFecha, color) {
   const trendLabel = `Tendencia (${slope>=0?'+':''}${slope.toFixed(1)} cajas/${serieViewLabel(view)} · R²=${r2.toFixed(2)})`;
 
   drawChart(id, {
-    series: [
+    series: (n > 1 ? [
       { name:'Lote promedio', type:'line', data: puntos.map(p => ({ x:p.x, y:Math.round(p.y) })) },
       { name:trendLabel, type:'line', data: tendencia.map(p => ({ x:p.x, y:Math.round(p.y) })) }
-    ],
+    ] : [
+      { name:'Lote promedio', type:'line', data: puntos.map(p => ({ x:p.x, y:Math.round(p.y) })) }
+    ]),
     chart: { type:'line', height:300, toolbar:{show:false}, foreColor:getTextColor(), fontFamily:'Montserrat' },
     stroke: { curve:['straight','straight'], width:[3,2], dashArray:[0,6] },
     markers: { size:[5,0], strokeWidth:0, hover:{size:7} },
