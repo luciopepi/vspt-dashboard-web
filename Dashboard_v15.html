@@ -967,7 +967,7 @@ async function init() {
   await apiGateReady();
 
   // El pedido de OPINONA (fase 2, lento) arranca YA, en paralelo con el KPI
-  const opiPromise = withTimeout(fetch(API_URL + '?tabla=opinona'), TIMEOUT_OPINONA);
+  const opiPromise = withTimeout(fetch(API_URL + '?tabla=opinona&formato=compacto'), TIMEOUT_OPINONA);
   opiPromise.catch(() => {});   // el error real se maneja al hacer await más abajo
 
   try {
@@ -988,7 +988,8 @@ async function init() {
   const cached = localStorage.getItem(CACHE_KEY);
   if (cached) {
     try {
-      rawData = JSON.parse(cached);
+      rawData = rehidratarOpinona(JSON.parse(cached)) || [];
+      if (!rawData.length) throw new Error('caché vacía');
       opinonaCargada = true;
       showContent();
       setupFilters(); setFiltrosBloqueados(false); onFilterChange();
@@ -999,10 +1000,13 @@ async function init() {
   try {
     const res = await opiPromise;
     const j = await res.json();
-    if (j.status === 'success' && Array.isArray(j.opinona)) {
-      rawData = j.opinona;
+    const filasOpi = j.status === 'success' ? rehidratarOpinona(j.opinona) : null;
+    if (filasOpi && filasOpi.length) {
+      rawData = filasOpi;
       opinonaCargada = true;
-      trySet(CACHE_KEY, JSON.stringify(rawData));
+      // Se cachea el payload TAL CUAL vino: en compacto entra en localStorage,
+      // en el formato viejo supera la cuota y trySet lo descarta sin romper nada.
+      trySet(CACHE_KEY, JSON.stringify(j.opinona));
       showContent();
       setupFilters(); setFiltrosBloqueados(false); onFilterChange();
       const conTurno = rawData.filter(r => get(r,'turno_plan')).length;
@@ -1011,7 +1015,7 @@ async function init() {
   } catch (err) {
     console.error(err);
     if (rawData.length) { showContent(); setStatus('amber', 'CACHE · SIN CONEXIÓN'); }
-    else if (kpiData.length) { showContent(); setStatus('amber', 'KPI · SIN DETALLE'); }
+    else if (kpiData.length) { showContent(); setStatus('amber', 'KPI · SIN DETALLE'); marcarDetalleCaido(err.message); }
     else if (DEMO_MODE) { cargarDatosDemo(err); }
     else { setStatus('red', 'ERROR API'); showError(err.message); }
   }
@@ -1189,7 +1193,10 @@ function generarDatosDemo() {
 // payload grande): con topes de 5-6s el tablero abortaba pedidos que iban a
 // responder bien y se quedaba sin datos. El tope queda sólo como red de
 // seguridad para una API realmente caída.
-const TIMEOUT_OPINONA = 60000;
+// 22/09/2026: con el histórico 2025+2026 el pedido de OPINONA pasó los 60 s y el
+// tablero quedaba en "Cargando datos detallados..." para siempre. Se sube a 180 s
+// como red de seguridad; la solución de fondo es el formato compacto de abajo.
+const TIMEOUT_OPINONA = 180000;
 const TIMEOUT_KPI     = 30000;
 
 // Los datos de ejemplo son una herramienta de maquetado, NO un fallback de
@@ -1201,6 +1208,22 @@ const DEMO_MODE = /[?&]demo=1\b/.test(location.search);
 // Si auth.js no está cargado (AUTH-OFF mientras retocamos el HTML) sigue de largo.
 function apiGateReady() {
   return window.VSPT_API_READY || Promise.resolve();
+}
+
+/* La API puede devolver OPINONA en formato compacto {h:[columnas], r:[[valores]]}.
+   El formato viejo —un objeto por fila— repite los 50 nombres de columna en cada
+   una de las ~30.000 filas: son decenas de MB de puros nombres de columna. El
+   compacto manda los nombres UNA vez y el tablero rearma los objetos acá.
+   Si la API todavía no está actualizada devuelve el array de siempre y se usa tal cual. */
+function rehidratarOpinona(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || !Array.isArray(payload.h) || !Array.isArray(payload.r)) return null;
+  const cols = payload.h;
+  return payload.r.map(fila => {
+    const o = {};
+    for (let i = 0; i < cols.length; i++) o[cols[i]] = fila[i];
+    return o;
+  });
 }
 
 function withTimeout(promise, ms) {
@@ -1224,6 +1247,21 @@ function normalizeTurno(v) {
   if (s.includes('TARD')) return 'TARDE';
   if (s.includes('NOCH')) return 'NOCHE';
   return s || 'S/D';
+}
+
+/* El cartel "Cargando datos detallados..." se queda puesto aunque el pedido ya
+   haya fracasado: sin esto el tablero aparenta estar cargando para siempre. */
+function marcarDetalleCaido(msg) {
+  document.querySelectorAll('.kpi-loading-hint').forEach(el => {
+    el.style.fontStyle = 'normal';
+    el.innerHTML =
+      '<div style="color:var(--vspt-crimson);font-weight:700;">No se pudo cargar el detalle</div>' +
+      '<div style="margin-top:6px;font-size:11px;">' + String(msg || '').replace(/</g,'&lt;') + '</div>' +
+      '<div style="margin-top:4px;font-size:11px;">Los KPI de arriba son los de la hoja mensual y están al día.</div>' +
+      '<button type="button" onclick="location.reload()" style="margin-top:12px;padding:7px 18px;border-radius:999px;' +
+        'border:1px solid var(--border);background:var(--card2);color:var(--text);font-family:inherit;font-weight:600;' +
+        'font-size:12px;cursor:pointer;">Reintentar</button>';
+  });
 }
 
 function showContent() { document.getElementById('loadingSpinner').style.display = 'none'; document.getElementById('tab-'+activeTab).style.display = 'block'; }
