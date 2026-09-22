@@ -1766,10 +1766,10 @@ function kpiCardsHTML(m, tabId, target, isPlanta, lineId, heroCls, kpiGlobalClas
           <div class="kpi-sub">Tipo Etiquetado = LLENADO</div>
         </div>
       </div>
-      <div class="kpi-card" style="grid-column:span 2;">
-        <div class="kpi-label">Prod. No Conforme <span style="opacity:.55;font-weight:600;">meta ≤ ${ncTarget}%</span></div>
+      <div class="kpi-card" style="grid-column:span 2;cursor:pointer;" onclick="irACalidadPNC('${tabId}')" title="Ver los desvíos de calidad de este período${isPlanta ? '' : ' y ' + lineId}">
+        <div class="kpi-label">Prod. No Conforme ↗ <span style="opacity:.55;font-weight:600;">meta ≤ ${ncTarget}%</span></div>
         <div class="kpi-value ${ncCls}">${m.pctPNI.toFixed(2)}<span style="font-size:14px;opacity:.6">%</span></div>
-        <div class="kpi-sub">${Math.round(m.pni).toLocaleString('es-AR')} C9L no conformes</div>
+        <div class="kpi-sub">${Math.round(m.pni).toLocaleString('es-AR')} C9L no conformes · toca para ver desvíos</div>
       </div>
       <div class="kpi-card red">
         <div class="kpi-label">Fallas MTO</div>
@@ -1782,6 +1782,49 @@ function kpiCardsHTML(m, tabId, target, isPlanta, lineId, heroCls, kpiGlobalClas
         <div class="kpi-sub">Var. % &lt; 70% · toca para ver detalle</div>
       </div>
     </div>`;
+}
+
+/* Clic en Prod. No Conforme → pestaña Calidad con el mismo recorte de línea y
+   fechas. El rango sale del filtro de tiempo activo (fechas, mes o semana; si
+   no hay ninguno, el año). Calidad no trae semana: se traduce a las fechas
+   que cubren las filas filtradas. */
+function _isoDia(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function rangoCalidadActual() {
+  const fPer = document.getElementById('f-periodo')?.value || 'ALL';
+  const fDes = document.getElementById('f-desde')?.value || '';
+  const fHas = document.getElementById('f-hasta')?.value || '';
+  const fSem = document.getElementById('f-semana')?.value || '';
+  if (fDes || fHas) return { desde: fDes, hasta: fHas, label: [fDes, fHas].filter(Boolean).map(x => x.split('-').reverse().join('/')).join(' – ') };
+  if (fPer !== 'ALL') {
+    const i = MESES_ORDEN.indexOf(fPer);
+    if (i > -1) return { desde: _isoDia(new Date(activeYear, i, 1)), hasta: _isoDia(new Date(activeYear, i + 1, 0)),
+                         label: fPer.charAt(0) + fPer.slice(1).toLowerCase() + ' ' + activeYear };
+  }
+  if (fSem) {
+    const fs = filteredData.map(getFecha).filter(Boolean).map(d => d.getTime());
+    if (fs.length) return { desde: _isoDia(new Date(Math.min(...fs))), hasta: _isoDia(new Date(Math.max(...fs))), label: 'Semana ' + fSem };
+  }
+  return { desde: activeYear + '-01-01', hasta: activeYear + '-12-31', label: 'Año ' + activeYear };
+}
+function irACalidadPNC(tabId) {
+  const r = rangoCalidadActual();
+  const filtro = { type: 'vspt-filtro-calidad', linea: /^l[123]$/.test(tabId) ? tabId.toUpperCase() : '',
+                   desde: r.desde, hasta: r.hasta, label: r.label };
+  const iframe = document.getElementById('iframeCalidad');
+  if (iframe && iframe.src !== 'about:blank' && iframe.contentWindow) {
+    // Ya precargada: se le pasa el filtro por mensaje (no se recarga la página)
+    try { iframe.contentWindow.postMessage(filtro, '*'); } catch (e) {}
+  } else if (iframe) {
+    // Todavía no cargó: el filtro viaja en la URL
+    const q = new URLSearchParams({ linea: filtro.linea, desde: filtro.desde, hasta: filtro.hasta, label: filtro.label });
+    iframe.addEventListener('load', () => {
+      try { iframe.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
+    }, { once:true });
+    iframe.src = 'Dashboard_calidad.html?' + q.toString();
+  }
+  changeTab('calidad');
 }
 
 function renderTabKPIsOnly(tabId) {
