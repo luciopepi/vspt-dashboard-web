@@ -830,6 +830,9 @@ const CATS = {
 // descontar recién desde jul-2026 para no correr el OPI ya reportado antes.
 const CATS_RETRABAJO = ['Rechazos y Reprocesos', 'Mantención por Terceros'];
 const FECHA_CORTE_RETRABAJO = new Date(2026, 6, 1); // 1-jul-2026 inclusive
+// El tiempo de las cajas PNC se descuenta del T. Teórico desde el mismo corte,
+// por la misma razón. Debe coincidir con ANIO_MES_CORTE_PNC del ETL.
+const FECHA_CORTE_PNC = new Date(2026, 6, 1);
 
 const parseNum = v => { if (v==null||v==='') return 0; const n=parseFloat(String(v).replace(',','.')); return isNaN(n)?0:n; };
 const get = (r, ...keys) => { for (const k of keys) if (r[k]!==undefined && r[k]!==null && r[k]!=='') return r[k]; return undefined; };
@@ -933,6 +936,28 @@ const getPTA       = r => String(get(r,'Cambio Formato PT A','Cambio_Formato_PT_
 const getPTB       = r => String(get(r,'Cambio Formato PT B','Cambio_Formato_PT_B','cambio_formato_pt_b')||'').trim();
 const getUnidades  = r => parseNum(get(r,'N° Unidades','N°_Unidades','N Unidades','n_unidades','unidades','Unidades','UNIDADES'));
 const getCodBotella= r => String(get(r,'codigo_botella','codigo botella','Codigo_Botella','CODIGO_BOTELLA','codigo botella')||'').trim();
+const getNominal   = r => parseNum(get(r,'NOMINAL','Nominal','nominal'));   // botellas/h
+
+// Botellas por caja: del formato ("Colón Selecto 6x750" o "VNR750CCX6-CO");
+// si no se puede leer, N° Unidades (botellas de la fila) ÷ cajas.
+function unidadesPorCaja(r) {
+  const fm = String(get(r,'Formato_1','FORMATO_1','formato_1') || '');
+  const m = fm.match(/(\d+)\s*[xX]\s*\d+/) || fm.match(/[xX]\s*(\d+)(?!\d)/);
+  if (m) return Number(m[1]);
+  const cajas = getCajas(r), unid = getUnidades(r);
+  return cajas > 0 && unid > 0 ? Math.round(unid / cajas) : 0;
+}
+
+// Horas de línea que se usaron para producir las cajas retenidas (PNC) a
+// velocidad nominal. Se descuentan del Tiempo Teórico: lo no conforme no es
+// producción válida. Por nominal y no por proporción de la fila porque un
+// desvío puede cargarse en un día con menos cajas que las retenidas.
+function horasPNC(r) {
+  const pnc = getPNI(r);
+  if (pnc <= 0) return 0;
+  const nom = getNominal(r), upc = unidadesPorCaja(r);
+  return nom > 0 && upc > 0 ? pnc * upc / nom : 0;
+}
 
 window.addEventListener('load', init);
 
@@ -1481,7 +1506,7 @@ function metricasDesdeKPI(kpiRows, tabId, anio, mesNombre) {
 
   const acc = {
     tot:0, t_no_uso:0, t_nona:0, t_cambio:0, t_planeado:0, t_externa:0, t_falla:0, t_retrabajo:0, t_produccion:0,
-    perdidas_vel:0, cajas:0, semielaborado:0, n_lotes:0, pni:0, c9l:0,
+    perdidas_vel:0, t_pnc:0, cajas:0, semielaborado:0, n_lotes:0, pni:0, c9l:0,
     fallas_mto:0, fallas_op:0, fallas_inv:0
   };
   filtradas.forEach(r => {
@@ -1493,7 +1518,7 @@ function metricasDesdeKPI(kpiRows, tabId, anio, mesNombre) {
   const tProdDisp    = tEfectivo - acc.t_cambio - acc.t_planeado;
   const tActualProd  = tProdDisp - acc.t_externa;
   const tOperacion   = tActualProd - acc.t_falla - acc.t_retrabajo;
-  const tTeorico     = tOperacion - acc.perdidas_vel;
+  const tTeorico     = tOperacion - acc.perdidas_vel - acc.t_pnc;
   const opi = tEfectivo > 0 ? (tTeorico / tEfectivo) * 100 : 0;
   const lotePromedio = acc.n_lotes ? acc.cajas / acc.n_lotes : 0;
   // PNI convertido a cajas de 9L con la relación C9L/cajas agregada (fallback cuando se lee del KPI ya sumado).
@@ -1503,7 +1528,7 @@ function metricasDesdeKPI(kpiRows, tabId, anio, mesNombre) {
 
   return {
     opi, tConPersonal, tEfectivo, tProdDisp, tActualProd, tOperacion, tTeorico,
-    perdidasVel: acc.perdidas_vel, tRetrabajo: acc.t_retrabajo,
+    perdidasVel: acc.perdidas_vel, tPNC: acc.t_pnc, tRetrabajo: acc.t_retrabajo,
     tiempoPorClasif: {
       [CATS.NO_USO]: acc.t_no_uso, [CATS.NONA]: acc.t_nona, [CATS.CAMBIO]: acc.t_cambio,
       [CATS.PLANEADO]: acc.t_planeado, [CATS.EXTERNA]: acc.t_externa, [CATS.FALLA]: acc.t_falla,
@@ -1517,7 +1542,7 @@ function metricasDesdeKPI(kpiRows, tabId, anio, mesNombre) {
 
 function procesarMetricas(data) {
   const tPor = { [CATS.NO_USO]:0, [CATS.NONA]:0, [CATS.CAMBIO]:0, [CATS.PLANEADO]:0, [CATS.EXTERNA]:0, [CATS.FALLA]:0, [CATS.PRODUCCION]:0 };
-  let tot = 0, perdidasVel = 0, tRetrabajo = 0;
+  let tot = 0, perdidasVel = 0, tRetrabajo = 0, tPNC = 0;
   let cajas = 0, semielaborado = 0, pni = 0, c9lTotal = 0;
   const paros = {};
   const fallasOrg = { MTO:0, OP:0, INV:0 };
@@ -1593,6 +1618,8 @@ function procesarMetricas(data) {
     const pniFila = getPNI(r);
     if (pniFila > 0) {
       pni += cajasFila > 0 ? pniFila * (c9l / cajasFila) : pniFila;
+      const fPnc = getFecha(r);
+      if (fPnc && fPnc >= FECHA_CORTE_PNC) tPNC += horasPNC(r);
     }
 
     if (c9l > 0) {
@@ -1649,7 +1676,7 @@ function procesarMetricas(data) {
   const tProdDisp    = tEfectivo - tPor[CATS.CAMBIO] - tPor[CATS.PLANEADO];
   const tActualProd  = tProdDisp - tPor[CATS.EXTERNA];
   const tOperacion   = tActualProd - tPor[CATS.FALLA] - tRetrabajo;
-  const tTeorico     = tOperacion - perdidasVel;
+  const tTeorico     = tOperacion - perdidasVel - tPNC;
   const opi = tEfectivo > 0 ? (tTeorico / tEfectivo) * 100 : 0;
 
   const lotePromedio = cajasList.length ? cajas / cajasList.length : 0;
@@ -1657,7 +1684,7 @@ function procesarMetricas(data) {
   const hlTotal = c9lTotal * (window.HL_FACTOR ?? 0.09);
 
   return {
-    tot, tConPersonal, tEfectivo, tProdDisp, tActualProd, tOperacion, tTeorico, perdidasVel, tRetrabajo,
+    tot, tConPersonal, tEfectivo, tProdDisp, tActualProd, tOperacion, tTeorico, perdidasVel, tPNC, tRetrabajo,
     tiempoPorClasif: tPor, opi,
     cajas, semielaborado, pni, pctPNI, lotePromedio, cajasList, lotesPorSemana, botellasUnid,
     c9lTotal, hlTotal, hlPorFecha, hlPorFechaTurno, hlPorFechaTipo, hlPorTipo, fallasPorSemana,
@@ -2163,6 +2190,7 @@ function drawWaterfall(id, m) {
     ['− Fallas',         -m.tiempoPorClasif[CATS.FALLA], '#D81840'],
     ['− Retrab./Terc.',  -(m.tRetrabajo||0), '#D81840'],
     ['− Pérd.Vel',       -m.perdidasVel, '#D81840'],
+    ['− PNC',            -(m.tPNC||0), '#D81840'],
     ['T. Teórico',       m.tTeorico, '#F08808']
   ];
   drawChart(id, {
