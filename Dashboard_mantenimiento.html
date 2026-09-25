@@ -20,14 +20,14 @@
     --ok:#B2BC52; --ok-bg:rgba(152,160,64,.2); --warn:#F8C040; --warn-bg:rgba(248,192,64,.16);
     --crit:#FF5A76; --crit-bg:rgba(216,24,64,.2); --na:#9c8f9a; --na-bg:rgba(156,143,154,.16);
     --accent:#C9609A; --accent-ink:#1A1915; --focus:#F8C040;
-    --ramp-lo:#3B3137; --ramp-hi:#C9609A;
+    --ramp-lo:#3B3137; --ramp-hi:#C9609A; --ok-ink:#1A1915; --crit-ink:#1A1915;
   }
   body.light{ --bg:#F3F1EB; --card:#fff; --card2:#FAF7F0; --border:rgba(78,23,66,0.14);
     --text:#301030; --muted:#7a627a; --th-bg:#F3F1EB; --tr-hover:rgba(78,23,66,0.05);
     --td-border:rgba(78,23,66,0.08); --l1:#701F52;
     --ok:#5E6620; --ok-bg:rgba(152,160,64,.18); --warn:#8A5C00; --warn-bg:rgba(248,192,64,.3);
     --crit:#B0122F; --crit-bg:rgba(216,24,64,.12); --na:#7A6E78; --na-bg:rgba(184,168,152,.25);
-    --accent:#701F52; --accent-ink:#fff; --focus:#F08808; --ramp-lo:#F2E7EE; --ramp-hi:#701F52; }
+    --accent:#701F52; --accent-ink:#fff; --focus:#F08808; --ramp-lo:#F2E7EE; --ramp-hi:#701F52; --ok-ink:#fff; --crit-ink:#fff; }
   *{box-sizing:border-box;margin:0;padding:0}
   [hidden]{display:none!important}
   body{background:var(--bg);color:var(--text);font-family:'Montserrat',system-ui,sans-serif;font-size:14px;line-height:1.45}
@@ -151,6 +151,22 @@
   .otras .o{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--td-border);font-size:12.5px}
   .rep{font-size:11.5px;color:var(--muted);padding:6px 12px;border-top:1px solid var(--td-border)}
   .savebar{position:sticky;bottom:10px;z-index:5;display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--vspt-orange);border-radius:10px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+  /* carga desde el celular (QR) */
+  .cg{display:grid;gap:10px;max-width:760px;width:100%;margin:0 auto}
+  .cg-eq{font-weight:800;font-size:13.5px;padding:10px 2px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
+  .cg-t{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;display:grid;gap:6px}
+  .cg-t.done{opacity:.62}
+  .cg-h{font-size:14px}
+  .cg-bt{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
+  .cg-bt button{min-height:48px;border-radius:9px;border:1.5px solid var(--border);background:var(--card2);font-weight:800;font-size:15px;color:var(--text);cursor:pointer}
+  .cg-bt .cg-si[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:var(--ok-ink)}
+  .cg-bt .cg-no[aria-pressed="true"]{background:var(--crit);border-color:var(--crit);color:var(--crit-ink)}
+  .cg details summary{cursor:pointer;font-size:12.5px;color:var(--muted);font-weight:600;padding:2px 0}
+  .cg select,.cg input[type=text],.cg input[type=date],.cg textarea{width:100%;font-size:16px;min-height:42px}
+  .cg textarea{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-family:inherit}
+  .meter.full{width:100%;height:8px;display:block}
+  .val{display:inline-block;min-width:17px;padding:0 5px;border-radius:8px;background:var(--warn-bg);color:var(--warn);font-size:10.5px;font-weight:800;text-align:center}
+  .btn[aria-pressed="true"]{background:var(--warn-bg);border-color:var(--warn);color:var(--text)}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--vspt-plum);color:#fff;border:1px solid rgba(224,208,184,.3);padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:60;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.35)}
   .toast.err{background:#5a0f22}
   @media (max-width:640px){.header{padding:12px 16px}.content{padding:14px 16px 60px}.tbl .x{display:none}}
@@ -186,6 +202,8 @@
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbx8alYmoiwb5-z1nyvXfyCSLfELACGZ4qGGtIoS3j6lF1yS6SmFH0wYRbKfQPrq5P6N/exec";
 const CACHE_KEY = 'vspt_mant_cache_v1';
+// ?carga=OT-2026-40-L1 (lo abre el QR de la planilla impresa): la página funciona solo como formulario de carga.
+const CARGA = (() => { try { const v = new URLSearchParams(location.search).get('carga'); return v && /^OT-\d{4}-\d{2}-(L\d|SF)$/.test(v) ? v : null; } catch (e) { return null; } })();
 const TIMEOUT_MS = 120000;
 
 let D = null;               // respuesta de ?tabla=mant
@@ -196,6 +214,8 @@ let alFil = { linea: 'all', est: new Set(['vencido', 'proximo']), q: '' };
 let calSel = null;
 let eqSel = null, eqQ = '';
 let pend = [];              // cambios pendientes del editor [{tabla, op, id, campos}]
+let CG = null, cgMarcas = {}, cgLub = '', cgFecha = '', cgLotes = {};   // formulario de carga (celular)
+let eqVal = false;          // filtro de Equipos: solo los que tienen puntos por validar
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -221,6 +241,7 @@ const cacheSet = v => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(v))
 
 // ───────────── datos ─────────────
 async function cargar() {
+  if (CARGA) return abrirCarga(CARGA);
   setStatus('Cargando…');
   const c = cacheGet();
   if (c && c.data && !D) { D = c.data; indexar(); render(); setStatus('Datos guardados · actualizando…'); }
@@ -281,8 +302,9 @@ function venceTxt(p) {
 const cantTxt = p => (p.cantidad !== '' && p.cantidad != null ? `${fmt(p.cantidad, Number(p.cantidad) % 1 ? 1 : 0)} ${p.unidad || ''}` : (p.unidad || '')).trim();
 
 // ───────────── navegación ─────────────
-$$('.tab').forEach(t => t.addEventListener('click', () => { view = t.dataset.v; $$('.tab').forEach(x => x.setAttribute('aria-selected', String(x === t))); render(); }));
+$$('.tab').forEach(t => t.addEventListener('click', () => { view = t.dataset.v; CG = null; $$('.tab').forEach(x => x.setAttribute('aria-selected', String(x === t))); render(); }));
 function render() {
+  if (CG) return renderCarga();
   if (!D) return;
   const f = { ot: renderOT, alertas: renderAlertas, calendario: renderCal, equipos: renderEquipos, avisos: renderAvisos, ajustes: renderAjustes }[view];
   (f || renderOT)();
@@ -332,7 +354,10 @@ function renderOT() {
   $('#main').innerHTML = h;
   $('#otSel').onchange = e => { otSel = e.target.value; otForm = false; renderOT(); };
   const bp = $('#btnPrint'); if (bp) bp.onclick = () => imprimir(otSel);
-  $$('[data-cargar]').forEach(b => b.onclick = () => { otLinea = b.dataset.cargar; otForm = true; renderOT(); $('#formCarga').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  $$('[data-cargar]').forEach(b => b.onclick = () => {
+    if (window.matchMedia('(max-width: 700px)').matches) { abrirCarga(otSel + '-' + b.dataset.cargar); return; }   // celular: tarjetas
+    otLinea = b.dataset.cargar; otForm = true; renderOT(); $('#formCarga').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   const bg = $('#btnGen'); if (bg) bg.onclick = generarOT;
   if (otForm && hay) bindForm();
 }
@@ -376,10 +401,11 @@ function formCarga(base, L) {
       <td style="text-align:center"><input type="checkbox" class="an" title="Anomalía: genera un aviso pendiente para SAP" aria-label="Anomalía ${esc(f.punto_id)}"></td></tr>`;
   });
   const lubOpts = D.lubricadores.map(n => `<option>${esc(n)}</option>`).join('');
+  const lubCampo = D.lubricadores.length ? `<select id="fcLub"><option value="">Elegí…</option>${lubOpts}</select>` : `<input type="text" id="fcLub" placeholder="Sin lista: cargala en Ajustes">`;
   return `<div class="card" id="formCarga"><div class="row"><h2 class="grow">Cargar lo realizado · ${esc(id)}</h2><button class="btn" id="fcClose">Cerrar</button></div>
     <div class="sub">Copiá la planilla firmada: estado, fecha real y observaciones. Las filas que dejes "sin cargar" siguen pendientes. Una anomalía marcada genera un aviso pendiente para SAP.</div>
     <div class="form-top">
-      <label class="f">Lubricador <input type="text" id="fcLub" list="lubList" placeholder="Nombre"><datalist id="lubList">${lubOpts}</datalist></label>
+      <label class="f">Lubricador ${lubCampo}</label>
       <label class="f">Fecha para completar <input type="date" id="fcFecha" max="${D.hoy}"></label>
       <button class="btn" id="fcTodo">Marcar todo como hecho</button>
     </div>
@@ -411,6 +437,7 @@ async function guardarCarga() {
   });
   const lotes = $$('[data-lote]', f).map(i => ({ lubricante: i.dataset.lote, lote: i.value.trim() })).filter(l => l.lote);
   if (!registros.length && !lotes.length) { toast('No hay filas cargadas', true); return; }
+  if (registros.length && D.lubricadores.length && !$('#fcLub').value) errores.unshift('elegí el lubricador');
   if (errores.length) { toast('Revisá: ' + errores.slice(0, 3).join(' · ') + (errores.length > 3 ? ` y ${errores.length - 3} más` : ''), true); return; }
   const b = $('#fcSave'); b.disabled = true; b.textContent = 'Guardando…';
   try {
@@ -418,6 +445,127 @@ async function guardarCarga() {
     toast(`Guardado: ${r.registrados} tareas${r.lotes ? ' · ' + r.lotes + ' lotes' : ''}${r.avisos ? ' · ' + r.avisos + ' avisos para SAP' : ''}`);
     otForm = false; await cargar();
   } catch (e) { toast(e.message, true); b.disabled = false; b.textContent = 'Guardar registro'; }
+}
+
+// ───────────── carga desde el celular (QR de la planilla) ─────────────
+// Tarjetas con botones grandes. Lo marcado queda como borrador en el teléfono hasta guardarlo,
+// y se puede guardar de a partes mientras se recorre la línea.
+const BORRADOR = id => 'vspt_mant_borrador_' + id;
+async function abrirCarga(id) {
+  setStatus('Cargando planilla…');
+  try {
+    const r = await fetch(API_URL + '?tabla=mant_carga&ot=' + encodeURIComponent(id)); const j = await r.json();
+    if (j.status !== 'success' || !j.carga) throw new Error(j.msg || j.reason || (j.status === 'success' ? 'la API todavía no tiene la carga desde el celular (falta publicar la versión nueva de 07_MANTENIMIENTO.gs)' : 'respuesta sin datos'));
+    const otra = !CG || CG.ot_id !== id;
+    CG = j.carga;
+    if (otra) { cgMarcas = {}; cgLub = ''; cgFecha = ''; cgLotes = {}; leerBorrador(); }
+    renderCarga(); setStatus('Planilla ' + CG.ot_id, 'ok');
+    if (otra) window.scrollTo(0, 0);
+  } catch (e) {
+    setStatus('Sin conexión con la API', 'err');
+    $('#main').innerHTML = `<div class="errbox"><b>No se pudo abrir la planilla ${esc(id)}.</b> ${esc(e.message)}<br><br><button class="btn" id="cgReint">Reintentar</button>${CARGA ? '' : ' <button class="btn" id="cgVolver">Volver</button>'}</div>`;
+    $('#cgReint').onclick = () => abrirCarga(id);
+    const v = $('#cgVolver'); if (v) v.onclick = () => { CG = null; render(); };
+  }
+}
+function leerBorrador() {
+  try {
+    const b = JSON.parse(localStorage.getItem(BORRADOR(CG.ot_id)) || 'null'); if (!b) return;
+    const pendientes = new Set(CG.tareas.filter(t => !t.registro).map(t => t.punto_id));
+    Object.keys(b.marcas || {}).forEach(pid => { if (pendientes.has(pid)) cgMarcas[pid] = b.marcas[pid]; });
+    cgLub = b.lub || ''; cgFecha = b.fecha || ''; cgLotes = b.lotes || {};
+  } catch (e) {}
+}
+function guardarBorrador() {
+  try { localStorage.setItem(BORRADOR(CG.ot_id), JSON.stringify({ marcas: cgMarcas, lub: cgLub, fecha: cgFecha, lotes: cgLotes, t: Date.now() })); } catch (e) {}
+}
+function renderCarga() {
+  const c = CG, total = c.tareas.length, hechas = c.tareas.filter(t => t.registro).length;
+  const lubs = [...new Set(c.tareas.filter(t => !t.registro).map(t => t.lubricante).filter(l => l && !l.startsWith('—')))].sort();
+  let h = `<div class="cg"><div class="card"><div class="row"><span class="chip ${esc(c.linea)}">${esc(c.linea)}</span><h2 class="grow">OT de lubricación · ${esc(c.ot_id)}</h2>
+      ${CARGA ? `<a class="btn sm" href="${esc(location.pathname)}">Módulo completo</a>` : '<button class="btn sm" id="cgVolver">Volver a la OT</button>'}</div>
+    <div class="sub">Semana ${esc(c.semana)} · ${fday(c.desde)} → ${fday(c.hasta)} · <b>${hechas}</b> de ${total} cargadas</div>
+    <span class="meter full"><i class="${hechas === total ? 'ok' : 'carga'}" style="width:${total ? hechas / total * 100 : 0}%"></i></span>
+    <label class="f">Lubricador ${c.lubricadores.length
+      ? `<select id="cgLub"><option value="">Elegí tu nombre…</option>${c.lubricadores.map(n => `<option ${n === cgLub ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
+      : `<input type="text" id="cgLub" value="${esc(cgLub)}" placeholder="Tu nombre">`}</label>
+    ${c.lubricadores.length ? '' : '<div class="small muted">Todavía no hay lista de lubricadores: la carga un editor en Ajustes → Lubricadores.</div>'}
+    <label class="f">Fecha en que se hizo <input type="date" id="cgFecha" value="${esc(cgFecha || c.hoy)}" max="${esc(c.hoy)}"></label>
+    ${hechas < total ? '<button class="btn" id="cgTodo">Marcar todo como hecho</button>' : '<div class="hint">Esta planilla está completa.</div>'}</div>`;
+  let eq = null;
+  c.tareas.forEach(t => {
+    if (eq !== t.equipo_sap) { eq = t.equipo_sap; h += `<div class="cg-eq">${esc(t.equipo)}<span class="small muted">SAP ${esc(t.equipo_sap)}${t.codigo_f ? ' · ' + esc(t.codigo_f) : ''}</span></div>`; }
+    const cant = cantTxt(t);
+    const cab = `<div class="cg-h"><b>${esc(t.punto_id.split('-').pop())}</b> · ${esc(t.parte)} · <b>${esc(t.componente)}</b></div>
+      <div class="small muted">${esc(t.accion)}</div><div class="small">${esc(t.lubricante)}${cant ? ' · ' + esc(cant) : ''}</div>`;
+    if (t.registro) {
+      const r = t.registro;
+      h += `<div class="cg-t done">${cab}<div class="small"><b>${r.realizado ? '✓ Hecho' : '✗ No se hizo: ' + esc(r.motivo)}</b> el ${fday(r.fecha)}${r.lubricador ? ' · ' + esc(r.lubricador) : ''}</div></div>`;
+      return;
+    }
+    const m = cgMarcas[t.punto_id] || {};
+    h += `<div class="cg-t" data-p="${esc(t.punto_id)}">${cab}
+      <div class="cg-bt"><button type="button" class="cg-si" aria-pressed="${m.v === 'si'}">Hecho</button><button type="button" class="cg-no" aria-pressed="${m.v === 'no'}">No se hizo</button></div>
+      <select class="cg-mo" aria-label="Motivo" ${m.v === 'no' ? '' : 'hidden'}><option value="">¿Por qué no se hizo?</option>${c.motivos.map(x => `<option ${x === m.motivo ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
+      <details ${m.ob || m.an || m.fecha ? 'open' : ''}><summary>Observación, anomalía u otra fecha</summary><div style="display:grid;gap:8px;margin-top:8px">
+        <textarea class="cg-ob" rows="2" placeholder="Qué viste: pérdida, juego, ruido…" aria-label="Observación">${esc(m.ob || '')}</textarea>
+        <label class="small"><input type="checkbox" class="cg-an" ${m.an ? 'checked' : ''}> Anomalía: genera un aviso para SAP</label>
+        <label class="f">Fecha de esta tarea, si fue otro día <input type="date" class="cg-fe" value="${esc(m.fecha || '')}" max="${esc(c.hoy)}"></label></div></details></div>`;
+  });
+  if (lubs.length) h += `<details class="card" ${Object.keys(cgLotes).length ? 'open' : ''}><summary><b>Lotes de lubricante</b> <span class="small muted">opcional</span></summary><div class="lotes" style="margin-top:8px">
+    ${lubs.map(l => c.lotes[l] ? `<label>${esc(l)}<span class="small">Lote ${esc(c.lotes[l])} ✓</span></label>` : `<label>${esc(l)}<input type="text" data-cglote="${esc(l)}" value="${esc(cgLotes[l] || '')}" placeholder="N° de lote"></label>`).join('')}</div></details>`;
+  h += `<div class="formbar"><span class="small muted" id="cgCount"></span><button class="btn primary" id="cgSave">Guardar</button></div></div>`;
+  $('#main').innerHTML = h;
+  bindCarga();
+}
+function bindCarga() {
+  const marca = pid => (cgMarcas[pid] = cgMarcas[pid] || {});
+  const contar = () => { const n = Object.values(cgMarcas).filter(m => m.v).length; $('#cgCount').textContent = n ? `${n} tarea${n === 1 ? '' : 's'} para guardar` : 'Marcá las tareas a medida que las hacés'; };
+  $$('.cg-t[data-p]').forEach(card => {
+    const pid = card.dataset.p, bSi = $('.cg-si', card), bNo = $('.cg-no', card), mo = $('.cg-mo', card);
+    const marcar = v => {
+      const m = marca(pid); m.v = m.v === v ? '' : v;
+      bSi.setAttribute('aria-pressed', String(m.v === 'si')); bNo.setAttribute('aria-pressed', String(m.v === 'no'));
+      mo.hidden = m.v !== 'no'; if (m.v === 'no' && !m.motivo) mo.focus();
+      guardarBorrador(); contar();
+    };
+    bSi.onclick = () => marcar('si'); bNo.onclick = () => marcar('no');
+    mo.onchange = () => { marca(pid).motivo = mo.value; guardarBorrador(); };
+    $('.cg-ob', card).oninput = e => { marca(pid).ob = e.target.value; guardarBorrador(); };
+    $('.cg-an', card).onchange = e => { marca(pid).an = e.target.checked; guardarBorrador(); };
+    $('.cg-fe', card).onchange = e => { marca(pid).fecha = e.target.value; guardarBorrador(); };
+  });
+  $('#cgLub').onchange = e => { cgLub = e.target.value; guardarBorrador(); };
+  $('#cgFecha').onchange = e => { cgFecha = e.target.value; guardarBorrador(); };
+  $$('[data-cglote]').forEach(i => i.oninput = () => { cgLotes[i.dataset.cglote] = i.value; guardarBorrador(); });
+  const todo = $('#cgTodo');
+  if (todo) todo.onclick = () => { $$('.cg-t[data-p]').forEach(card => { const m = marca(card.dataset.p); if (!m.v) { m.v = 'si'; $('.cg-si', card).setAttribute('aria-pressed', 'true'); } }); guardarBorrador(); contar(); };
+  const v = $('#cgVolver'); if (v) v.onclick = () => { CG = null; render(); };
+  $('#cgSave').onclick = guardarCg;
+  contar();
+}
+async function guardarCg() {
+  const lub = String(cgLub || '').trim(), fechaDef = cgFecha || CG.hoy, errores = [], registros = [];
+  if (CG.lubricadores.length && !lub) { toast('Elegí tu nombre en Lubricador', true); $('#cgLub').focus(); return; }
+  CG.tareas.forEach(t => {
+    const m = cgMarcas[t.punto_id]; if (!m || !m.v || t.registro) return;
+    const nom = t.punto_id.split('-').pop() + ' ' + t.equipo;
+    if (m.v === 'no' && !m.motivo) errores.push(`${nom}: falta el motivo`);
+    if (m.an && !String(m.ob || '').trim()) errores.push(`${nom}: describí la anomalía`);
+    registros.push({ punto_id: t.punto_id, fecha: m.fecha || fechaDef, realizado: m.v === 'si', motivo: m.motivo || '', observacion: String(m.ob || '').trim(), anomalia: !!m.an });
+  });
+  const lotes = Object.keys(cgLotes).map(l => ({ lubricante: l, lote: String(cgLotes[l] || '').trim() })).filter(l => l.lote && !CG.lotes[l.lubricante]);
+  if (!registros.length && !lotes.length) { toast('Marcá al menos una tarea como Hecho o No se hizo', true); return; }
+  if (errores.length) { toast('Revisá: ' + errores.slice(0, 3).join(' · ') + (errores.length > 3 ? ` y ${errores.length - 3} más` : ''), true); return; }
+  const b = $('#cgSave'); b.disabled = true; b.textContent = 'Guardando…';
+  try {
+    const r = await post({ accion: 'mant_registrar', ot_id: CG.ot_id, lubricador: lub, registros, lotes });
+    toast(`Guardado: ${r.registrados} tarea${r.registrados === 1 ? '' : 's'}${r.lotes ? ' · ' + r.lotes + ' lote' + (r.lotes === 1 ? '' : 's') : ''}${r.avisos ? ' · ' + r.avisos + ' aviso' + (r.avisos === 1 ? '' : 's') + ' para SAP' : ''}`);
+    registros.forEach(x => delete cgMarcas[x.punto_id]); lotes.forEach(l => delete cgLotes[l.lubricante]);
+    guardarBorrador();
+    await abrirCarga(CG.ot_id);
+    if (!CARGA && D) cargar();   // la OT de la página completa refleja lo cargado
+  } catch (e) { toast(e.message, true); b.disabled = false; b.textContent = 'Guardar'; }
 }
 
 // ───────────── alertas ─────────────
@@ -453,16 +601,19 @@ function registrarSuelto(pid, tr) {
   x.innerHTML = `<td colspan="10"><div class="row"><b class="small">Registrar ${esc(pid)} fuera de la OT</b>
     <select class="st"><option value="si">Hecho</option><option value="no">No se hizo</option></select>
     <input type="date" class="fe" max="${D.hoy}" value="${D.hoy}" aria-label="Fecha"><select class="mo" disabled aria-label="Motivo"><option value="">Motivo…</option>${motivos.map(m => `<option>${esc(m)}</option>`).join('')}</select>
+    ${D.lubricadores.length ? `<select class="lu" aria-label="Lubricador"><option value="">Lubricador…</option>${D.lubricadores.map(n => `<option>${esc(n)}</option>`).join('')}</select>` : ''}
     <input type="text" class="ob" placeholder="Observación" aria-label="Observación"><label class="small"><input type="checkbox" class="an"> Anomalía</label>
     <button class="btn primary">Guardar</button></div></td>`;
   tr.after(x);
   $('.st', x).onchange = e => $('.mo', x).disabled = e.target.value !== 'no';
   $('.btn.primary', x).onclick = async ev => {
     const b = ev.currentTarget, st = $('.st', x).value, mo = $('.mo', x).value, ob = $('.ob', x).value.trim(), an = $('.an', x).checked;
+    const lu = $('.lu', x) ? $('.lu', x).value : '';
+    if (D.lubricadores.length && !lu) { toast('Elegí el lubricador', true); return; }
     if (st === 'no' && !mo) { toast('Falta el motivo', true); return; }
     if (an && !ob) { toast('Describí la anomalía en observación', true); return; }
     b.disabled = true;
-    try { await post({ accion: 'mant_registrar', registros: [{ punto_id: pid, fecha: $('.fe', x).value, realizado: st === 'si', motivo: mo, observacion: ob, anomalia: an }] }); toast('Registrado ' + pid); await cargar(); }
+    try { await post({ accion: 'mant_registrar', lubricador: lu, registros: [{ punto_id: pid, fecha: $('.fe', x).value, realizado: st === 'si', motivo: mo, observacion: ob, anomalia: an }] }); toast('Registrado ' + pid); await cargar(); }
     catch (e) { toast(e.message, true); b.disabled = false; }
   };
 }
@@ -519,24 +670,26 @@ function renderCal() {
 function peor(id) { return (IX.ptsEq[id] || []).filter(p => si(p.activo)).reduce((w, p) => RANK[p.estado] > RANK[w] ? p.estado : w, 'na'); }
 function renderEquipos() {
   const q = eqQ.toLowerCase(), treeTop = $('.tree') ? $('.tree').scrollTop : 0;
-  const eqs = D.equipos.filter(e => !q || [e.equipo_sap, e.nombre, e.codigo_f, e.sector_nombre].join(' ').toLowerCase().includes(q));
-  if (!eqSel || !IX.eq[eqSel]) eqSel = (eqs[0] || {}).equipo_sap || null;
+  const totVal = IX.activos.filter(p => p.nota === NOTA_DEF).length;
+  if (!totVal) eqVal = false;
+  const eqs = D.equipos.filter(e => (!q || [e.equipo_sap, e.nombre, e.codigo_f, e.sector_nombre].join(' ').toLowerCase().includes(q)) && (!eqVal || nVal(e.equipo_sap)));
+  if (!eqSel || !IX.eq[eqSel] || (eqVal && !eqs.some(e => e.equipo_sap === eqSel))) eqSel = (eqs[0] || {}).equipo_sap || null;
   let tree = '';
   LINEAS.forEach(L => {
     const el = eqs.filter(e => eqLinea(e) === L).sort((a, b) => ordenEq(a) - ordenEq(b) || String(a.nombre).localeCompare(String(b.nombre)));
     if (!el.length) return;
     const secs = [...new Set(el.map(e => e.sector_nombre || '(sin sector)'))];
-    tree += `<details data-l="${L}" ${q || eqAbiertas.has(L) || el.some(e => e.equipo_sap === eqSel) ? 'open' : ''}><summary><span class="chip ${L}">${L}</span> ${L === 'SF' ? 'Sala de filtración' : 'Línea ' + L.slice(1)} <span class="muted small">${el.length}</span></summary>`;
+    tree += `<details data-l="${L}" ${q || eqVal || eqAbiertas.has(L) || el.some(e => e.equipo_sap === eqSel) ? 'open' : ''}><summary><span class="chip ${L}">${L}</span> ${L === 'SF' ? 'Sala de filtración' : 'Línea ' + L.slice(1)} <span class="muted small">${el.length}</span></summary>`;
     secs.forEach(s => {
       tree += `<div class="sec small muted" style="padding:4px 8px 2px 26px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px">${esc(s)}</div>`;
       el.filter(e => (e.sector_nombre || '(sin sector)') === s).forEach(e => {
-        const n = (IX.ptsEq[e.equipo_sap] || []).filter(p => si(p.activo)).length, w = peor(e.equipo_sap);
-        tree += `<button class="eq" data-eq="${esc(e.equipo_sap)}" aria-current="${e.equipo_sap === eqSel}" style="${si(e.activo) ? '' : 'opacity:.5'}"><span class="dot ${w}"></span>${esc(cap(sinF(e.nombre)))}<span class="c">${n || '—'}</span></button>`;
+        const n = (IX.ptsEq[e.equipo_sap] || []).filter(p => si(p.activo)).length, w = peor(e.equipo_sap), nv = nVal(e.equipo_sap);
+        tree += `<button class="eq" data-eq="${esc(e.equipo_sap)}" aria-current="${e.equipo_sap === eqSel}" style="${si(e.activo) ? '' : 'opacity:.5'}"><span class="dot ${w}"></span>${esc(cap(sinF(e.nombre)))}<span class="c">${nv ? `<span class="val" title="${nv} puntos por validar">${nv}</span> ` : ''}${n || '—'}</span></button>`;
       });
     });
     tree += `</details>`;
   });
-  let h = `<div class="eqlayout"><div class="card"><div class="row"><h2 class="grow">Equipos</h2>${D.editor ? '<button class="btn" id="eqNew">Alta local</button>' : ''}</div>
+  let h = `<div class="eqlayout"><div class="card"><div class="row"><h2 class="grow">Equipos</h2>${totVal ? `<button class="btn sm" id="eqVal" aria-pressed="${eqVal}" title="Puntos que quedaron en una parte por defecto al pasar a SAP">Por validar <span class="val">${totVal}</span></button>` : ''}${D.editor ? '<button class="btn" id="eqNew">Alta local</button>' : ''}</div>
     <input type="search" id="eqQ" placeholder="Buscar por nombre, SAP o código F" value="${esc(eqQ)}">
     <div class="tree">${tree || '<div class="muted small">Sin resultados.</div>'}</div></div><div id="eqDet">${eqSel ? detalleEquipo(eqSel) : ''}</div></div>`;
   $('#main').innerHTML = h;
@@ -549,11 +702,17 @@ function renderEquipos() {
     if (window.innerWidth <= 900) $('#eqDet').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   const nb = $('#eqNew'); if (nb) nb.onclick = altaEquipo;
+  const bv = $('#eqVal'); if (bv) bv.onclick = () => { eqVal = !eqVal; renderEquipos(); };
   bindEditor();
 }
 const E_OPERA = ['LLENADO', 'VESTIDO', 'SIEMPRE', 'SIN CONTADOR'];
 const NOTA_DEF = 'Parte asignada por defecto: validar';
-let eqAbiertas = new Set(), ptAbiertos = new Set();
+let eqAbiertas = new Set(), ptAbiertos = new Set(), paAbiertas = new Set();
+const nVal = id => (IX.ptsEq[id] || []).filter(p => si(p.activo) && p.nota === NOTA_DEF).length;
+// Rótulo de una parte: su código SAP, o "parte local" mientras no lo tenga.
+const rotParte = pa => pa.parte_sap ? 'SAP ' + esc(pa.parte_sap) + (pa.origen === 'LOCAL' ? ' · alta local' : '') : 'parte local';
+// Campos editables de una parte (nombre y código SAP), debajo de su encabezado.
+const edicionParte = pa => `<div class="editgrid" style="padding:8px 12px"><label class="f">Nombre de la parte ${campo('partes', pa.parte_id, 'nombre', pa.nombre)}</label><label class="f">Código SAP ${campo('partes', pa.parte_id, 'parte_sap', pa.parte_sap)}</label></div>`;
 // Valor a mostrar: el cambio pendiente si lo hay, si no el guardado.
 function valP(tabla, id, k, v) { const c = pend.find(x => x.tabla === tabla && x.id === id && x.op === 'modificar' && x.campos && k in x.campos); return c ? c.campos[k] : v; }
 // Control editable; `opts` admite valores sueltos o pares [valor, texto].
@@ -573,6 +732,8 @@ function detalleEquipo(id) {
   let h = `<div class="card"><div class="row"><span class="chip ${eqLinea(e)}">${eqLinea(e)}</span><b class="tnum">${esc(e.equipo_sap)}</b>${e.codigo_f ? `<span class="muted">${esc(e.codigo_f)}</span>` : ''}<span class="grow"></span>${w !== 'na' ? `<span class="pill ${w}">${EST[w]}</span>` : ''}</div>
     <h2>${esc(cap(sinF(e.nombre)))}</h2><div class="sub">${esc(e.ubicacion_tecnica || '')} · ${esc(e.sector_nombre || '')}</div>
     ${e.nota ? `<div class="warnbox">${esc(e.nota)}</div>` : ''}
+    ${D.editor && id.startsWith('LOC-') ? `<div class="hint"><b>Equipo local.</b> Cuando SAP le asigne número, cargalo acá: se actualizan el maestro, los puntos, los registros, las OT y los avisos.
+      <div class="row" style="margin-top:8px"><input type="text" id="eqSap" inputmode="numeric" placeholder="N° de equipo SAP" aria-label="Número de equipo SAP" style="width:180px"><button class="btn sm" id="eqSapOk">Asignar código SAP</button></div></div>` : ''}
     <div class="fields">
       <label class="f">Nombre ${campo('equipos', id, 'nombre', e.nombre)}</label>
       <label class="f">Trabaja en ${campo('equipos', id, 'opera_en', e.opera_en, null, E_OPERA)}</label>
@@ -585,8 +746,10 @@ function detalleEquipo(id) {
   conPts.forEach(pa => { h += tarjetaParte(pa, partes); });
   if (sinPts.length) {
     h += `<div class="card otras"><h2>Otras partes sin puntos de lubricación <span class="muted small">${sinPts.length}</span></h2>
-      ${sinPts.map(pa => `<div class="o" style="${si(pa.activo) ? '' : 'opacity:.5'}"><span class="grow">${esc(nombreParte(pa))} <span class="muted small">${pa.origen === 'LOCAL' ? 'parte local' : 'SAP ' + esc(pa.parte_sap)}${si(pa.activo) ? '' : ' · inactiva'}</span></span>
-        ${D.editor && si(pa.activo) ? `<button class="btn sm" data-addpt="${esc(pa.parte_id)}">+ Punto</button><button class="btn sm" data-bajapa="${esc(pa.parte_id)}">Dar de baja</button>` : ''}</div>`).join('')}</div>`;
+      ${sinPts.map(pa => `<div class="o" style="${si(pa.activo) ? '' : 'opacity:.5'}"><span class="grow">${esc(nombreParte(pa))} <span class="muted small">${rotParte(pa)}${si(pa.activo) ? '' : ' · inactiva'}</span></span>
+        ${D.editor ? `<button class="btn sm" data-edpa="${esc(pa.parte_id)}" aria-expanded="${paAbiertas.has(pa.parte_id)}">${paAbiertas.has(pa.parte_id) ? 'Cerrar' : 'Editar'}</button>` : ''}
+        ${D.editor && si(pa.activo) ? `<button class="btn sm" data-addpt="${esc(pa.parte_id)}">+ Punto</button><button class="btn sm" data-bajapa="${esc(pa.parte_id)}">Dar de baja</button>` : ''}</div>
+        ${D.editor && paAbiertas.has(pa.parte_id) ? edicionParte(pa) : ''}`).join('')}</div>`;
   }
   if (D.editor) h += `<div class="row"><button class="btn" data-addpa="${esc(id)}">+ Parte local</button></div>`;
   else h += `<div class="hint">Solo los correos autorizados de Mantenimiento pueden editar equipos, partes y puntos.</div>`;
@@ -595,8 +758,9 @@ function detalleEquipo(id) {
 function tarjetaParte(pa, partesEq) {
   const ps = (IX.ptsParte[pa.parte_id] || []).slice().sort((a, b) => a.punto_id.localeCompare(b.punto_id)), reps = IX.rep[String(pa.parte_sap)] || [];
   const ed = D.editor, num = (pid, k, v) => ed ? campo('puntos', pid, k, v, 'number') : (v !== '' && v != null ? fmt(v) : '—');
-  let h = `<div class="part card" style="padding:0;gap:0"><header>${esc(nombreParte(pa))}<span class="muted">${pa.origen === 'LOCAL' ? 'parte local' : 'SAP ' + esc(pa.parte_sap)}${si(pa.activo) ? '' : ' · inactiva'}</span><span class="grow"></span>
-    ${ed ? `<button class="btn sm" data-addpt="${esc(pa.parte_id)}">+ Punto</button>${si(pa.activo) ? `<button class="btn sm" data-bajapa="${esc(pa.parte_id)}">Dar de baja</button>` : ''}` : ''}</header>
+  let h = `<div class="part card" style="padding:0;gap:0"><header>${esc(nombreParte(pa))}<span class="muted">${rotParte(pa)}${si(pa.activo) ? '' : ' · inactiva'}</span><span class="grow"></span>
+    ${ed ? `<button class="btn sm" data-edpa="${esc(pa.parte_id)}" aria-expanded="${paAbiertas.has(pa.parte_id)}">${paAbiertas.has(pa.parte_id) ? 'Cerrar' : 'Editar'}</button><button class="btn sm" data-addpt="${esc(pa.parte_id)}">+ Punto</button>${si(pa.activo) ? `<button class="btn sm" data-bajapa="${esc(pa.parte_id)}">Dar de baja</button>` : ''}` : ''}</header>
+    ${ed && paAbiertas.has(pa.parte_id) ? edicionParte(pa) : ''}
     <div class="tbl-wrap"><table class="tbl" style="min-width:${ed ? 880 : 760}px"><thead><tr><th>Nº</th><th>Componente · acción</th><th>Lubricante</th><th class="n">Min</th><th class="n">Cada (h)</th><th class="n">Tope (d)</th><th>Estado</th>${ed ? '<th></th>' : ''}</tr></thead><tbody>`;
   ps.forEach(p => {
     const pid = p.punto_id, act = si(valP('puntos', pid, 'activo', p.activo)), nota = valP('puntos', pid, 'nota', p.nota);
@@ -617,7 +781,7 @@ function tarjetaParte(pa, partesEq) {
 // Fila desplegable con todos los campos del punto (texto, parte, nota, activo).
 function filaEdicion(p, partesEq) {
   const pid = p.punto_id, partes = partesEq.filter(pa => si(pa.activo) || pa.parte_id === p.parte_id)
-    .map(pa => [pa.parte_id, nombreParte(pa) + (pa.origen === 'LOCAL' ? ' · local' : ' · ' + pa.parte_sap)]);
+    .map(pa => [pa.parte_id, nombreParte(pa) + (pa.parte_sap ? ' · ' + pa.parte_sap : ' · local')]);
   return `<tr class="editrow"><td></td><td colspan="7"><div class="editgrid">
     <label class="f">Componente ${campo('puntos', pid, 'componente', p.componente)}</label>
     <label class="f">Lubricante ${campo('puntos', pid, 'lubricante', p.lubricante)}</label>
@@ -638,6 +802,20 @@ function bindEditor() {
     barraCambios(renderEquipos);
   }));
   $$('[data-edpt]').forEach(b => b.onclick = () => { const id = b.dataset.edpt; ptAbiertos.has(id) ? ptAbiertos.delete(id) : ptAbiertos.add(id); renderEquipos(); });
+  $$('[data-edpa]').forEach(b => b.onclick = () => { const id = b.dataset.edpa; paAbiertas.has(id) ? paAbiertas.delete(id) : paAbiertas.add(id); renderEquipos(); });
+  const bs = $('#eqSapOk');
+  if (bs) bs.onclick = async () => {
+    const nuevo = $('#eqSap').value.trim();
+    if (!/^\d{6,12}$/.test(nuevo)) { toast('El número de equipo SAP tiene que ser solo dígitos', true); return; }
+    if (pend.length) { toast('Primero guardá o descartá los cambios pendientes', true); return; }
+    if (!confirm(`Se reemplaza ${eqSel} por ${nuevo} en el maestro, los puntos, los registros, las OT y los avisos. ¿Seguir?`)) return;
+    bs.disabled = true;
+    try {
+      const r = await post({ accion: 'mant_asignar_sap', equipo: eqSel, sap: nuevo });
+      toast(`Equipo ${r.equipo}: ${r.puntos} puntos, ${r.registros} registros y ${r.avisos} avisos actualizados`);
+      eqSel = r.equipo; await cargar();
+    } catch (e) { toast(e.message, true); bs.disabled = false; }
+  };
   $$('[data-okparte]').forEach(b => b.onclick = () => {
     const id = b.dataset.okparte; let c = pend.find(x => x.tabla === 'puntos' && x.id === id && x.op === 'modificar');
     if (!c) { c = { tabla: 'puntos', op: 'modificar', id, campos: {} }; pend.push(c); }
@@ -682,7 +860,7 @@ function barraCambios(volver) {
   if (!n) { if (bar) bar.remove(); return; }
   if (!bar) { bar = document.createElement('div'); bar.id = 'savebar'; bar.className = 'savebar'; $('#main').appendChild(bar); }
   bar.innerHTML = `<span><b>${n}</b> cambio${n === 1 ? '' : 's'} sin guardar</span><span class="row"><button class="btn" id="pdDesc">Descartar</button><button class="btn primary" id="pdSave">Guardar cambios</button></span>`;
-  $('#pdDesc').onclick = () => { pend = []; ptAbiertos.clear(); volver(); };
+  $('#pdDesc').onclick = () => { pend = []; ptAbiertos.clear(); paAbiertas.clear(); volver(); };
   $('#pdSave').onclick = guardarPend;
 }
 async function guardarPend() {
@@ -693,7 +871,7 @@ async function guardarPend() {
     toast(`Guardado: ${r.cambios} cambio${r.cambios === 1 ? '' : 's'}${r.altas && r.altas.length ? ' · alta ' + r.altas.join(', ') : ''}`);
     if (r.altas && r.altas.length && pend.some(c => c.tabla === 'equipos' && c.op === 'alta')) eqSel = r.altas[0];
     const altaPt = pend.some(c => c.tabla === 'puntos' && c.op === 'alta');
-    pend = []; ptAbiertos.clear(); if (altaPt) r.altas.forEach(id => ptAbiertos.add(id));
+    pend = []; ptAbiertos.clear(); paAbiertas.clear(); if (altaPt) r.altas.forEach(id => ptAbiertos.add(id));
     await cargar();
   } catch (e) { toast(e.message, true); if (b) { b.disabled = false; b.textContent = 'Guardar cambios'; } }
 }
@@ -723,11 +901,12 @@ const CFG_TXT = {
   umbral_proximo: ['Umbral de "próximo"', 'number', 'Fracción del intervalo (0,8 = 80 %).'],
   doc_codigo: ['Código del documento', 'text', ''], doc_version: ['Versión', 'text', ''],
   destinatarios_pdf: ['Destinatarios del PDF', 'text', 'Correos separados por coma.'],
-  motivos: ['Motivos de no realización', 'text', 'Separados por |']
+  motivos: ['Motivos de no realización', 'text', 'Separados por |'],
+  url_carga: ['Página que abre el QR', 'text', 'El QR de cada planilla impresa lleva a esta dirección con la OT de la línea.']
 };
 function renderAjustes() {
   if (!D.editor) { view = 'ot'; renderOT(); return; }
-  let h = `<div class="card"><h2>Configuración</h2><div class="fields">${Object.keys(CFG_TXT).map(k => { const [lab, tipo, ayuda] = CFG_TXT[k]; return `<label class="f${k === 'motivos' || k === 'destinatarios_pdf' ? ' wide' : ''}">${lab}${campoCfg(k, tipo)}${ayuda ? `<span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:500">${ayuda}</span>` : ''}</label>`; }).join('')}</div></div>
+  let h = `<div class="card"><h2>Configuración</h2><div class="fields">${Object.keys(CFG_TXT).map(k => { const [lab, tipo, ayuda] = CFG_TXT[k]; return `<label class="f${['motivos', 'destinatarios_pdf', 'url_carga'].includes(k) ? ' wide' : ''}">${lab}${campoCfg(k, tipo)}${ayuda ? `<span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:500">${ayuda}</span>` : ''}</label>`; }).join('')}</div></div>
     <div class="card"><h2>Editores del maestro</h2><div class="sub">Correos que pueden editar equipos, partes, puntos y esta configuración.</div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Correo</th><th>Nombre</th><th>Activo</th></tr></thead><tbody>${D.editores.map(r => `<tr><td>${esc(r.email)}</td><td>${campo('editores', r.email, 'nombre', r.nombre)}</td><td>${campo('editores', r.email, 'activo', r.activo, null, ['SI', 'NO'])}</td></tr>`).join('')}</tbody></table></div>
     <div class="row"><input type="email" id="edMail" placeholder="correo@vspt.com.ar"><input type="text" id="edNom" placeholder="Nombre"><button class="btn" id="edAdd">Agregar editor</button></div></div>
@@ -750,7 +929,8 @@ function campoCfg(k, tipo) {
 function applyTheme(dark) { document.body.classList.toggle('light', !dark); $('#btnTheme').textContent = dark ? 'Claro' : 'Oscuro'; }
 window.addEventListener('message', e => { if (e.data && e.data.type === 'vspt-theme') applyTheme(!!e.data.dark); });
 if (window.self === window.top) { $('#btnTheme').hidden = false; $('#btnTheme').onclick = () => applyTheme(document.body.classList.contains('light')); }
-$('#btnReload').onclick = () => cargar();
+$('#btnReload').onclick = () => (CG ? abrirCarga(CG.ot_id) : cargar());
+if (CARGA) { $('.tabs').hidden = true; $('#hdrSub').textContent = 'Carga de lubricación desde el celular'; }
 window.addEventListener('beforeunload', e => { if (pend.length) { e.preventDefault(); e.returnValue = ''; } });
 (window.VSPT_API_READY || Promise.resolve()).then(cargar);
 </script>
