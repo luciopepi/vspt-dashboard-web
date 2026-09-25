@@ -3,13 +3,12 @@ branch: main
 publica: Netlify (deploy desde main)
 
 ## Last sync
-date: 2026-09-25T02:00:00Z
+date: 2026-09-25T07:00:00Z
 ### Updated in this project
-- **Mantenimiento · carga desde el celular**: cada planilla impresa trae un QR que abre `Dashboard_mantenimiento.html?carga=OT-…-Lx`. La página muestra solo esa planilla en tarjetas (Hecho / No se hizo con botones grandes, motivo, observación, anomalía, otra fecha y lotes). Entra con la cuenta VSPT de siempre. Lo marcado queda como borrador en el teléfono y se guarda de a partes. En pantallas angostas, "Cargar" de la OT abre el mismo formulario.
-- **Lubricador de la lista** (Ajustes → Lubricadores) en la carga de escritorio, en el celular y en el registro suelto de Alertas. La API rechaza registros sin lubricador cuando la lista existe.
-- **Equipos**: filtro "Por validar" (puntos con la parte asignada por defecto) con contador por equipo; partes editables (nombre y código SAP); botón "Asignar código SAP" en equipos locales (ej. Zalkin L2) que cambia el número en todo el maestro e historial.
-- Ajustes: campo "Página que abre el QR" (`url_carga`).
-- Requiere la API con la versión nueva de `07_MANTENIMIENTO.gs` y la ruta `mant_carga` en `01_API.gs` (repo luciopepi/Dashboard).
+- **Mantenimiento · Planta 3D** (pestaña nueva): la planta en 3D sobre el plano del DWG con un modelo simple por equipo y **semáforo** (halo en el piso y baliza) según el peor punto de cada equipo. Capas: Semáforo, OT de la semana (tareas por cargar / cargadas) y Horas de uso de 28 días. Filtro por línea con encuadre automático, vista 3D o Planta, nombres, panel con los puntos del equipo elegido y lista de equipos vencidos.
+- **Ubicar equipos** (solo editores): arrastrar y girar equipos sobre el plano y guardar `pos_x`/`pos_y`/`rot` en `MANT_EQUIPOS` con `mant_editar` (queda en el historial). Los equipos sin posición esperan en la zona "Equipos sin ubicar".
+- three.js 0.160 se importa desde jsdelivr (import map) recién al abrir la pestaña; el plano va en `assets/plano_fraccionamiento.json` (504 KB, 94 KB comprimido), que también se carga recién ahí.
+- Arreglo: `peor()` siempre devolvía "sin puntos" (comparaba con un rango indefinido); ahora el árbol de Equipos muestra el color del peor estado.
 
 
 ## Screen map
@@ -23,6 +22,8 @@ date: 2026-09-25T02:00:00Z
 | Mantenimiento · edición del maestro | Dashboard_mantenimiento.html · campo / filaEdicion / marcarCambio / barraCambios / guardarPend |
 | Mantenimiento · carga desde el celular (QR) | Dashboard_mantenimiento.html · CARGA / abrirCarga / renderCarga / bindCarga / guardarCg / leerBorrador |
 | Mantenimiento · equipo local → SAP, partes, por validar | Dashboard_mantenimiento.html · detalleEquipo (#eqSapOk) / edicionParte / nVal / eqVal |
+| Mantenimiento · Planta 3D (semáforo, capas, panel) | Dashboard_mantenimiento.html · renderPlanta / p3Iniciar / p3Crear / p3Sincronizar / p3Aplicar / p3Panel / p3Encuadre |
+| Mantenimiento · Planta 3D, modelos y ubicación | Dashboard_mantenimiento.html · P3_MODELOS / p3Forma / p3Maquina / p3Punteros / p3Guardar · assets/plano_fraccionamiento.json |
 | Mantenimiento · pestaña en v15 | Dashboard_v15.html · changeTab (EMBED.mantenimiento) / broadcastTheme |
 | API (Apps Script, repo luciopepi/Dashboard) | 01_API.gs · doGet / leerPestanaFmt_ / leerPestanaCompacta_ / normalizarFilas_ |
 | API de mantenimiento | 07_MANTENIMIENTO.gs · mantEstadoApi_ / mantHtmlApi_ / mantCargaApi_ / mantPost_ / mantGenerarOT_ / mantAsignarSap_ / mantQR_ |

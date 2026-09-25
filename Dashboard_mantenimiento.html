@@ -6,6 +6,8 @@
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="auth.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- three.js para la pestaña Planta 3D: se importa recién al abrirla -->
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
 <title>VSPT · Mantenimiento — Lubricación por horas de uso</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -21,13 +23,19 @@
     --crit:#FF5A76; --crit-bg:rgba(216,24,64,.2); --na:#9c8f9a; --na-bg:rgba(156,143,154,.16);
     --accent:#C9609A; --accent-ink:#1A1915; --focus:#F8C040;
     --ramp-lo:#3B3137; --ramp-hi:#C9609A; --ok-ink:#1A1915; --crit-ink:#1A1915;
+    --s-bg:#1A1915; --s-floor:#2C2A26; --s-floor-side:#1D1C19; --s-lines:#E0D0B8; --s-walls:#3D3934; --s-cols:#5E4A58;
+    --s-body:#5A544C; --s-trim:#D8C8D2; --s-accent:#F8C040; --s-steel:#6C665E; --s-wood:#8C6F4A; --s-glass:#5E7F69; --s-card:#8A7152;
+    --ramp-uso-lo:#3B3137; --ramp-uso-hi:#E88AC0;
   }
   body.light{ --bg:#F3F1EB; --card:#fff; --card2:#FAF7F0; --border:rgba(78,23,66,0.14);
     --text:#301030; --muted:#7a627a; --th-bg:#F3F1EB; --tr-hover:rgba(78,23,66,0.05);
     --td-border:rgba(78,23,66,0.08); --l1:#701F52;
     --ok:#5E6620; --ok-bg:rgba(152,160,64,.18); --warn:#8A5C00; --warn-bg:rgba(248,192,64,.3);
     --crit:#B0122F; --crit-bg:rgba(216,24,64,.12); --na:#7A6E78; --na-bg:rgba(184,168,152,.25);
-    --accent:#701F52; --accent-ink:#fff; --focus:#F08808; --ramp-lo:#F2E7EE; --ramp-hi:#701F52; --ok-ink:#fff; --crit-ink:#fff; }
+    --accent:#701F52; --accent-ink:#fff; --focus:#F08808; --ramp-lo:#F2E7EE; --ramp-hi:#701F52; --ok-ink:#fff; --crit-ink:#fff;
+    --s-bg:#ECE6DC; --s-floor:#E3DCD0; --s-floor-side:#C9BDAC; --s-lines:#4E1742; --s-walls:#D4C8B6; --s-cols:#8C6F84;
+    --s-body:#F6F1E8; --s-trim:#4E1742; --s-accent:#F8C040; --s-steel:#ADA59A; --s-wood:#C9A36E; --s-glass:#86A890; --s-card:#C7A57B;
+    --ramp-uso-lo:#EFE3EA; --ramp-uso-hi:#701F52; }
   *{box-sizing:border-box;margin:0;padding:0}
   [hidden]{display:none!important}
   body{background:var(--bg);color:var(--text);font-family:'Montserrat',system-ui,sans-serif;font-size:14px;line-height:1.45}
@@ -167,6 +175,27 @@
   .meter.full{width:100%;height:8px;display:block}
   .val{display:inline-block;min-width:17px;padding:0 5px;border-radius:8px;background:var(--warn-bg);color:var(--warn);font-size:10.5px;font-weight:800;text-align:center}
   .btn[aria-pressed="true"]{background:var(--warn-bg);border-color:var(--warn);color:var(--text)}
+  /* planta 3D */
+  .p3{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+  @media (max-width:1000px){.p3{grid-template-columns:minmax(0,1fr)}}
+  .p3-stage{position:relative;height:clamp(420px,68vh,780px);border-radius:10px;overflow:hidden;background:var(--s-bg);border:1px solid var(--border);touch-action:none}
+  .p3-stage canvas{display:block;width:100%;height:100%}
+  .p3-msg{position:absolute;inset:0;display:grid;place-content:center;text-align:center;color:var(--muted);padding:20px;font-size:13px}
+  .p3-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .mlabel{position:absolute;left:0;top:0;white-space:nowrap;display:flex;gap:5px;align-items:center;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  .mlabel.sel{border-color:var(--focus)}
+  .p3-legend{position:absolute;left:10px;bottom:10px;max-width:calc(100% - 20px);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 10px;display:grid;gap:4px;font-size:11.5px;opacity:.95}
+  .p3-legend .items{display:flex;flex-wrap:wrap;gap:3px 12px}
+  .p3-legend .ramp{height:8px;border-radius:4px;min-width:200px}
+  .p3-edit{position:absolute;left:10px;right:10px;top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--vspt-orange);border-radius:9px;padding:7px 10px}
+  .p3-side{position:sticky;top:10px;max-height:calc(100vh - 20px);overflow:auto}
+  .p3-list{display:grid;gap:2px}
+  .p3-item{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:12.5px;color:var(--text)}
+  .p3-item:hover{background:var(--tr-hover);border-color:var(--border)}
+  .p3-pts{display:grid}
+  .p3-pt{border-top:1px solid var(--td-border);padding:7px 0;display:grid;gap:3px;font-size:12.5px}
+  .dot.pend{background:var(--vspt-orange)}
+  @media (max-width:640px){.p3-legend{font-size:10.5px;padding:5px 8px;left:6px;bottom:6px}.p3-stage{height:clamp(380px,62vh,640px)}}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--vspt-plum);color:#fff;border:1px solid rgba(224,208,184,.3);padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:60;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.35)}
   .toast.err{background:#5a0f22}
   @media (max-width:640px){.header{padding:12px 16px}.content{padding:14px 16px 60px}.tbl .x{display:none}}
@@ -190,6 +219,7 @@
 </div>
 <nav class="tabs" role="tablist" aria-label="Vistas">
   <button class="tab" role="tab" data-v="ot" aria-selected="true">OT semanal</button>
+  <button class="tab" role="tab" data-v="planta" aria-selected="false">Planta 3D</button>
   <button class="tab" role="tab" data-v="alertas" aria-selected="false">Alertas<span class="n" id="nVenc" hidden></span></button>
   <button class="tab" role="tab" data-v="calendario" aria-selected="false">Calendario</button>
   <button class="tab" role="tab" data-v="equipos" aria-selected="false">Equipos</button>
@@ -306,7 +336,7 @@ $$('.tab').forEach(t => t.addEventListener('click', () => { view = t.dataset.v; 
 function render() {
   if (CG) return renderCarga();
   if (!D) return;
-  const f = { ot: renderOT, alertas: renderAlertas, calendario: renderCal, equipos: renderEquipos, avisos: renderAvisos, ajustes: renderAjustes }[view];
+  const f = { ot: renderOT, planta: renderPlanta, alertas: renderAlertas, calendario: renderCal, equipos: renderEquipos, avisos: renderAvisos, ajustes: renderAjustes }[view];
   (f || renderOT)();
 }
 
@@ -568,6 +598,666 @@ async function guardarCg() {
   } catch (e) { toast(e.message, true); b.disabled = false; b.textContent = 'Guardar'; }
 }
 
+// ───────────── planta 3D: semáforo por equipo ─────────────
+// Plano del DWG con un modelo simple por equipo. Cada equipo muestra el peor estado de sus puntos
+// (halo en el piso y baliza). three.js y el plano se cargan recién al abrir la pestaña.
+// Coordenadas de planta en metros: x hacia la derecha, y hacia arriba del plano → three (x, 0, -y).
+const P3_PLANO = 'assets/plano_fraccionamiento.json';
+const P3_SIN_UBICAR = { x0: 3, y0: 2.5, x1: 22, y1: 10 };      // zona del plano donde esperan los equipos sin posición
+const P3_CX = 28, P3_CZ = -27;                                    // centro de la planta
+// Modelo por equipo SAP: [tipo, ancho en x (m), profundidad en y (m)], relevado del DWG.
+const P3_MODELOS = {
+  '300050723': ['armadora', 4.4, 2.5], '300050719': ['tolva', 0.6, 0.7], '300050968': ['capsuladora', 1.4, 3], '300050998': ['cerradora', 3.1, 1.7],
+  '300051045': ['despal', 5.6, 2.1], '300051068': ['encajonadora', 2.2, 3], '300051104': ['rotativa', 2.2, 1.6], '300051131': ['envolvedora', 2, 2.8],
+  '300051141': ['etiquetadora', 3.9, 3.2], '300062830': ['etiqcaja', 1.3, 1], '300062831': ['codificador', 0.7, 0.5], '300062832': ['codificador', 0.7, 0.5],
+  '300062833': ['codificador', 0.7, 0.5], '300062834': ['codificador', 0.7, 0.5], '300051208': ['tunel', 1.5, 3.2], '300051212': ['llenadora', 2.5, 2.1],
+  '300051312': ['rotativa', 1.6, 1.1], '300051381': ['magazin', 1.4, 2], '300051385': ['giratoria', 1.5, 1.9], '300051389': ['rodillos', 1.5, 2.7],
+  '300051393': ['rodillos', 6.1, 1.8], '300051351': ['rotativa', 1.6, 1], '300050732': ['armadora', 3, 2], '300050978': ['capsuladora', 1.2, 2.2],
+  '300051004': ['cerradora', 2.4, 1.4], '300051050': ['despal3', 7.5, 1.8], '300051075': ['encajonadora', 3.1, 1.6], '300051113': ['rotativa', 1.9, 2.2],
+  '300051150': ['etiquetadora', 1.9, 2.4], '300062835': ['codificador', 0.7, 0.5], '300062836': ['codificador', 0.7, 0.5], '300051201': ['tolva', 0.6, 0.8],
+  '300051222': ['llenadora', 2.3, 2.4], '300051284': ['tunel', 1.7, 5.2], '300051322': ['rotativa', 1.8, 1.6], '300050741': ['armadora', 3.4, 2.4],
+  '300050988': ['capsuladora', 1.4, 2.7], '300051010': ['cerradora', 3.1, 2.7], '300051055': ['despal', 2.1, 5.3], '300051082': ['encajonadora', 1.9, 4.5],
+  '300051122': ['rotativa', 2.2, 1.8], '300051136': ['envolvedora', 2.6, 2.1], '300051159': ['etiquetadora', 3.6, 4.2], '300051168': ['etiquetadora', 2.6, 3.5],
+  '300062837': ['codificador', 0.7, 0.5], '300062838': ['codificador', 0.7, 0.5], '300062839': ['codificador', 0.7, 0.5], '300062840': ['etiqcaja', 1.3, 1],
+  '400013622': ['tunel', 1.5, 3.2], '300051232': ['llenadora', 2.4, 2], '300051332': ['rotativa', 1.5, 1.2], '300051342': ['rotativa', 1.5, 0.9],
+  '400014553': ['caneria', 3, 0.6], '400014560': ['tablero', 1.6, 0.6], 'LOC-0001': ['rotativa', 1.6, 1]
+};
+// Equipos nuevos sin modelo relevado: uno típico de su sector.
+const P3_POR_SECTOR = {
+  DESP: ['despal', 4, 2], ENJI: ['rotativa', 2, 1.6], LLEN: ['llenadora', 2.4, 2.1], TAPA: ['rotativa', 1.6, 1], TROS: ['rotativa', 1.6, 1],
+  ATAP: ['tolva', 0.6, 0.7], INER: ['tolva', 0.6, 0.8], LEXT: ['tunel', 1.5, 3.2], SECA: ['tunel', 1.7, 5.2], CAPS: ['capsuladora', 1.4, 2.7],
+  ETIQ: ['etiquetadora', 3, 3], ENCA: ['encajonadora', 2, 3.5], ACAJ: ['armadora', 3.4, 2.4], CCAJ: ['cerradora', 3.1, 1.7],
+  ESTR: ['envolvedora', 2.3, 2.4], TRAN: ['rodillos', 1.5, 2.5]
+};
+// Cintas de botellas: recorridos sobre el plano (no se mueven con "Ubicar equipos").
+const P3_CINTAS = {
+  '300051397': [[[38.2, 11.75], [38.55, 11.75], [38.55, 37.55], [35.0, 37.55]], [[30.9, 37.7], [26.4, 37.7]]],
+  '300051401': [[[44.55, 7.2], [44.55, 44.3], [20.4, 44.3]]],
+  '300051405': [[[49.2, 12.1], [49.2, 12.9], [51.2, 12.9], [51.2, 49.2]], [[49.0, 50.3], [36.5, 50.3]]]
+};
+// Horno de cápsulas: en SAP es parte de la capsuladora; se dibuja pegado a ella [dx, dy, ancho, profundidad].
+const P3_HORNOS = { '300050968': [-1.1, -1.5, 2.0, 0.8], '300050988': [-0.25, -2.35, 2.1, 1.6] };
+const P3_ROL = { body: '--s-body', trim: '--s-trim', accent: '--s-accent', steel: '--s-steel', wood: '--s-wood', glass: '--s-glass', card: '--s-card', guard: '--s-body', belt: '--s-steel' };
+let P3 = null;             // escena, se arma una sola vez
+// En pantallas angostas arranca en vista Planta: la planta es casi cuadrada y aprovecha mejor el cuadro.
+let p3 = { capa: 'lub', linea: 'all', vista: matchMedia('(max-width: 700px)').matches ? 'top' : '3d', nombres: false, editar: false, sel: null, hover: null, mov: {} };
+
+const p3Css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
+const p3Num = v => parseFloat(String(v ?? '').replace(',', '.'));
+const p3Visible = e => p3.linea === 'all' || eqLinea(e) === p3.linea || lineasEq(e).includes(p3.linea);
+function p3Modelo(e) {
+  const m = P3_MODELOS[String(e.equipo_sap)]; if (m) return m;
+  const n = String(e.nombre || '').toUpperCase();
+  if (/KETAN/.test(n)) return ['etiqcaja', 1.3, 1];
+  if (/DOMINO|FOX ?JET|HITACHI|IMPRESORA/.test(n)) return ['codificador', 0.7, 0.5];
+  return P3_POR_SECTOR[String(e.sector || '').toUpperCase()] || ['caja', 1.5, 1.5];
+}
+// Posición guardada (o la que se está moviendo); null si el equipo todavía no se ubicó.
+function p3Pos(e) {
+  const m = p3.mov[String(e.equipo_sap)]; if (m) return m;
+  const x = p3Num(e.pos_x), y = p3Num(e.pos_y);
+  return isFinite(x) && isFinite(y) ? { x, y, rot: p3Num(e.rot) || 0 } : null;
+}
+const p3EnEspera = p => p.x >= P3_SIN_UBICAR.x0 && p.x <= P3_SIN_UBICAR.x1 && p.y >= P3_SIN_UBICAR.y0 && p.y <= P3_SIN_UBICAR.y1;
+// Por equipo: estado, horas de uso de 28 días y tareas de la OT elegida (con cuántas ya cargadas).
+function p3Datos() {
+  const base = otSel || D.proy_semanas[0].ot_id, ot = {}, uso = {};
+  D.ots.forEach(f => {
+    if (!String(f.ot_id).startsWith(base + '-') || !si(f.entra)) return;
+    const id = String(f.equipo_sap), o = ot[id] = ot[id] || { n: 0, c: 0 };
+    o.n++; if ((IX.regsOt[String(f.ot_id)] || {})[String(f.punto_id)]) o.c++;
+  });
+  D.equipos.forEach(e => { const p = (IX.ptsEq[e.equipo_sap] || [])[0]; uso[e.equipo_sap] = p && p.ritmo_dia !== '' && p.ritmo_dia != null ? Number(p.ritmo_dia) * 28 : null; });
+  const maxUso = Math.max(1, ...Object.values(uso).filter(v => v != null));
+  return { base, ot, uso, maxUso };
+}
+
+function renderPlanta() {
+  const seg = (k, v, lab, on) => `<button data-${k}="${v}" aria-pressed="${on}">${lab}</button>`;
+  const lineas = ['all', ...LINEAS.filter(L => D.equipos.some(e => eqLinea(e) === L))];
+  $('#main').innerHTML = `<div class="p3">
+    <div class="card p3-card">
+      <div class="row p3-hud">
+        <div class="seg" role="group" aria-label="Línea">${lineas.map(L => seg('p3l', L, L === 'all' ? 'Todas' : L, p3.linea === L)).join('')}</div>
+        <div class="seg" role="group" aria-label="Qué muestra">${[['lub', 'Semáforo'], ['ot', 'OT de la semana'], ['uso', 'Horas de uso']].map(([k, t]) => seg('p3c', k, t, p3.capa === k)).join('')}</div>
+        <div class="seg" role="group" aria-label="Vista">${seg('p3v', '3d', '3D', p3.vista === '3d')}${seg('p3v', 'top', 'Planta', p3.vista === 'top')}</div>
+        <button class="btn sm" id="p3Nom" aria-pressed="${p3.nombres}">Nombres</button>
+        <span class="grow"></span>
+        ${D.editor ? `<button class="btn sm" id="p3Ed" aria-pressed="${p3.editar}">Ubicar equipos</button>` : ''}
+      </div>
+      <div class="p3-stage" id="p3stage"><div class="p3-msg" id="p3msg">Cargando el plano 3D…</div>
+        <div class="p3-labels" id="p3labels"></div><div class="p3-legend" id="p3legend" hidden></div><div class="p3-edit" id="p3edit" hidden></div></div>
+      <div class="small muted" id="p3ayuda">${p3Ayuda()}</div>
+    </div>
+    <div class="card p3-side" id="p3side"></div></div>`;
+  $$('[data-p3l]').forEach(b => b.onclick = () => {
+    p3.linea = b.dataset.p3l; $$('[data-p3l]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    if (p3.sel && !p3Visible(IX.eq[p3.sel] || {})) p3.sel = null;
+    p3Aplicar(); p3Panel(); p3BarraEdicion(); if (P3) p3Encuadre();
+  });
+  $$('[data-p3c]').forEach(b => b.onclick = () => { p3.capa = b.dataset.p3c; $$('[data-p3c]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); p3Aplicar(); p3Panel(); });
+  $$('[data-p3v]').forEach(b => b.onclick = () => { p3.vista = b.dataset.p3v; $$('[data-p3v]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); $('#p3ayuda').textContent = p3Ayuda(); if (P3) p3Encuadre(); });
+  $('#p3Nom').onclick = ev => { p3.nombres = !p3.nombres; ev.currentTarget.setAttribute('aria-pressed', String(p3.nombres)); if (P3) P3.dirty = true; };
+  const be = $('#p3Ed');
+  if (be) be.onclick = () => { p3.editar = !p3.editar; be.setAttribute('aria-pressed', String(p3.editar)); p3BarraEdicion(); };
+  p3Panel(); p3BarraEdicion();
+  if (P3) p3Montar(); else p3Iniciar();
+}
+const p3Ayuda = () => (p3.vista === 'top'
+  ? 'Desplazá con un dedo o el botón izquierdo y acercá con dos dedos o la rueda.'
+  : 'Girá con un dedo o el botón izquierdo, desplazá con dos dedos o el botón derecho y acercá con la rueda.') + ' Tocá un equipo para ver sus puntos; doble clic para acercarte.';
+async function p3Iniciar() {
+  if (p3Iniciar.corriendo) return;
+  p3Iniciar.corriendo = true;
+  try {
+    const [T, OC, plano] = await Promise.all([import('three'), import('three/addons/controls/OrbitControls.js'),
+      fetch(P3_PLANO).then(r => { if (!r.ok) throw new Error('no se encontró el plano (' + r.status + ')'); return r.json(); })]);
+    p3Crear(T, OC.OrbitControls, plano);
+    if (view === 'planta' && !CG) p3Montar();
+  } catch (e) {
+    P3 = null;
+    const m = $('#p3msg');
+    if (m) { m.hidden = false; m.innerHTML = `No se pudo abrir el plano 3D: ${esc(e.message)}<br><br><button class="btn" id="p3Re">Reintentar</button>`; $('#p3Re').onclick = () => { m.textContent = 'Cargando el plano 3D…'; p3Iniciar(); }; }
+  } finally { p3Iniciar.corriendo = false; }
+}
+function p3Crear(T, OrbitControls, plano) {
+  let renderer;
+  try { renderer = new T.WebGLRenderer({ antialias: true }); }
+  catch (e) { throw new Error('este dispositivo no puede mostrar gráficos 3D (WebGL)'); }
+  const chico = matchMedia('(max-width: 700px)').matches;
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+  const scene = new T.Scene(), cam = new T.OrthographicCamera(-1, 1, 1, -1, 0.1, 600);
+  const controls = new OrbitControls(cam, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.12; controls.screenSpacePanning = true;
+  controls.maxPolarAngle = Math.PI * 0.48; controls.minZoom = 0.6; controls.maxZoom = 14;
+  const hemi = new T.HemisphereLight(0xffffff, 0xb9aa9a, 0.95), sol = new T.DirectionalLight(0xffffff, 1.45);
+  sol.position.set(P3_CX - 26, 58, P3_CZ + 30); sol.target.position.set(P3_CX, 0, P3_CZ);
+  sol.castShadow = true; sol.shadow.mapSize.set(chico ? 1024 : 2048, chico ? 1024 : 2048);
+  Object.assign(sol.shadow.camera, { left: -42, right: 42, top: 42, bottom: -42, near: 5, far: 160 });
+  sol.shadow.bias = -0.0006; sol.shadow.normalBias = 0.02;
+  scene.add(hemi, sol, sol.target);
+  P3 = { T, renderer, scene, cam, controls, hemi, sol, plano, texN: chico ? 2048 : 4096, maq: new Map(), cintas: [], picks: [], etiq: new Map(),
+         ray: new T.Raycaster(), ptr: new T.Vector2(), piso: new T.Plane(new T.Vector3(0, 1, 0), 0), dirty: true, anim: null };
+  controls.addEventListener('change', () => { P3.dirty = true; });
+  p3Piso(); p3Estructura(); p3Sincronizar(); p3Punteros(); p3Tema();
+  (function bucle() { requestAnimationFrame(bucle); p3Cuadro(); })();
+}
+// Pone el lienzo en la pestaña recién dibujada y actualiza equipos, colores y panel.
+function p3Montar() {
+  const S = P3, st = $('#p3stage'); if (!S || !st) return;
+  $('#p3msg').hidden = true;
+  st.insertBefore(S.renderer.domElement, st.firstChild);
+  if (S.ro) S.ro.disconnect();
+  S.ro = new ResizeObserver(p3Medir); S.ro.observe(st);
+  S.etiq.forEach(el => el.remove()); S.etiq.clear();
+  p3Sincronizar(); p3Medir(); p3Panel(); p3BarraEdicion();
+  if (!S.encuadrado) { p3Encuadre(false); S.encuadrado = true; }
+}
+function p3Medir() {
+  const S = P3, st = $('#p3stage'); if (!S || !st) return;
+  const w = st.clientWidth || 800, h = st.clientHeight || 500, a = w / h, H = Math.max(25, 31 / a);
+  S.renderer.setSize(w, h, false);
+  Object.assign(S.cam, { left: -H * a, right: H * a, top: H, bottom: -H }); S.cam.updateProjectionMatrix(); S.dirty = true;
+}
+function p3Cuadro() {
+  const S = P3; if (!S || view !== 'planta' || CG || !S.renderer.domElement.isConnected) return;
+  if (S.anim) {
+    const a = S.anim, t = Math.min(1, (performance.now() - a.t0) / 550), k = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    S.cam.position.lerpVectors(a.de, a.a, k); S.controls.target.lerpVectors(a.tDe, a.tA, k);
+    S.cam.zoom = a.z0 + (a.z1 - a.z0) * k; S.cam.updateProjectionMatrix();
+    if (t >= 1) S.anim = null;
+    S.dirty = true;
+  }
+  S.controls.update();
+  if (!S.dirty) return;
+  S.dirty = false;
+  S.renderer.render(S.scene, S.cam); p3Etiquetas();
+}
+
+// ── piso, plano y estructura ──
+function p3Piso() {
+  const S = P3, T = S.T;
+  S.pisoMat = { top: new T.MeshStandardMaterial({ roughness: 0.95 }), lado: new T.MeshStandardMaterial({ roughness: 0.95 }) };
+  const losa = new T.Mesh(new T.BoxGeometry(60, 0.5, 58), [S.pisoMat.lado, S.pisoMat.lado, S.pisoMat.top, S.pisoMat.lado, S.pisoMat.lado, S.pisoMat.lado]);
+  losa.position.set(28, -0.25, -27); losa.receiveShadow = true; S.scene.add(losa);
+  S.lienzo = document.createElement('canvas'); S.lienzo.width = S.lienzo.height = S.texN;
+  S.tex = new T.CanvasTexture(S.lienzo); S.tex.colorSpace = T.SRGBColorSpace;
+  S.tex.anisotropy = Math.min(8, S.renderer.capabilities.getMaxAnisotropy());
+  const plano = new T.Mesh(new T.PlaneGeometry(60, 60), new T.MeshBasicMaterial({ map: S.tex, transparent: true, depthWrite: false }));
+  plano.rotation.x = -Math.PI / 2; plano.position.set(28, 0.006, -28); plano.renderOrder = 1; S.scene.add(plano);
+}
+function p3DibujarPlano() {
+  const S = P3, ctx = S.lienzo.getContext('2d'), N = S.texN, k = N / 60, s = N / 4096, oscuro = !document.body.classList.contains('light');
+  const X = x => (x / 100 + 2) * k, Y = y => N - (y / 100 + 2) * k, tinta = p3Css('--s-lines');
+  const est = { 'Texto': [0.58, 1.25], '0': [0.4, 1.1], 'Columnas': [0.55, 1.3], 'Mampostería': [0.8, 2.4], 'corte': [0.8, 2.4], 'proyección': [0.32, 1] };
+  ctx.clearRect(0, 0, N, N); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = tinta;
+  for (const [capa, polis] of Object.entries(S.plano.capas)) {
+    const [a, w] = est[capa] || [0.4, 1];
+    ctx.globalAlpha = a * (oscuro ? 0.85 : 0.85); ctx.lineWidth = Math.max(0.8, w * s * 1.15);
+    ctx.beginPath();
+    for (const f of polis) {   // primer punto absoluto y después diferencias (cm)
+      let x = f[0], y = f[1]; ctx.moveTo(X(x), Y(y));
+      for (let i = 2; i < f.length; i += 2) { x += f[i]; y += f[i + 1]; ctx.lineTo(X(x), Y(y)); }
+    }
+    ctx.stroke();
+  }
+  const Z = P3_SIN_UBICAR;
+  ctx.globalAlpha = oscuro ? 0.55 : 0.7; ctx.setLineDash([22 * s, 14 * s]); ctx.lineWidth = 3 * s;
+  ctx.strokeRect(X(Z.x0 * 100), Y(Z.y1 * 100), (Z.x1 - Z.x0) * k, (Z.y1 - Z.y0) * k); ctx.setLineDash([]);
+  ctx.globalAlpha = oscuro ? 0.75 : 0.85; ctx.fillStyle = tinta; ctx.font = `700 ${Math.round(46 * s)}px Montserrat, sans-serif`;
+  ctx.fillText('EQUIPOS SIN UBICAR', X(Z.x0 * 100 + 40), Y(Z.y1 * 100 + 55));
+  ctx.globalAlpha = 1; S.tex.needsUpdate = true; S.dirty = true;
+}
+function p3Estructura() {
+  const S = P3, T = S.T;
+  S.muroMat = new T.MeshStandardMaterial({ roughness: 0.9 }); S.colMat = new T.MeshStandardMaterial({ roughness: 0.8 });
+  for (const [x1, y1, x2, y2] of S.plano.estructura.muros) {
+    const m = new T.Mesh(new T.BoxGeometry(Math.hypot(x2 - x1, y2 - y1), 1.1, 0.12), S.muroMat);
+    m.position.set((x1 + x2) / 2, 0.55, -(y1 + y2) / 2); m.rotation.y = Math.atan2(y2 - y1, x2 - x1);
+    m.castShadow = true; m.receiveShadow = true; S.scene.add(m);
+  }
+  for (const [x, y, w, d] of S.plano.estructura.columnas) {
+    const m = new T.Mesh(new T.BoxGeometry(w, 2.4, d), S.colMat);
+    m.position.set(x, 1.2, -y); m.castShadow = true; m.receiveShadow = true; S.scene.add(m);
+  }
+}
+
+// ── equipos: un modelo paramétrico por tipo ──
+function p3Mat(role, extra = {}) {
+  const T = P3.T;
+  const m = new T.MeshStandardMaterial({ roughness: 0.7, metalness: role === 'steel' ? 0.3 : 0.04, flatShading: true, transparent: true, opacity: extra.opacity ?? 1, depthWrite: extra.depthWrite ?? true });
+  m.userData = { role, base: extra.opacity ?? 1 };
+  if (P3_ROL[role]) m.color.set(p3Css(P3_ROL[role]));
+  return m;
+}
+// Dibuja un tipo de máquina de w × d (m) dentro del grupo g, corrido (ox, oz). Devuelve la altura.
+function p3Forma(tipo, w, d, M, g, meshes, ox = 0, oz = 0) {
+  const T = P3.T, long = Math.max(w, d), short = Math.min(w, d), alongZ = d > w;
+  const add = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x + ox, y, z + oz); m.castShadow = true; m.receiveShadow = true; g.add(m); meshes.push(m); return m; };
+  const box = (sx, sy, sz, mat, x = 0, y = 0, z = 0) => add(new T.BoxGeometry(sx, sy, sz), mat, x, y + sy / 2, z);
+  const cyl = (r, h, mat, x = 0, y = 0, z = 0, seg = 28, r2) => add(new T.CylinderGeometry(r, r2 ?? r, h, seg), mat, x, y + h / 2, z);
+  const at = (u, v) => alongZ ? [v, -u] : [u, v];        // u: eje largo, v: eje corto
+  const obox = (lu, h, lv, mat, u = 0, y = 0, v = 0) => { const [x, z] = at(u, v); return alongZ ? box(lv, h, lu, mat, x, y, z) : box(lu, h, lv, mat, x, y, z); };
+  const band = h => box(w * 1.004, 0.07, d * 1.004, M.trim, 0, h - 0.09, 0);
+  const rodillos = (len, across, y, n) => {
+    const im = new T.InstancedMesh(new T.CylinderGeometry(0.038, 0.038, across * 0.94, 8), M.steel, n), o = new T.Object3D();
+    for (let i = 0; i < n; i++) {
+      const [x, z] = at(-len / 2 + (i + 0.5) * len / n, 0);
+      o.position.set(x + ox, y, z + oz); o.rotation.set(alongZ ? 0 : Math.PI / 2, 0, alongZ ? Math.PI / 2 : 0); o.updateMatrix(); im.setMatrixAt(i, o.matrix);
+    }
+    im.castShadow = true; im.receiveShadow = true; g.add(im); meshes.push(im);
+  };
+  let top = 1.2;
+  switch (tipo) {
+    case 'rotativa': { box(w, 0.85, d, M.body); band(0.85); const r = short * 0.34; cyl(r, 0.42, M.steel, 0, 0.85); cyl(r * 0.42, 0.34, M.accent, 0, 1.27); top = 1.62; break; }
+    case 'llenadora': {
+      box(w, 0.9, d, M.body); band(0.9); const r = short * 0.4; cyl(r, 0.5, M.steel, 0, 0.9);
+      for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; cyl(0.045, 0.3, M.trim, Math.cos(a) * r * 0.9, 1.4, Math.sin(a) * r * 0.9, 8); }
+      cyl(0.09, 0.62, M.steel, 0, 1.4); cyl(r * 0.55, 0.32, M.accent, 0, 2.0); top = 2.32; break;
+    }
+    case 'capsuladora': { box(w, 0.95, d, M.body); band(0.95); const r = short * 0.3; [-0.24, 0.24].forEach(t => { const [x, z] = at(t * long, 0); cyl(r, 0.38, M.steel, x, 0.95, z); }); obox(short * 0.5, 0.48, short * 0.5, M.accent, 0, 1.33, 0); top = 1.81; break; }
+    case 'etiquetadora': {
+      box(w, 0.9, d, M.body); band(0.9); const r = short * 0.3; cyl(r, 0.3, M.steel, 0, 0.9); cyl(r * 0.62, 0.1, M.accent, 0, 1.2);
+      [-0.9, 0.35, 1.6].forEach(a => { const x = Math.cos(a) * Math.min(r * 1.45, w / 2 - 0.25), z = Math.sin(a) * Math.min(r * 1.45, d / 2 - 0.25); box(0.34, 0.72, 0.3, M.trim, x, 0.9, z); cyl(0.15, 0.06, M.card, x, 1.62, z, 16); });
+      top = 1.75; break;
+    }
+    case 'tunel': { box(w, 1.0, d, M.body); band(1.0); obox(long * 0.96, 0.34, short * 0.9, M.steel, 0, 1.0, 0); obox(short * 0.45, 0.32, short * 0.45, M.trim, long * 0.3, 1.34, 0); top = 1.7; break; }
+    case 'horno': {
+      box(w, 0.75, d, M.body); const n = Math.max(6, Math.round(long / 0.22));
+      for (let i = 0; i < n; i++) obox(0.05, 0.3, short * 0.86, M.steel, -long / 2 + (i + 0.5) * long / n, 0.75, 0);
+      obox(long, 0.06, 0.08, M.accent, 0, 0.75, short * 0.47); top = 1.08; break;
+    }
+    case 'despal': case 'despal3': {
+      obox(long, 0.32, short, M.steel); const n = tipo === 'despal3' ? 3 : 1;
+      for (let k = 0; k < n; k++) { const u = -long / 2 + 0.72 + k * 1.25; obox(1.12, 0.13, Math.min(1.0, short * 0.9), M.wood, u, 0.32, 0); obox(1.06, 1.0, Math.min(0.95, short * 0.85), M.glass, u, 0.45, 0); }
+      [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => obox(0.12, 2.45, 0.12, M.trim, a * (long / 2 - 0.08), 0, b * (short / 2 - 0.08)));
+      [-1, 1].forEach(b => obox(long, 0.13, 0.13, M.trim, 0, 2.45, b * (short / 2 - 0.08)));
+      obox(0.95, 0.32, Math.min(0.95, short * 0.8), M.accent, -long / 2 + 0.72, 1.95, 0); top = 2.6; break;
+    }
+    case 'encajonadora': {
+      [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => box(0.1, 2.05, 0.1, M.trim, a * (w / 2 - 0.05), 0, b * (d / 2 - 0.05)));
+      box(w, 0.1, 0.1, M.trim, 0, 2.0, d / 2 - 0.05); box(w, 0.1, 0.1, M.trim, 0, 2.0, -d / 2 + 0.05);
+      box(0.1, 0.1, d, M.trim, w / 2 - 0.05, 2.0, 0); box(0.1, 0.1, d, M.trim, -w / 2 + 0.05, 2.0, 0);
+      box(w * 0.98, 1.7, d * 0.98, M.guard, 0, 0.15, 0);
+      obox(long * 0.6, 0.9, short * 0.7, M.body); obox(long * 0.36, 0.26, short * 0.5, M.accent, 0, 1.5, 0); top = 2.15; break;
+    }
+    case 'armadora': { obox(long * 0.78, 1.25, short, M.body, long * 0.11); const [x, z] = at(long * 0.11, 0); box(alongZ ? short * 1.004 : long * 0.78, 0.07, alongZ ? long * 0.78 : short * 1.004, M.trim, x, 1.16, z); obox(long * 0.2, 1.5, short * 0.82, M.card, -long / 2 + long * 0.1); top = 1.6; break; }
+    case 'cerradora': {
+      box(w, 0.85, d, M.body); band(0.85);
+      [-1, 1].forEach(b => obox(0.12, 0.8, 0.12, M.trim, 0, 0.85, b * short * 0.42)); obox(0.14, 0.14, short * 0.96, M.trim, 0, 1.63, 0);
+      cyl(0.16, 0.07, M.accent, 0, 1.77, 0, 20); top = 1.84; break;
+    }
+    case 'magazin': { [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => box(0.1, 2.3, 0.1, M.trim, a * (w / 2 - 0.05), 0, b * (d / 2 - 0.05))); for (let i = 0; i < 7; i++) obox(long * 0.86, 0.12, short * 0.86, M.wood, 0, 0.12 + i * 0.2, 0); top = 2.3; break; }
+    case 'rodillos': { box(w, 0.42, d, M.steel); rodillos(long, short, 0.46, Math.max(4, Math.round(long / 0.24))); top = 0.5; break; }
+    case 'giratoria': { cyl(short * 0.48, 0.34, M.steel); cyl(short * 0.46, 0.07, M.body, 0, 0.34); rodillos(short * 0.8, short * 0.75, 0.44, 7); top = 0.5; break; }
+    case 'envolvedora': {
+      const [x0, z0] = at(-long * 0.1, 0); cyl(short * 0.44, 0.22, M.steel, x0, 0, z0, 32);
+      obox(1.1, 0.13, 1.0, M.wood, -long * 0.1, 0.22, 0); obox(1.04, 1.15, 0.94, M.card, -long * 0.1, 0.35, 0);
+      obox(0.22, 2.7, 0.22, M.trim, long / 2 - 0.18, 0, 0); obox(0.32, 0.45, 0.36, M.accent, long / 2 - 0.45, 1.25, 0); top = 2.7; break;
+    }
+    case 'tolva': { box(w, 0.9, d, M.body); band(0.9); const m = cyl(short * 0.62, 0.62, M.accent, 0, 0.9, 0, 4, short * 0.2); m.rotation.y = Math.PI / 4; top = 1.55; break; }
+    case 'codificador': { box(0.1, 0.95, 0.1, M.steel); box(w, 0.32, d, M.body, 0, 0.95); box(w * 0.5, 0.06, d * 0.55, M.accent, 0, 1.27); top = 1.33; break; }
+    case 'etiqcaja': { box(w, 0.85, d, M.body); band(0.85); const [x, z] = at(-long * 0.18, 0); cyl(short * 0.3, 0.12, M.card, x, 0.85, z, 20); obox(long * 0.3, 0.3, short * 0.5, M.accent, long * 0.2, 0.85, 0); top = 1.2; break; }
+    case 'tablero': { box(w, 2.0, d, M.body); band(2.0); obox(long * 0.2, 0.12, 0.04, M.accent, long * 0.3, 1.6, short / 2); top = 2.0; break; }
+    case 'caneria': {
+      [-0.4, 0.4].forEach(t => obox(0.08, 1.3, short * 0.8, M.trim, t * long, 0, 0));
+      [-0.18, 0.18].forEach(v => { const [x, z] = at(0, v * short), m = add(new T.CylinderGeometry(0.09, 0.09, long, 14), M.steel, x, 1.3, z); if (alongZ) m.rotation.x = Math.PI / 2; else m.rotation.z = Math.PI / 2; });
+      top = 1.45; break;
+    }
+    default: { box(w, 1, d, M.body); top = 1; }
+  }
+  return top;
+}
+function p3Maquina(e, [tipo, w, d]) {
+  const T = P3.T, g = new T.Group(), meshes = [], id = String(e.equipo_sap);
+  const M = { body: p3Mat('body'), trim: p3Mat('trim'), accent: p3Mat('accent'), steel: p3Mat('steel'), wood: p3Mat('wood'), glass: p3Mat('glass', { opacity: 0.88 }), card: p3Mat('card'), guard: p3Mat('guard', { opacity: 0.16, depthWrite: false }) };
+  const top = p3Forma(tipo, w, d, M, g, meshes);
+  const h = P3_HORNOS[id]; if (h) p3Forma('horno', h[2], h[3], M, g, meshes, h[0], -h[1]);
+  // semáforo: halo en el piso + baliza sobre el equipo
+  const halo = new T.Mesh(new T.PlaneGeometry(w + 1.2, d + 1.2), new T.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: false }));
+  halo.rotation.x = -Math.PI / 2; halo.position.y = 0.012; halo.renderOrder = 2; g.add(halo);
+  const lampMat = new T.MeshStandardMaterial({ roughness: 0.3, emissiveIntensity: 0.9, transparent: true });
+  const lx = w / 2 - 0.16, lz = -(d / 2 - 0.16);
+  const poste = new T.Mesh(new T.CylinderGeometry(0.03, 0.03, 0.6, 8), M.steel); poste.position.set(lx, top + 0.3, lz); g.add(poste);
+  const lamp = new T.Mesh(new T.SphereGeometry(0.3, 18, 14), lampMat); lamp.position.set(lx, top + 0.85, lz); g.add(lamp); meshes.push(lamp);
+  const sel = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(w + 0.25, top + 0.25, d + 0.25)), new T.LineBasicMaterial({ transparent: true }));
+  sel.position.y = (top + 0.25) / 2; sel.visible = false; sel.material.color.set(p3Css('--focus')); g.add(sel);
+  meshes.forEach(m => m.userData.eqId = id);
+  return { id, e, g, halo, lamp, sel, top, w, d, meshes, mats: Object.values(M).concat([lampMat]), cuerpo: [M.body] };
+}
+function p3Cinta(id) {
+  const e = IX.eq[id]; if (!e) return null;
+  const S = P3, T = S.T, g = new T.Group(), top = p3Mat('belt'), frame = p3Mat('steel'), meshes = [];
+  for (const path of P3_CINTAS[id]) for (let i = 0; i < path.length - 1; i++) {
+    const [x1, y1] = path[i], [x2, y2] = path[i + 1], len = Math.hypot(x2 - x1, y2 - y1); if (len < 0.05) continue;
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    const s = new T.Mesh(new T.BoxGeometry(len + 0.24, 0.07, 0.24), top); s.position.set((x1 + x2) / 2, 0.84, -(y1 + y2) / 2); s.rotation.y = ang; s.castShadow = true; s.receiveShadow = true;
+    const f = new T.Mesh(new T.BoxGeometry(len + 0.24, 0.1, 0.3), frame); f.position.set((x1 + x2) / 2, 0.76, -(y1 + y2) / 2); f.rotation.y = ang; f.castShadow = true;
+    g.add(s, f); meshes.push(s, f);
+    const n = Math.floor(len / 1.8);
+    for (let k = 1; k <= n; k++) { const t = k / (n + 1), leg = new T.Mesh(new T.BoxGeometry(0.05, 0.71, 0.05), frame); leg.position.set(x1 + (x2 - x1) * t, 0.355, -(y1 + (y2 - y1) * t)); g.add(leg); meshes.push(leg); }
+  }
+  const p0 = P3_CINTAS[id][0], [bx, by] = p0[Math.min(1, p0.length - 1)];
+  const lampMat = new T.MeshStandardMaterial({ roughness: 0.3, emissiveIntensity: 0.9, transparent: true });
+  const poste = new T.Mesh(new T.CylinderGeometry(0.03, 0.03, 0.7, 8), frame); poste.position.set(bx, 1.22, -by);
+  const lamp = new T.Mesh(new T.SphereGeometry(0.3, 18, 14), lampMat); lamp.position.set(bx, 1.8, -by);
+  g.add(poste, lamp); meshes.push(poste, lamp);
+  meshes.forEach(m => m.userData.eqId = id);
+  S.scene.add(g);
+  return { id, e, g, top, lamp, meshes, mats: [top, frame, lampMat] };
+}
+function p3Quitar(obj) {
+  P3.scene.remove(obj.g);
+  obj.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && !Array.isArray(o.material)) o.material.dispose(); });
+}
+// Lugares libres en la zona "sin ubicar", de izquierda a derecha, para los equipos sin posición.
+function p3LugaresEspera(sinPos, colocados) {
+  const Z = P3_SIN_UBICAR, res = new Map(), ocup = colocados.filter(p3EnEspera).map(p => ({ x: p.x, y: p.y, r: 1.6 }));
+  let x = Z.x0 + 0.8, y = Z.y1 - 1.5;
+  sinPos.slice().sort((a, b) => eqLinea(a).localeCompare(eqLinea(b)) || String(a.nombre).localeCompare(String(b.nombre))).forEach(e => {
+    const [, w, d] = p3Modelo(e), largo = Math.max(w, d), r = largo / 2 + 0.3;
+    for (let n = 0; n < 80 && y > Z.y0; n++) {
+      if (x + largo > Z.x1 - 0.3) { x = Z.x0 + 0.8; y -= 2.4; continue; }
+      const c = { x: x + largo / 2, y };
+      if (!ocup.some(o => Math.hypot(o.x - c.x, o.y - c.y) < o.r + r)) { res.set(String(e.equipo_sap), { x: +c.x.toFixed(2), y: +c.y.toFixed(2), rot: d > w ? 90 : 0 }); ocup.push({ ...c, r }); x += largo + 0.7; return; }
+      x += 0.6;
+    }
+    res.set(String(e.equipo_sap), { x: Z.x0 + 1, y: Z.y0 + 0.8, rot: 0 });   // zona llena: quedan apilados en la esquina
+  });
+  return res;
+}
+// Reconcilia la escena con D.equipos: altas, bajas, cambios de modelo y posiciones.
+function p3Sincronizar() {
+  const S = P3; if (!S) return;
+  const propios = D.equipos.filter(e => !P3_CINTAS[String(e.equipo_sap)]);
+  const colocados = [], sinPos = [];
+  propios.forEach(e => { const p = p3Pos(e); if (p) colocados.push(p); else sinPos.push(e); });
+  const espera = p3LugaresEspera(sinPos, colocados), vistos = new Set();
+  propios.forEach(e => {
+    const id = String(e.equipo_sap), mod = p3Modelo(e), firma = mod.join('|');
+    let mc = S.maq.get(id);
+    if (mc && mc.firma !== firma) { p3Quitar(mc); mc = null; }
+    if (!mc) { mc = p3Maquina(e, mod); mc.firma = firma; S.maq.set(id, mc); S.scene.add(mc.g); }
+    const guardada = p3Pos(e), pos = guardada || espera.get(id);
+    Object.assign(mc, { e, pos, sinUbicar: !guardada || p3EnEspera(guardada) });
+    mc.g.position.set(pos.x, 0, -pos.y); mc.g.rotation.y = -(pos.rot || 0) * Math.PI / 180;
+    vistos.add(id);
+  });
+  for (const [id, mc] of S.maq) if (!vistos.has(id)) { p3Quitar(mc); S.maq.delete(id); }
+  S.cintas = S.cintas.filter(b => { if (IX.eq[b.id]) { b.e = IX.eq[b.id]; return true; } p3Quitar(b); return false; });
+  Object.keys(P3_CINTAS).forEach(id => { if (!S.cintas.some(b => b.id === id)) { const b = p3Cinta(id); if (b) S.cintas.push(b); } });
+  S.picks = [...S.maq.values()].flatMap(m => m.meshes).concat(S.cintas.flatMap(b => b.meshes));
+  if (p3.sel && !IX.eq[p3.sel]) p3.sel = null;
+  p3Aplicar();
+}
+
+// ── colores por capa, leyenda y resaltado ──
+function p3Aplicar() {
+  const S = P3; if (!S) return;
+  const dat = S.dat = p3Datos(), c = v => new S.T.Color(p3Css(v));
+  const col = { vencido: c('--crit'), proximo: c('--warn'), ok: c('--ok'), na: c('--na'), pend: c('--vspt-orange') };
+  const cuerpo = c('--s-body'), lo = c('--ramp-uso-lo'), hi = c('--ramp-uso-hi');
+  const colorDe = id => {
+    if (p3.capa === 'ot') { const o = dat.ot[id]; return !o ? col.na : o.c >= o.n ? col.ok : col.pend; }
+    if (p3.capa === 'uso') { const u = dat.uso[id]; return u == null ? col.na : lo.clone().lerp(hi, Math.sqrt(u / dat.maxUso)); }
+    const s = peor(id); return col[s] || col.na;
+  };
+  const fade = (obj, on) => obj.mats.forEach(m => { const b = m.userData.base ?? 1; m.opacity = on ? b : 0.12; m.depthWrite = on && b === 1; });
+  for (const mc of S.maq.values()) {
+    const cc = colorDe(mc.id);
+    mc.halo.material.color.copy(cc);
+    mc.lamp.material.color.copy(cc); mc.lamp.material.emissive.copy(cc).multiplyScalar(0.55); mc.lamp.visible = p3.capa !== 'uso';
+    mc.cuerpo.forEach(m => m.color.copy(p3.capa === 'uso' && dat.uso[mc.id] != null ? cc : cuerpo));
+    fade(mc, p3Visible(mc.e) && si(mc.e.activo));
+  }
+  for (const b of S.cintas) {
+    const cc = colorDe(b.id);
+    b.lamp.material.color.copy(cc); b.lamp.material.emissive.copy(cc).multiplyScalar(0.55);
+    b.top.color.copy(p3.capa === 'uso' && dat.uso[b.id] != null ? cc : c('--s-steel'));
+    fade(b, p3Visible(b.e));
+  }
+  S.etiq.forEach(el => el.remove()); S.etiq.clear();   // se rehacen con el color de la capa
+  p3Resaltar(); p3Leyenda();
+}
+function p3Resaltar() {
+  const S = P3; if (!S) return;
+  for (const mc of S.maq.values()) {
+    const vis = p3Visible(mc.e);
+    mc.halo.material.opacity = !vis ? 0.04 : (mc.id === p3.sel || mc.id === p3.hover) ? 0.78 : 0.5;
+    mc.sel.visible = mc.id === p3.sel;
+  }
+  for (const b of S.cintas) b.top.emissive.setHex(b.id === p3.sel ? 0x553311 : 0x000000);
+  S.dirty = true;
+}
+function p3Leyenda() {
+  const el = $('#p3legend'); if (!el || !P3) return;
+  const S = P3, dat = S.dat, ids = [...S.maq.values()].filter(m => p3Visible(m.e) && si(m.e.activo)).map(m => m.id).concat(S.cintas.filter(b => p3Visible(b.e)).map(b => b.id));
+  const it = (cls, txt, n) => `<span><span class="dot ${cls}"></span> ${txt} <b class="tnum">${n}</b></span>`;
+  el.hidden = false;
+  if (p3.capa === 'lub') {
+    const n = { vencido: 0, proximo: 0, ok: 0, na: 0 }; ids.forEach(id => { const s = peor(id); n[n[s] === undefined ? 'na' : s]++; });
+    el.innerHTML = `<b class="small">Peor punto de cada equipo</b><div class="items">${it('vencido', 'Vencido', n.vencido)}${it('proximo', 'Próximo', n.proximo)}${it('ok', 'Al día', n.ok)}${it('na', 'Sin puntos o sin regla', n.na)}</div>`;
+  } else if (p3.capa === 'ot') {
+    const n = { pend: 0, ok: 0, na: 0 }; ids.forEach(id => { const o = dat.ot[id]; n[!o ? 'na' : o.c >= o.n ? 'ok' : 'pend']++; });
+    el.innerHTML = `<b class="small">${esc(dat.base)} · tareas por equipo</b><div class="items">${it('pend', 'Con tareas por cargar', n.pend)}${it('ok', 'Todo cargado', n.ok)}${it('na', 'Sin tareas', n.na)}</div>`;
+  } else {
+    el.innerHTML = `<b class="small">Horas de uso, últimos 28 días</b><div class="ramp" style="background:linear-gradient(90deg,${p3Css('--ramp-uso-lo')},${p3Css('--ramp-uso-hi')})"></div>
+      <div class="row small tnum" style="justify-content:space-between"><span>0 h</span><span>${fmt(dat.maxUso / 4)} h</span><span>${fmt(dat.maxUso)} h</span></div>`;
+  }
+}
+function p3Tema() {
+  const S = P3; if (!S) return;
+  const c = v => new S.T.Color(p3Css(v)), oscuro = !document.body.classList.contains('light');
+  S.scene.background = c('--s-bg');
+  S.pisoMat.top.color.copy(c('--s-floor')); S.pisoMat.lado.color.copy(c('--s-floor-side'));
+  S.muroMat.color.copy(c('--s-walls')); S.colMat.color.copy(c('--s-cols'));
+  const tono = {}; Object.entries(P3_ROL).forEach(([k, v]) => tono[k] = c(v));
+  const foco = c('--focus');
+  for (const mc of S.maq.values()) { mc.mats.forEach(m => { if (tono[m.userData.role]) m.color.copy(tono[m.userData.role]); }); mc.sel.material.color.copy(foco); }
+  for (const b of S.cintas) b.mats.forEach(m => { if (tono[m.userData.role]) m.color.copy(tono[m.userData.role]); });
+  S.hemi.intensity = oscuro ? 0.7 : 0.95; S.sol.intensity = oscuro ? 1.05 : 1.45;
+  p3DibujarPlano(); p3Aplicar();
+}
+
+// ── cámara ──
+function p3Animar(pos, tgt, zoom) {
+  const S = P3;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { S.cam.position.copy(pos); S.controls.target.copy(tgt); S.cam.zoom = zoom; S.cam.updateProjectionMatrix(); S.controls.update(); S.dirty = true; return; }
+  S.anim = { t0: performance.now(), de: S.cam.position.clone(), a: pos, tDe: S.controls.target.clone(), tA: tgt, z0: S.cam.zoom, z1: zoom };
+  S.dirty = true;
+}
+// Caja (en el piso) de un conjunto de equipos ya ubicados; null si no hay ninguno.
+function p3CajaDe(ids) {
+  const S = P3, box = new S.T.Box3();
+  ids.forEach(id => { const mc = S.maq.get(id); if (mc && !mc.sinUbicar) box.expandByObject(mc.g); const b = S.cintas.find(x => x.id === id); if (b) box.expandByObject(b.g); });
+  return box.isEmpty() ? null : box;
+}
+// Centro y zoom para ver la caja entera mirando desde la dirección off (proyecta sus esquinas).
+function p3Encaje(box, off, zMin) {
+  const S = P3, T = S.T, c = box.getCenter(new T.Vector3()).setY(0);
+  const R = new T.Matrix4().lookAt(off, new T.Vector3(), S.cam.up).transpose();   // mundo → cámara
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const x of [box.min.x, box.max.x]) for (const y of [0, Math.min(box.max.y, 2)]) for (const z of [box.min.z, box.max.z]) {
+    const v = new T.Vector3(x - c.x, y, z - c.z).applyMatrix4(R);
+    x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
+  }
+  const zoom = Math.min(2 * S.cam.right / Math.max(4, (x1 - x0) * 1.08), 2 * S.cam.top / Math.max(4, (y1 - y0) * 1.1));
+  return { centro: c, zoom: Math.min(S.controls.maxZoom, Math.max(zMin || S.controls.minZoom, zoom)) };
+}
+function p3Encuadre(animar = true) {
+  const S = P3; if (!S) return;
+  const T = S.T, top = p3.vista === 'top', off = top ? new T.Vector3(0, 95, 0.001) : new T.Vector3(-46, 50, 46);
+  S.controls.enableRotate = !top;
+  S.controls.mouseButtons.LEFT = top ? T.MOUSE.PAN : T.MOUSE.ROTATE;
+  S.controls.touches.ONE = top ? T.TOUCH.PAN : T.TOUCH.ROTATE;
+  // toda la planta (la losa) o solo los equipos de la línea elegida
+  let box = new T.Box3(new T.Vector3(-2, 0, -56), new T.Vector3(58, 1, 2));
+  if (p3.linea !== 'all') box = p3CajaDe([...S.maq.values()].filter(m => p3Visible(m.e)).map(m => m.id).concat(S.cintas.filter(b => p3Visible(b.e)).map(b => b.id))) || box;
+  const f = p3Encaje(box, off), tgt = f.centro, zoom = f.zoom, pos = tgt.clone().add(off);
+  if (!animar) { S.cam.position.copy(pos); S.controls.target.copy(tgt); S.cam.zoom = zoom; S.cam.updateProjectionMatrix(); S.controls.update(); S.dirty = true; return; }
+  p3Animar(pos, tgt, zoom);
+}
+function p3Enfocar(id, zMin) {
+  const S = P3, box = S && p3CajaDe([id]); if (!box) return;
+  const off = S.cam.position.clone().sub(S.controls.target), f = p3Encaje(box, off, zMin);
+  p3Animar(f.centro.clone().add(off), f.centro, Math.min(f.zoom, Math.max(zMin || 1, S.cam.zoom)));
+}
+
+// ── etiquetas ──
+function p3Ancla(id) {
+  const S = P3, T = S.T, mc = S.maq.get(id);
+  if (mc) return new T.Vector3(mc.g.position.x, mc.top + 1.3, mc.g.position.z);
+  const b = S.cintas.find(x => x.id === id); if (!b) return null;
+  const v = new T.Vector3(); b.meshes[Math.floor(b.meshes.length / 3)].getWorldPosition(v); v.y = 1.4; return v;
+}
+function p3TextoEtiqueta(id) {
+  const e = IX.eq[id] || {}, dat = P3.dat || {}, o = (dat.ot || {})[id], u = (dat.uso || {})[id];
+  let dot = '', extra = '';
+  if (p3.capa === 'lub') { const s = peor(id); dot = `<span class="dot ${s === 'sin_regla' ? 'na' : s}"></span>`; }
+  else if (p3.capa === 'ot') { dot = `<span class="dot ${!o ? 'na' : o.c >= o.n ? 'ok' : 'pend'}"></span>`; if (o) extra = ` · ${o.c}/${o.n}`; }
+  else if (u != null) extra = ` · ${fmt(u)} h`;
+  return `${dot}${esc(cap(sinF(e.nombre)))}<span class="muted">${extra}</span>`;
+}
+function p3Etiquetas() {
+  const S = P3, cont = $('#p3labels'); if (!S || !cont) return;
+  const W = cont.clientWidth, H = cont.clientHeight, quiero = new Set();
+  if (p3.nombres) { S.maq.forEach(m => { if (p3Visible(m.e) && si(m.e.activo)) quiero.add(m.id); }); S.cintas.forEach(b => { if (p3Visible(b.e)) quiero.add(b.id); }); }
+  if (p3.hover) quiero.add(p3.hover);
+  if (p3.sel) quiero.add(p3.sel);
+  for (const [id, el] of S.etiq) if (!quiero.has(id) || !el.isConnected) { el.remove(); S.etiq.delete(id); }
+  for (const id of quiero) {
+    const v = p3Ancla(id); if (!v) continue;
+    v.project(S.cam);
+    let el = S.etiq.get(id);
+    if (!el) { el = document.createElement('div'); el.className = 'mlabel'; el.innerHTML = p3TextoEtiqueta(id); cont.appendChild(el); S.etiq.set(id, el); }
+    el.classList.toggle('sel', id === p3.sel);
+    el.style.zIndex = id === p3.sel ? 3 : id === p3.hover ? 2 : 1;
+    el.style.transform = `translate(${(v.x + 1) / 2 * W}px, ${(1 - v.y) / 2 * H}px) translate(-50%, -100%)`;
+  }
+}
+
+// ── puntero: elegir, arrastrar (modo Ubicar equipos) y acercar ──
+function p3Tocar(ev) {
+  const S = P3, r = S.renderer.domElement.getBoundingClientRect();
+  S.ptr.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  S.ray.setFromCamera(S.ptr, S.cam);
+  for (const h of S.ray.intersectObjects(S.picks, false)) { const id = h.object.userData.eqId, e = id && IX.eq[id]; if (e && p3Visible(e)) return id; }
+  return null;
+}
+function p3Punteros() {
+  const S = P3, T = S.T, el = S.renderer.domElement;
+  let abajo = null, arrastre = null;
+  el.addEventListener('pointerdown', ev => {   // en captura: antes que los controles de cámara
+    abajo = [ev.clientX, ev.clientY];
+    if (!p3.editar || ev.button > 0) return;
+    const id = p3Tocar(ev), mc = id && S.maq.get(id), hit = new T.Vector3();
+    if (!mc || !S.ray.ray.intersectPlane(S.piso, hit)) return;
+    arrastre = { mc, off: hit.sub(mc.g.position), movio: false };
+    S.controls.enabled = false; el.setPointerCapture(ev.pointerId); el.style.cursor = 'grabbing';
+    p3Elegir(id);
+  }, { capture: true });
+  el.addEventListener('pointermove', ev => {
+    if (arrastre) {
+      p3Tocar(ev);
+      const hit = new T.Vector3();
+      if (S.ray.ray.intersectPlane(S.piso, hit)) {
+        const p = hit.sub(arrastre.off), q = v => Math.round(v * 20) / 20;   // pasos de 5 cm
+        arrastre.mc.g.position.set(q(p.x), 0, q(p.z)); arrastre.movio = true; S.dirty = true;
+      }
+      return;
+    }
+    if (ev.pointerType === 'touch') return;
+    const id = p3Tocar(ev);
+    if (id !== p3.hover) { p3.hover = id; el.style.cursor = id ? (p3.editar && S.maq.has(id) ? 'grab' : 'pointer') : ''; p3Resaltar(); }
+  });
+  el.addEventListener('pointerup', ev => {
+    if (arrastre) { const { mc, movio } = arrastre; arrastre = null; S.controls.enabled = true; el.style.cursor = 'grab'; if (movio) p3Movido(mc); return; }
+    if (!abajo || Math.hypot(ev.clientX - abajo[0], ev.clientY - abajo[1]) > 6) return;
+    p3Elegir(p3Tocar(ev));
+  });
+  el.addEventListener('pointerleave', () => { if (p3.hover) { p3.hover = null; p3Resaltar(); } });
+  el.addEventListener('dblclick', ev => { const id = p3Tocar(ev); if (id) p3Enfocar(id, 3); });
+}
+function p3Elegir(id) {
+  p3.sel = id || null;
+  p3Resaltar(); p3Panel(); p3BarraEdicion();
+}
+
+// ── modo "Ubicar equipos" (editores): mover, girar y guardar en el maestro ──
+const p3Rot = mc => ((Math.round(-mc.g.rotation.y * 180 / Math.PI) % 360) + 360) % 360;
+function p3Movido(mc) {
+  p3.mov[mc.id] = { x: +mc.g.position.x.toFixed(2), y: +(-mc.g.position.z).toFixed(2), rot: p3Rot(mc) };
+  mc.pos = p3.mov[mc.id]; mc.sinUbicar = p3EnEspera(mc.pos);
+  p3BarraEdicion(); p3Panel();
+}
+function p3BarraEdicion() {
+  const el = $('#p3edit'), n = Object.keys(p3.mov).length, be = $('#p3Ed');
+  if (be) be.textContent = 'Ubicar equipos' + (n ? ` · ${n} sin guardar` : '');
+  if (!el) return;
+  el.hidden = !p3.editar;
+  if (!p3.editar) return;
+  const mc = p3.sel && P3 && P3.maq.get(p3.sel);
+  el.innerHTML = `<span class="small"><b>Ubicar equipos.</b> Arrastrá cada equipo a su lugar${mc ? `. Elegido: <b>${esc(cap(sinF(mc.e.nombre)))}</b>` : '; elegí uno para girarlo'}.</span>
+    <span class="row"><button class="btn sm" id="p3R90" ${mc ? '' : 'disabled'}>Girar 90°</button><button class="btn sm" id="p3R15" ${mc ? '' : 'disabled'}>Girar 15°</button>
+    <button class="btn sm" id="p3Desc" ${n ? '' : 'disabled'}>Descartar</button><button class="btn sm primary" id="p3Save" ${n ? '' : 'disabled'}>Guardar ubicación${n ? ` (${n})` : ''}</button></span>`;
+  const girar = gr => { if (!mc) return; mc.g.rotation.y -= gr * Math.PI / 180; P3.dirty = true; p3Movido(mc); };
+  $('#p3R90').onclick = () => girar(90); $('#p3R15').onclick = () => girar(15);
+  $('#p3Desc').onclick = () => { p3.mov = {}; p3Sincronizar(); p3BarraEdicion(); p3Panel(); };
+  $('#p3Save').onclick = p3Guardar;
+}
+async function p3Guardar() {
+  const ids = Object.keys(p3.mov); if (!ids.length) return;
+  const b = $('#p3Save'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  try {
+    await post({ accion: 'mant_editar', cambios: ids.map(id => ({ tabla: 'equipos', op: 'modificar', id, campos: { pos_x: p3.mov[id].x, pos_y: p3.mov[id].y, rot: p3.mov[id].rot } })) });
+    toast(`Ubicación guardada: ${ids.length} equipo${ids.length === 1 ? '' : 's'}`);
+    p3.mov = {}; await cargar();
+  } catch (e) { toast(e.message, true); p3BarraEdicion(); }
+}
+
+// ── panel lateral ──
+function p3Panel() {
+  const el = $('#p3side'); if (!el) return;
+  const dat = (P3 && P3.dat) || p3Datos(), id = p3.sel, e = id && IX.eq[id];
+  const nombre = x => esc(cap(sinF(x.nombre)));
+  if (!e) {
+    const vis = D.equipos.filter(x => p3Visible(x) && si(x.activo));
+    let titulo, filas;
+    if (p3.capa === 'ot') {
+      titulo = `Pendientes de cargar · ${esc(dat.base)}`;
+      filas = vis.map(x => ({ x, o: dat.ot[x.equipo_sap] })).filter(r => r.o && r.o.c < r.o.n).sort((a, b) => ordenEq(a.x) - ordenEq(b.x))
+        .map(r => ({ x: r.x, dot: 'pend', txt: `${r.o.n - r.o.c} de ${r.o.n} tareas` }));
+    } else if (p3.capa === 'uso') {
+      titulo = 'Más horas de uso · 28 días';
+      filas = vis.filter(x => dat.uso[x.equipo_sap] != null).sort((a, b) => dat.uso[b.equipo_sap] - dat.uso[a.equipo_sap]).map(x => ({ x, dot: '', txt: `${fmt(dat.uso[x.equipo_sap])} h` }));
+    } else {
+      titulo = 'Equipos con puntos vencidos';
+      filas = vis.map(x => ({ x, v: (IX.ptsEq[x.equipo_sap] || []).filter(p => si(p.activo) && p.estado === 'vencido').length })).filter(r => r.v)
+        .sort((a, b) => b.v - a.v || ordenEq(a.x) - ordenEq(b.x)).map(r => ({ x: r.x, dot: 'vencido', txt: `${r.v} vencido${r.v === 1 ? '' : 's'}` }));
+    }
+    el.innerHTML = `<h2>${titulo}</h2><div class="sub">Tocá un equipo del plano o de la lista para ver sus puntos.</div>
+      <div class="p3-list">${filas.slice(0, 14).map(r => `<button class="p3-item" data-p3eq="${esc(r.x.equipo_sap)}">${r.dot ? `<span class="dot ${r.dot}"></span>` : ''}<span class="grow">${nombre(r.x)}</span><span class="chip ${eqLinea(r.x)}">${eqLinea(r.x)}</span><span class="small muted nw">${r.txt}</span></button>`).join('') || '<div class="small muted">Ninguno.</div>'}</div>
+      ${filas.length > 14 ? `<div class="small muted">y ${filas.length - 14} más</div>` : ''}`;
+    $$('[data-p3eq]', el).forEach(b => b.onclick = () => { p3Elegir(b.dataset.p3eq); if (P3) p3Enfocar(b.dataset.p3eq, 2.2); });
+    return;
+  }
+  const st = peor(id), mc = P3 && P3.maq.get(id), o = dat.ot[id], u = dat.uso[id];
+  const pts = (IX.ptsEq[id] || []).filter(p => si(p.activo)).sort((a, b) => (RANK[b.estado] ?? -1) - (RANK[a.estado] ?? -1) || (b.pct || 0) - (a.pct || 0));
+  const nv = pts.filter(p => p.estado === 'vencido').length, np = pts.filter(p => p.estado === 'proximo').length;
+  el.innerHTML = `<div class="row"><span class="chip ${eqLinea(e)}">${eqLinea(e)}</span><b class="tnum">${esc(e.equipo_sap)}</b>${e.codigo_f ? `<span class="muted">${esc(e.codigo_f)}</span>` : ''}<span class="grow"></span>${st !== 'na' ? `<span class="pill ${st}">${EST[st]}</span>` : '<span class="pill sin_regla">Sin puntos</span>'}</div>
+    <h2>${nombre(e)}</h2><div class="sub">${esc(e.sector_nombre || '')}${e.ubicacion_tecnica ? ' · ' + esc(e.ubicacion_tecnica) : ''}</div>
+    ${mc && mc.sinUbicar ? `<div class="warnbox">Todavía no está ubicado en el plano.${D.editor ? ' Con "Ubicar equipos", arrastralo a su lugar y guardá.' : ' Lo ubica un editor con "Ubicar equipos".'}</div>` : ''}
+    <div class="small">${pts.length} punto${pts.length === 1 ? '' : 's'} activo${pts.length === 1 ? '' : 's'} · ${nv} vencido${nv === 1 ? '' : 's'} · ${np} próximo${np === 1 ? '' : 's'}${u != null ? ` · ${fmt(u)} h de uso en 28 días` : ''}</div>
+    ${o ? `<div class="small">${esc(dat.base)}: ${o.n} tarea${o.n === 1 ? '' : 's'} · ${o.c} cargada${o.c === 1 ? '' : 's'}</div>` : ''}
+    <div class="p3-pts">${pts.map(p => `<div class="p3-pt"><div class="row" style="gap:6px"><span class="pill ${p.estado}">${EST[p.estado]}</span><b class="tnum">${esc(p.punto_id.split('-').pop())}</b> ${esc(p.componente)}</div>
+      <div class="small muted">${esc(nombreParte(IX.parte[p.parte_id]))} · ${esc(p.lubricante)} · ${fmt((p.pct || 0) * 100)} % · ${venceTxt(p)}</div></div>`).join('') || '<div class="small muted">Sin puntos de lubricación cargados.</div>'}</div>
+    <div class="row"><button class="btn sm" id="p3Ficha">Ver ficha en Equipos</button>${mc && !mc.sinUbicar ? '<button class="btn sm" id="p3Centrar">Centrar</button>' : ''}<button class="btn sm" id="p3Cerrar">Cerrar</button></div>`;
+  $('#p3Ficha').onclick = () => { eqSel = id; view = 'equipos'; $$('.tab').forEach(x => x.setAttribute('aria-selected', String(x.dataset.v === 'equipos'))); render(); };
+  const bc = $('#p3Centrar'); if (bc) bc.onclick = () => p3Enfocar(id, 2.2);
+  $('#p3Cerrar').onclick = () => p3Elegir(null);
+}
+
 // ───────────── alertas ─────────────
 function renderAlertas() {
   const q = alFil.q.toLowerCase();
@@ -667,7 +1357,8 @@ function renderCal() {
 }
 
 // ───────────── equipos (árbol + editor) ─────────────
-function peor(id) { return (IX.ptsEq[id] || []).filter(p => si(p.activo)).reduce((w, p) => RANK[p.estado] > RANK[w] ? p.estado : w, 'na'); }
+// Peor estado de los puntos activos de un equipo ('na' = sin puntos).
+function peor(id) { return (IX.ptsEq[id] || []).filter(p => si(p.activo)).reduce((w, p) => (RANK[p.estado] ?? -1) > (RANK[w] ?? -1) ? p.estado : w, 'na'); }
 function renderEquipos() {
   const q = eqQ.toLowerCase(), treeTop = $('.tree') ? $('.tree').scrollTop : 0;
   const totVal = IX.activos.filter(p => p.nota === NOTA_DEF).length;
@@ -926,12 +1617,12 @@ function campoCfg(k, tipo) {
 }
 
 // ───────────── tema (lo decide el dashboard principal) ─────────────
-function applyTheme(dark) { document.body.classList.toggle('light', !dark); $('#btnTheme').textContent = dark ? 'Claro' : 'Oscuro'; }
+function applyTheme(dark) { document.body.classList.toggle('light', !dark); $('#btnTheme').textContent = dark ? 'Claro' : 'Oscuro'; if (P3) p3Tema(); }
 window.addEventListener('message', e => { if (e.data && e.data.type === 'vspt-theme') applyTheme(!!e.data.dark); });
 if (window.self === window.top) { $('#btnTheme').hidden = false; $('#btnTheme').onclick = () => applyTheme(document.body.classList.contains('light')); }
 $('#btnReload').onclick = () => (CG ? abrirCarga(CG.ot_id) : cargar());
 if (CARGA) { $('.tabs').hidden = true; $('#hdrSub').textContent = 'Carga de lubricación desde el celular'; }
-window.addEventListener('beforeunload', e => { if (pend.length) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', e => { if (pend.length || Object.keys(p3.mov).length) { e.preventDefault(); e.returnValue = ''; } });
 (window.VSPT_API_READY || Promise.resolve()).then(cargar);
 </script>
 </body>
