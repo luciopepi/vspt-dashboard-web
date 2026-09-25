@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!-- Control de acceso VSPT — correos @vspt.com.ar y @vspt.cl (ver auth.js) -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="auth.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VSPT · Mantenimiento — Lubricación por horas de uso</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --vspt-deep-purple:#4E1742; --vspt-wine:#701F52; --vspt-plum:#301030;
+    --vspt-crimson:#D81840; --vspt-beige:#E0D0B8; --vspt-olive:#98A040;
+    --vspt-orange:#F08808; --vspt-yellow:#F8C040;
+    --l1:#B04A82; --l2:#5DC7D1; --l3:#F08808; --sf:#8C6F84;
+    --bg:#1A1915; --card:#222220; --card2:#2A2A28; --border:rgba(200,168,130,0.14);
+    --text:#F3F1EB; --muted:#c9b8c4; --th-bg:#3a1f33; --tr-hover:rgba(216,24,64,0.06);
+    --td-border:rgba(255,255,255,0.07);
+    --ok:#B2BC52; --ok-bg:rgba(152,160,64,.2); --warn:#F8C040; --warn-bg:rgba(248,192,64,.16);
+    --crit:#FF5A76; --crit-bg:rgba(216,24,64,.2); --na:#9c8f9a; --na-bg:rgba(156,143,154,.16);
+    --accent:#C9609A; --accent-ink:#1A1915; --focus:#F8C040;
+    --ramp-lo:#3B3137; --ramp-hi:#C9609A;
+  }
+  body.light{ --bg:#F3F1EB; --card:#fff; --card2:#FAF7F0; --border:rgba(78,23,66,0.14);
+    --text:#301030; --muted:#7a627a; --th-bg:#F3F1EB; --tr-hover:rgba(78,23,66,0.05);
+    --td-border:rgba(78,23,66,0.08); --l1:#701F52;
+    --ok:#5E6620; --ok-bg:rgba(152,160,64,.18); --warn:#8A5C00; --warn-bg:rgba(248,192,64,.3);
+    --crit:#B0122F; --crit-bg:rgba(216,24,64,.12); --na:#7A6E78; --na-bg:rgba(184,168,152,.25);
+    --accent:#701F52; --accent-ink:#fff; --focus:#F08808; --ramp-lo:#F2E7EE; --ramp-hi:#701F52; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none!important}
+  body{background:var(--bg);color:var(--text);font-family:'Montserrat',system-ui,sans-serif;font-size:14px;line-height:1.45}
+  button,input,select,textarea{font-family:inherit;font-size:13px;color:inherit}
+  :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  .tnum{font-variant-numeric:tabular-nums}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .header{background:var(--vspt-plum);border-bottom:1px solid rgba(224,208,184,0.22);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  body.light .header{background:var(--vspt-deep-purple)}
+  .header-left{display:flex;align-items:center;gap:14px}
+  .logo{width:44px;height:44px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;padding:5px;overflow:hidden}
+  .logo img{width:100%;height:100%;object-fit:contain}
+  .header-title{font-size:20px;font-weight:700;color:#fff}
+  .header-title span{color:var(--vspt-beige);font-weight:500}
+  .header-sub{font-size:10px;color:var(--vspt-beige);margin-top:3px;text-transform:uppercase;letter-spacing:0.2em;font-weight:600}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .status-badge{display:flex;align-items:center;gap:7px;color:var(--vspt-beige);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.14em}
+  .status-dot{width:7px;height:7px;border-radius:50%;background:var(--vspt-yellow)}
+  .status-badge.ok .status-dot{background:var(--vspt-olive)} .status-badge.err{color:#ff9db0} .status-badge.err .status-dot{background:var(--vspt-crimson)}
+  .chip-ed{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(224,208,184,.4);color:#fff;border-radius:5px;padding:3px 7px}
+  .btn-hdr{background:transparent;border:1px solid rgba(224,208,184,0.32);color:#fff;border-radius:6px;padding:7px 11px;cursor:pointer;font-size:12px}
+  .btn-hdr:hover{background:var(--vspt-crimson);border-color:var(--vspt-crimson)}
+  .tabs{display:flex;gap:2px;padding:0 20px;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{background:none;border:0;border-bottom:3px solid transparent;padding:12px 14px 10px;font-weight:700;font-size:12.5px;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .tab:hover{color:var(--text)}
+  .tab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--vspt-crimson)}
+  .tab .n{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--crit-bg);color:var(--crit);font-size:10.5px}
+  .content{padding:18px 22px 60px;display:grid;gap:16px;max-width:1500px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:grid;gap:10px;min-width:0}
+  .card h2{font-size:15px;font-weight:800;letter-spacing:-.2px}
+  .card .sub{font-size:12px;color:var(--muted);margin-top:-4px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .grow{flex:1}
+  .btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:7px 13px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.03em}
+  .btn:hover{border-color:var(--vspt-crimson);color:var(--vspt-crimson)}
+  .btn.primary{background:var(--vspt-crimson);border-color:var(--vspt-crimson);color:#fff}
+  .btn.primary:hover{filter:brightness(1.08);color:#fff}
+  .btn.accent{background:var(--vspt-wine);border-color:var(--vspt-wine);color:#fff}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  select,input[type=text],input[type=date],input[type=number],input[type=email],input[type=search]{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:6px 9px}
+  input[type=date]{color-scheme:dark} body.light input[type=date]{color-scheme:light}
+  label.f{display:grid;gap:3px;align-content:start;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  label.f input,label.f select{font-size:13px;letter-spacing:0;text-transform:none;font-weight:500;color:var(--text)}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .seg button{background:none;border:0;padding:6px 11px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+  .chip{display:inline-flex;align-items:center;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:800;letter-spacing:.04em}
+  .chip.L1{background:var(--l1);color:#fff} .chip.L2{background:var(--l2);color:#0D2E32} .chip.L3{background:var(--l3);color:#1A1915} .chip.SF{background:var(--sf);color:#fff}
+  .pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap}
+  .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .pill.vencido{background:var(--crit-bg);color:var(--crit)} .pill.proximo{background:var(--warn-bg);color:var(--warn)}
+  .pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.sin_regla{background:var(--na-bg);color:var(--na)}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
+  .dot.vencido{background:var(--crit)} .dot.proximo{background:var(--warn)} .dot.ok{background:var(--ok)} .dot.sin_regla,.dot.na{background:var(--na)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:grid;gap:2px}
+  .kpi .l{font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .kpi .v{font-size:24px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:11px;color:var(--muted)}
+  .kpi.crit .v{color:var(--crit)} .kpi.warn .v{color:var(--warn)}
+  .tbl-wrap{overflow:auto;border:1px solid var(--border);border-radius:8px;max-height:70vh}
+  table.tbl{border-collapse:collapse;width:100%;font-size:12.5px}
+  .tbl th{position:sticky;top:0;z-index:1;background:var(--th-bg);text-align:left;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:8px 9px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .tbl td{padding:7px 9px;border-bottom:1px solid var(--td-border);vertical-align:top}
+  .tbl tr:hover td{background:var(--tr-hover)}
+  .tbl td.n,.tbl th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .nw{white-space:nowrap}
+  .tbl tr.eqrow td{background:var(--card2);font-weight:700;font-size:12px}
+  .tbl tr.done td{opacity:.55}
+  .meter{height:6px;width:80px;background:var(--card2);border:1px solid var(--border);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle}
+  .meter i{display:block;height:100%}
+  .meter i.vencido{background:var(--crit)} .meter i.proximo{background:var(--warn)} .meter i.ok{background:var(--ok)} .meter i.carga{background:var(--accent)}
+  .hint{font-size:12px;color:var(--muted);background:var(--card2);border-radius:8px;padding:8px 11px}
+  .warnbox{font-size:12px;border-left:3px solid var(--warn);background:var(--warn-bg);border-radius:0 7px 7px 0;padding:7px 11px}
+  .errbox{font-size:13px;border-left:3px solid var(--crit);background:var(--crit-bg);border-radius:0 7px 7px 0;padding:10px 12px}
+  .loading{padding:40px;text-align:center;color:var(--muted)}
+  .btn.sm{padding:3px 9px;font-size:11px}
+  /* OT */
+  #formCarga .tbl-wrap{max-height:none}
+  .form-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;align-items:end}
+  .lotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px}
+  .lotes label{display:grid;gap:3px;font-size:11px;font-weight:600;color:var(--muted)}
+  .formbar{position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--border);padding:10px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+  .tbl select.st{min-width:108px}
+  .tbl input[type=text]{width:100%;min-width:130px}
+  /* calendario */
+  table.cal{border-collapse:separate;border-spacing:4px;width:100%;min-width:760px}
+  .cal th{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:center;padding:3px}
+  .cal th.rh{text-align:left}
+  .cal button{width:100%;min-height:56px;border:1px solid var(--border);border-radius:8px;cursor:pointer;display:grid;place-content:center;font-variant-numeric:tabular-nums}
+  .cal button b{font-size:17px;font-weight:800}
+  .cal button span{font-size:10.5px;font-weight:600}
+  .cal button[aria-pressed="true"]{outline:2px solid var(--focus);outline-offset:1px}
+  /* equipos */
+  .eqlayout{display:grid;grid-template-columns:minmax(260px,360px) minmax(0,1fr);gap:16px;align-items:start}
+  @media (max-width:900px){.eqlayout{grid-template-columns:minmax(0,1fr)}}
+  .tree{max-height:74vh;overflow:auto;display:grid;gap:2px}
+  .tree details{border-radius:6px}
+  .tree summary{cursor:pointer;padding:6px 8px;border-radius:6px;font-weight:700;font-size:12.5px;list-style:none;display:flex;gap:8px;align-items:center}
+  .tree summary::-webkit-details-marker{display:none}
+  .tree summary::before{content:"▸";color:var(--muted);font-size:11px}
+  .tree details[open] > summary::before{content:"▾"}
+  .tree .sec{margin-left:12px}
+  .tree .eq{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:5px 8px 5px 26px;border-radius:6px;cursor:pointer;font-size:12.5px}
+  .tree .eq:hover{background:var(--tr-hover)}
+  .tree .eq[aria-current="true"]{background:var(--card2);outline:1px solid var(--border)}
+  .tree .eq .c{margin-left:auto;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+  .part{border:1px solid var(--border);border-radius:9px;overflow:hidden}
+  .part > header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;background:var(--card2);font-weight:700;font-size:13px}
+  .part > header .muted{font-weight:500;font-size:11.5px}
+  .part .tbl-wrap{border:0;border-radius:0;max-height:none}
+  .tbl input.cell,.tbl select.cell{width:100%;min-width:60px;padding:4px 6px;font-size:12px}
+  .tbl td.n input.cell{width:78px;text-align:right}
+  textarea.cell{width:100%;min-height:52px;resize:vertical;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:13px;line-height:1.35}
+  .tbl input.cell.dirty,.tbl select.cell.dirty,input.dirty,select.dirty,textarea.dirty{border-color:var(--vspt-orange);background:var(--warn-bg)}
+  .tbl tr.editrow td{background:var(--card2)}
+  .editgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;padding:4px 0}
+  .editgrid .wide,.fields .wide{grid-column:1/-1}
+  .otras .o{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--td-border);font-size:12.5px}
+  .rep{font-size:11.5px;color:var(--muted);padding:6px 12px;border-top:1px solid var(--td-border)}
+  .savebar{position:sticky;bottom:10px;z-index:5;display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--vspt-orange);border-radius:10px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--vspt-plum);color:#fff;border:1px solid rgba(224,208,184,.3);padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:60;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .toast.err{background:#5a0f22}
+  @media (max-width:640px){.header{padding:12px 16px}.content{padding:14px 16px 60px}.tbl .x{display:none}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <div class="logo"><img src="assets/marca-secundaria.jpg" alt="VSPT" onerror="this.parentNode.style.display='none'"></div>
+    <div>
+      <div class="header-title">VSPT <span>· Mantenimiento</span></div>
+      <div class="header-sub" id="hdrSub">Lubricación por horas de uso</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="chip-ed" id="chipEd" hidden>Editor del maestro</span>
+    <div class="status-badge" id="status"><span class="status-dot"></span><span id="statusTxt">Cargando…</span></div>
+    <button class="btn-hdr" id="btnReload" title="Volver a leer los datos">Actualizar</button>
+    <button class="btn-hdr" id="btnTheme" hidden>Claro</button>
+  </div>
+</div>
+<nav class="tabs" role="tablist" aria-label="Vistas">
+  <button class="tab" role="tab" data-v="ot" aria-selected="true">OT semanal</button>
+  <button class="tab" role="tab" data-v="alertas" aria-selected="false">Alertas<span class="n" id="nVenc" hidden></span></button>
+  <button class="tab" role="tab" data-v="calendario" aria-selected="false">Calendario</button>
+  <button class="tab" role="tab" data-v="equipos" aria-selected="false">Equipos</button>
+  <button class="tab" role="tab" data-v="avisos" aria-selected="false">Avisos SAP<span class="n" id="nAvisos" hidden></span></button>
+  <button class="tab" role="tab" data-v="ajustes" aria-selected="false" id="tabAjustes" hidden>Ajustes</button>
+</nav>
+<main class="content" id="main"><div class="loading">Cargando el módulo de mantenimiento…</div></main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbx8alYmoiwb5-z1nyvXfyCSLfELACGZ4qGGtIoS3j6lF1yS6SmFH0wYRbKfQPrq5P6N/exec";
+const CACHE_KEY = 'vspt_mant_cache_v1';
+const TIMEOUT_MS = 120000;
+
+let D = null;               // respuesta de ?tabla=mant
+let IX = {};                // índices derivados
+let view = 'ot';
+let otSel = null, otLinea = null, otForm = false;
+let alFil = { linea: 'all', est: new Set(['vencido', 'proximo']), q: '' };
+let calSel = null;
+let eqSel = null, eqQ = '';
+let pend = [];              // cambios pendientes del editor [{tabla, op, id, campos}]
+
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (n, d = 0) => (n == null || n === '' || !isFinite(n)) ? '—' : Number(n).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const pf = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+const fday = s => { const d = typeof s === 'string' ? pf(s) : s; return d ? `${d.getDate()}-${MES[d.getMonth()]}` : '—'; };
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const cap = s => { s = String(s || '').trim().toLowerCase(); return s ? s[0].toUpperCase() + s.slice(1) : ''; };
+const sinF = s => String(s || '').replace(/\s*F\s?\d{3,4}\s*$/, '').trim();
+const si = v => ['SI', 'SÍ', 'TRUE', '1'].includes(String(v).trim().toUpperCase()) || v === true;
+const EST = { vencido: 'Vencido', proximo: 'Próximo', ok: 'Al día', sin_regla: 'Sin regla' };
+const RANK = { sin_regla: 0, ok: 1, proximo: 2, vencido: 3 };
+const LINEAS = ['L1', 'L2', 'L3', 'SF'];
+const RECORRIDO = ['DESP', 'ENJI', 'INER', 'LLEN', 'TAPA', 'ATAP', 'TROS', 'SECA', 'LEXT', 'CAPS', 'ETIQ', 'ENCA', 'ACAJ', 'CCAJ', 'ESTR', 'TRAN'];
+const OPS = { LLENADO: ['LL', 'LLV'], VESTIDO: ['V', 'LLV'], SIEMPRE: ['LL', 'V', 'LLV'], 'SIN CONTADOR': [] };
+
+function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, err ? 7000 : 3800); }
+function setStatus(txt, cls) { $('#statusTxt').textContent = txt; $('#status').className = 'status-badge ' + (cls || ''); }
+const cacheGet = () => { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; } };
+const cacheSet = v => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(v)); } catch (e) {} };
+
+// ───────────── datos ─────────────
+async function cargar() {
+  setStatus('Cargando…');
+  const c = cacheGet();
+  if (c && c.data && !D) { D = c.data; indexar(); render(); setStatus('Datos guardados · actualizando…'); }
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    const r = await fetch(API_URL + '?tabla=mant', { signal: ctrl.signal }); clearTimeout(to);
+    const j = await r.json();
+    if (j.status !== 'success' || !j.mant) throw new Error(j.msg || j.reason || (j.status === 'success' ? 'la API todavía no tiene el módulo de mantenimiento (falta publicar la versión con 07_MANTENIMIENTO.gs)' : 'respuesta sin datos'));
+    D = j.mant; cacheSet({ t: Date.now(), data: D }); indexar(); render();
+    setStatus('Actualizado · uso al ' + fday(D.uso_hasta), 'ok');
+  } catch (e) {
+    const msg = e.name === 'AbortError' ? 'la API tardó más de 2 minutos' : e.message;
+    setStatus('Sin conexión con la API', 'err');
+    if (!D) $('#main').innerHTML = `<div class="errbox"><b>No se pudo cargar el módulo.</b> ${esc(msg)}<br><br><button class="btn" onclick="cargar()">Reintentar</button></div>`;
+    else toast('No se pudo actualizar: ' + msg, true);
+  }
+}
+async function post(body) {
+  const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+  const j = await r.json();
+  if (j.status === 'error') throw new Error(j.msg || j.reason || 'error');
+  return j;
+}
+function indexar() {
+  IX = { eq: {}, parte: {}, pt: {}, partesEq: {}, ptsParte: {}, ptsEq: {}, regsOt: {}, rep: {}, otBases: [] };
+  D.equipos.forEach(e => { e.equipo_sap = String(e.equipo_sap); IX.eq[e.equipo_sap] = e; IX.partesEq[e.equipo_sap] = []; IX.ptsEq[e.equipo_sap] = []; });
+  D.partes.forEach(p => { p.parte_id = String(p.parte_id); p.equipo_sap = String(p.equipo_sap); IX.parte[p.parte_id] = p; (IX.partesEq[p.equipo_sap] = IX.partesEq[p.equipo_sap] || []).push(p); IX.ptsParte[p.parte_id] = []; });
+  D.puntos.forEach(p => { p.punto_id = String(p.punto_id); p.parte_id = String(p.parte_id); p.equipo_sap = String(p.equipo_sap); IX.pt[p.punto_id] = p; (IX.ptsParte[p.parte_id] = IX.ptsParte[p.parte_id] || []).push(p); (IX.ptsEq[p.equipo_sap] = IX.ptsEq[p.equipo_sap] || []).push(p); });
+  D.repuestos.forEach(r => { (IX.rep[String(r.parte_sap)] = IX.rep[String(r.parte_sap)] || []).push(r); });
+  D.registros.forEach(r => { const k = String(r.ot_id || ''); if (!k) return; (IX.regsOt[k] = IX.regsOt[k] || {})[String(r.punto_id)] = r; });
+  const bases = new Set(D.ots.map(f => String(f.ot_id).replace(/-(L\d|SF)$/, '')));
+  IX.otBases = [...bases].sort().reverse();
+  IX.activos = D.puntos.filter(p => si(p.activo_ok) || p.activo_ok === true);
+  $('#chipEd').hidden = !D.editor; $('#tabAjustes').hidden = !D.editor;
+  const venc = IX.activos.filter(p => p.estado === 'vencido').length;
+  $('#nVenc').textContent = venc; $('#nVenc').hidden = !venc;
+  const av = D.avisos.filter(a => a.estado === 'PENDIENTE').length;
+  $('#nAvisos').textContent = av; $('#nAvisos').hidden = !av;
+  $('#hdrSub').textContent = `Horas de uso OPINONA al ${fday(D.uso_hasta)} · contadores desde ${fday(D.arranque)}`;
+}
+const eqLinea = e => String(e.linea || '').toUpperCase();
+const lineasEq = e => String(e.lineas_horas || e.linea || '').toUpperCase().split(/[,;\s]+/).filter(x => /^L[123]$/.test(x));
+const opsEq = e => OPS[String(e.opera_en || 'SIEMPRE').toUpperCase().trim()] || OPS.SIEMPRE;
+const ordenEq = e => { const k = RECORRIDO.indexOf(String(e.sector || '').toUpperCase()); return (k < 0 ? 99 : k); };
+function nombreParte(p) { return p ? cap(sinF(p.nombre)) : '—'; }
+function venceTxt(p) {
+  if (p.estado === 'sin_regla') return 'sin regla de vencimiento';
+  if (p.pct >= 1) {
+    const ih = Number(p.intervalo_h) || 0, td = Number(p.tope_dias) || 0;
+    if (ih && p.horas >= ih) return `vencido · +${fmt(p.horas - ih)} h`;
+    if (td && p.dias >= td) return `vencido · +${fmt(p.dias - td)} d`;
+    return 'vencido';
+  }
+  if (p.dias_hasta == null) return 'sin uso reciente';
+  const d = new Date(pf(D.hoy).getTime() + p.dias_hasta * 864e5);
+  return p.dias_hasta < 1 ? 'hoy' : `~${fmt(p.dias_hasta)} d · ${fday(d)}`;
+}
+const cantTxt = p => (p.cantidad !== '' && p.cantidad != null ? `${fmt(p.cantidad, Number(p.cantidad) % 1 ? 1 : 0)} ${p.unidad || ''}` : (p.unidad || '')).trim();
+
+// ───────────── navegación ─────────────
+$$('.tab').forEach(t => t.addEventListener('click', () => { view = t.dataset.v; $$('.tab').forEach(x => x.setAttribute('aria-selected', String(x === t))); render(); }));
+function render() {
+  if (!D) return;
+  const f = { ot: renderOT, alertas: renderAlertas, calendario: renderCal, equipos: renderEquipos, avisos: renderAvisos, ajustes: renderAjustes }[view];
+  (f || renderOT)();
+}
+
+// ───────────── OT semanal ─────────────
+function otFilas(base, L) { return D.ots.filter(f => String(f.ot_id) === base + '-' + L); }
+function renderOT() {
+  const actual = D.proy_semanas[0].ot_id, prox = D.proy_semanas[1].ot_id;
+  const bases = [...new Set([...IX.otBases])];
+  if (!otSel) otSel = bases.includes(actual) ? actual : (bases[0] || prox);
+  const opciones = [...new Set([prox, actual, ...bases])].sort().reverse();
+  const etiqueta = b => b === actual ? `${b} · semana en curso` : b === prox ? `${b} · próxima semana` : b;
+  const hay = D.ots.some(f => String(f.ot_id).startsWith(otSel + '-'));
+  const lineas = LINEAS.filter(L => otFilas(otSel, L).length);
+  const f0 = D.ots.find(f => String(f.ot_id).startsWith(otSel + '-'));
+  const venc = IX.activos.filter(p => p.estado === 'vencido').length, prx = IX.activos.filter(p => p.estado === 'proximo').length;
+  const capH = Number(D.config.capacidad_hh_semana) || 0;
+  let h = `<div class="kpis">
+    <div class="kpi"><span class="l">Puntos activos</span><span class="v">${fmt(IX.activos.length)}</span><span class="s">en ${new Set(IX.activos.map(p => p.equipo_sap)).size} equipos</span></div>
+    <div class="kpi crit"><span class="l">Vencidos hoy</span><span class="v">${fmt(venc)}</span><span class="s">por horas de uso o tope de días</span></div>
+    <div class="kpi warn"><span class="l">Próximos</span><span class="v">${fmt(prx)}</span><span class="s">desde el ${Math.round((Number(D.config.umbral_proximo) || .8) * 100)} % del intervalo</span></div>
+    <div class="kpi"><span class="l">Capacidad semanal</span><span class="v">${capH ? fmt(capH) + ' <small class="small muted">h-h</small>' : '—'}</span><span class="s">${capH ? 'tope de la OT' : 'sin tope cargado'}</span></div>
+  </div>
+  <div class="card"><div class="row"><h2 class="grow">OT de lubricación</h2>
+    <label class="f">Semana <select id="otSel">${opciones.map(b => `<option value="${b}" ${b === otSel ? 'selected' : ''}>${etiqueta(b)}</option>`).join('')}</select></label></div>`;
+  if (!hay) {
+    h += `<div class="hint">La OT ${esc(otSel)} todavía no está armada. Se arma sola el viernes a las 16 h para la semana siguiente.${D.editor ? ' También podés armarla ahora.' : ''}</div>`;
+  } else {
+    h += `<div class="sub">${fday(f0.desde)} → ${fday(f0.hasta)} · armada el ${fday(String(f0.generada_en).slice(0, 10))} ${f0.generada_por ? 'por ' + esc(f0.generada_por) : ''}</div>
+      <div class="tbl-wrap" style="max-height:none"><table class="tbl"><thead><tr><th>Línea</th><th class="n x">Equipos</th><th class="n">Tareas</th><th class="n x">Minutos</th><th>Cargadas</th><th class="n x" title="Tareas que no entraron por el tope de horas-hombre: pasan a la semana siguiente">Sin lugar</th><th></th></tr></thead><tbody>`;
+    lineas.forEach(L => {
+      const fs = otFilas(otSel, L), en = fs.filter(f => si(f.entra)), regs = IX.regsOt[otSel + '-' + L] || {};
+      const cargadas = en.filter(f => regs[String(f.punto_id)]).length, pc = en.length ? cargadas / en.length * 100 : 0;
+      h += `<tr><td><span class="chip ${L}">${L}</span></td><td class="n x">${new Set(en.map(f => String(f.equipo_sap))).size}</td><td class="n"><b>${en.length}</b></td><td class="n x">${fmt(en.reduce((a, f) => a + (Number(f.tiempo_min) || 0), 0))}</td>
+        <td class="nw tnum"><span class="meter x"><i class="${en.length && cargadas === en.length ? 'ok' : 'carga'}" style="width:${pc}%"></i></span> ${cargadas} / ${en.length}</td><td class="n x">${fs.length - en.length || '—'}</td>
+        <td style="text-align:right">${en.length ? `<button class="btn sm" data-cargar="${L}">Cargar<span class="x"> lo realizado</span></button>` : ''}</td></tr>`;
+    });
+    h += `</tbody></table></div><div class="row"><button class="btn accent" id="btnPrint">Imprimir planillas</button><span class="small muted">Una hoja por línea, con los equipos en el orden del recorrido.</span></div>`;
+  }
+  if (D.editor) {
+    h += `<div class="row small"><span class="muted grow">Solo editores:</span><label class="small"><input type="checkbox" id="otMail"> enviar el PDF por mail</label>
+      <button class="btn" id="btnGen">${hay ? 'Rearmar esta OT' : 'Armar esta OT'}</button></div>`;
+  }
+  h += `</div>`;
+  if (otForm && otLinea && hay) h += formCarga(otSel, otLinea);
+  $('#main').innerHTML = h;
+  $('#otSel').onchange = e => { otSel = e.target.value; otForm = false; renderOT(); };
+  const bp = $('#btnPrint'); if (bp) bp.onclick = () => imprimir(otSel);
+  $$('[data-cargar]').forEach(b => b.onclick = () => { otLinea = b.dataset.cargar; otForm = true; renderOT(); $('#formCarga').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  const bg = $('#btnGen'); if (bg) bg.onclick = generarOT;
+  if (otForm && hay) bindForm();
+}
+async function imprimir(base) {
+  const b = $('#btnPrint'); b.disabled = true; b.textContent = 'Preparando…';
+  try {
+    const r = await fetch(API_URL + '?tabla=mant_ot_html&ot=' + encodeURIComponent(base)); const j = await r.json();
+    if (j.status !== 'success' || !j.html) throw new Error(j.msg || 'sin HTML');
+    let fr = $('#printFrame');
+    if (!fr) { fr = document.createElement('iframe'); fr.id = 'printFrame'; fr.title = 'Impresión'; fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(fr); }
+    fr.onload = () => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { toast('No se pudo abrir la impresión: ' + e.message, true); } };
+    fr.srcdoc = j.html;
+  } catch (e) { toast('No se pudo preparar la impresión: ' + e.message, true); }
+  finally { b.disabled = false; b.textContent = 'Imprimir planillas'; }
+}
+async function generarOT() {
+  const lunes = D.proy_semanas.find(s => s.ot_id === otSel)?.lunes || null;
+  const b = $('#btnGen'); b.disabled = true; b.textContent = 'Armando…';
+  try {
+    const r = await post({ accion: 'mant_generar_ot', lunes, enviar_mail: $('#otMail').checked });
+    const x = r.resultado; toast(`OT ${x.ot_id}: ${x.tareas} tareas${x.excluidas ? ' · ' + x.excluidas + ' sin lugar' : ''}${x.mail !== 'no' ? ' · mail ' + x.mail : ''}`);
+    await cargar();
+  } catch (e) { toast('No se pudo armar la OT: ' + e.message, true); b.disabled = false; }
+}
+function formCarga(base, L) {
+  const id = base + '-' + L, fs = otFilas(base, L).filter(f => si(f.entra)).sort((a, b) => a.orden - b.orden);
+  const regs = IX.regsOt[id] || {}, motivos = String(D.config.motivos || '').split('|').filter(Boolean);
+  const lubs = [...new Set(fs.map(f => IX.pt[String(f.punto_id)]?.lubricante).filter(l => l && !String(l).startsWith('—')))].sort();
+  let eqAct = null, rows = '';
+  fs.forEach(f => {
+    const p = IX.pt[String(f.punto_id)] || {}, e = IX.eq[String(f.equipo_sap)] || {}, r = regs[String(f.punto_id)];
+    if (eqAct !== String(f.equipo_sap)) { eqAct = String(f.equipo_sap); rows += `<tr class="eqrow"><td colspan="8">${esc(cap(sinF(e.nombre)))} · SAP ${esc(e.equipo_sap)} ${e.codigo_f ? '· ' + esc(e.codigo_f) : ''}</td></tr>`; }
+    const nro = String(f.punto_id).split('-').pop();
+    if (r) { rows += `<tr class="done"><td>${nro}</td><td colspan="2">${esc(nombreParte(IX.parte[p.parte_id]))} · <b>${esc(p.componente)}</b></td><td colspan="5">${si(r.realizado) ? 'Hecho' : 'No se hizo: ' + esc(r.motivo)} el ${fday(String(r.fecha_ejecucion).slice(0, 10))} · cargado por ${esc(r.cargado_por)}</td></tr>`; return; }
+    rows += `<tr data-p="${esc(f.punto_id)}"><td>${nro}</td><td>${esc(nombreParte(IX.parte[p.parte_id]))} · <b>${esc(p.componente)}</b><div class="small muted">${esc(p.accion)}</div></td>
+      <td class="small">${esc(p.lubricante)}<div class="muted">${esc(cantTxt(p))}</div></td>
+      <td><select class="st" aria-label="Resultado ${esc(f.punto_id)}"><option value="">— sin cargar</option><option value="si">Hecho</option><option value="no">No se hizo</option></select></td>
+      <td><input type="date" class="fe" max="${D.hoy}" aria-label="Fecha ${esc(f.punto_id)}"></td>
+      <td><select class="mo" disabled aria-label="Motivo ${esc(f.punto_id)}"><option value="">Motivo…</option>${motivos.map(m => `<option>${esc(m)}</option>`).join('')}</select></td>
+      <td><input type="text" class="ob" placeholder="Observación" aria-label="Observación ${esc(f.punto_id)}"></td>
+      <td style="text-align:center"><input type="checkbox" class="an" title="Anomalía: genera un aviso pendiente para SAP" aria-label="Anomalía ${esc(f.punto_id)}"></td></tr>`;
+  });
+  const lubOpts = D.lubricadores.map(n => `<option>${esc(n)}</option>`).join('');
+  return `<div class="card" id="formCarga"><div class="row"><h2 class="grow">Cargar lo realizado · ${esc(id)}</h2><button class="btn" id="fcClose">Cerrar</button></div>
+    <div class="sub">Copiá la planilla firmada: estado, fecha real y observaciones. Las filas que dejes "sin cargar" siguen pendientes. Una anomalía marcada genera un aviso pendiente para SAP.</div>
+    <div class="form-top">
+      <label class="f">Lubricador <input type="text" id="fcLub" list="lubList" placeholder="Nombre"><datalist id="lubList">${lubOpts}</datalist></label>
+      <label class="f">Fecha para completar <input type="date" id="fcFecha" max="${D.hoy}"></label>
+      <button class="btn" id="fcTodo">Marcar todo como hecho</button>
+    </div>
+    ${lubs.length ? `<div><div class="small muted" style="margin-bottom:6px">Lotes de lubricante usados esta semana</div><div class="lotes">${lubs.map(l => `<label>${esc(l)}<input type="text" data-lote="${esc(l)}" placeholder="N° de lote"></label>`).join('')}</div></div>` : ''}
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Nº</th><th>Parte · componente · acción</th><th>Lubricante</th><th>Resultado</th><th>Fecha</th><th>Motivo</th><th>Observación</th><th>Anomalía</th></tr></thead><tbody>${rows || '<tr><td colspan="8" class="muted">Sin tareas.</td></tr>'}</tbody></table></div>
+    <div class="formbar"><span class="small muted" id="fcCount">0 filas para guardar</span><button class="btn primary" id="fcSave">Guardar registro</button></div></div>`;
+}
+function bindForm() {
+  const f = $('#formCarga'); if (!f) return;
+  const contar = () => { const n = $$('tr[data-p]', f).filter(tr => $('.st', tr).value).length; $('#fcCount').textContent = `${n} fila${n === 1 ? '' : 's'} para guardar`; };
+  $$('tr[data-p]', f).forEach(tr => {
+    const st = $('.st', tr), mo = $('.mo', tr), fe = $('.fe', tr);
+    st.onchange = () => { mo.disabled = st.value !== 'no'; if (st.value && !fe.value && $('#fcFecha').value) fe.value = $('#fcFecha').value; contar(); };
+  });
+  $('#fcFecha').onchange = e => { $$('tr[data-p]', f).forEach(tr => { if ($('.st', tr).value && !$('.fe', tr).value) $('.fe', tr).value = e.target.value; }); };
+  $('#fcTodo').onclick = () => { $$('tr[data-p]', f).forEach(tr => { const st = $('.st', tr); if (!st.value) { st.value = 'si'; if ($('#fcFecha').value && !$('.fe', tr).value) $('.fe', tr).value = $('#fcFecha').value; } }); contar(); };
+  $('#fcClose').onclick = () => { otForm = false; renderOT(); };
+  $('#fcSave').onclick = guardarCarga;
+}
+async function guardarCarga() {
+  const f = $('#formCarga'), id = otSel + '-' + otLinea, errores = [], registros = [];
+  $$('tr[data-p]', f).forEach(tr => {
+    const v = $('.st', tr).value; if (!v) return;
+    const pid = tr.dataset.p, fecha = $('.fe', tr).value, motivo = $('.mo', tr).value, ob = $('.ob', tr).value.trim(), an = $('.an', tr).checked;
+    if (!fecha) errores.push(`${pid}: falta la fecha`);
+    if (v === 'no' && !motivo) errores.push(`${pid}: falta el motivo`);
+    if (an && !ob) errores.push(`${pid}: describí la anomalía en observación`);
+    registros.push({ punto_id: pid, fecha, realizado: v === 'si', motivo, observacion: ob, anomalia: an });
+  });
+  const lotes = $$('[data-lote]', f).map(i => ({ lubricante: i.dataset.lote, lote: i.value.trim() })).filter(l => l.lote);
+  if (!registros.length && !lotes.length) { toast('No hay filas cargadas', true); return; }
+  if (errores.length) { toast('Revisá: ' + errores.slice(0, 3).join(' · ') + (errores.length > 3 ? ` y ${errores.length - 3} más` : ''), true); return; }
+  const b = $('#fcSave'); b.disabled = true; b.textContent = 'Guardando…';
+  try {
+    const r = await post({ accion: 'mant_registrar', ot_id: id, lubricador: $('#fcLub').value.trim(), registros, lotes });
+    toast(`Guardado: ${r.registrados} tareas${r.lotes ? ' · ' + r.lotes + ' lotes' : ''}${r.avisos ? ' · ' + r.avisos + ' avisos para SAP' : ''}`);
+    otForm = false; await cargar();
+  } catch (e) { toast(e.message, true); b.disabled = false; b.textContent = 'Guardar registro'; }
+}
+
+// ───────────── alertas ─────────────
+function renderAlertas() {
+  const q = alFil.q.toLowerCase();
+  const rows = IX.activos.filter(p => alFil.est.has(p.estado) && (alFil.linea === 'all' || eqLinea(IX.eq[p.equipo_sap] || {}) === alFil.linea))
+    .filter(p => { if (!q) return true; const e = IX.eq[p.equipo_sap] || {}; return [p.punto_id, e.nombre, e.codigo_f, p.componente, p.accion, p.lubricante, IX.parte[p.parte_id]?.nombre].join(' ').toLowerCase().includes(q); })
+    .sort((a, b) => (RANK[b.estado] - RANK[a.estado]) || (b.pct - a.pct));
+  const seg = (k, v, lab, on) => `<button data-${k}="${v}" aria-pressed="${on}">${lab}</button>`;
+  let h = `<div class="card"><div class="row"><h2 class="grow">Puntos por vencer y vencidos</h2><span class="small muted">${rows.length} de ${IX.activos.length} puntos</span></div>
+    <div class="sub">Consumido = horas de uso del equipo desde la última lubricación ÷ intervalo. Si el punto tiene tope de días, cuenta lo que ocurra primero.</div>
+    <div class="row"><div class="seg">${seg('fl', 'all', 'Todas', alFil.linea === 'all')}${LINEAS.map(L => seg('fl', L, L, alFil.linea === L)).join('')}</div>
+    <div class="seg">${['vencido', 'proximo', 'ok', 'sin_regla'].map(s => seg('fe', s, EST[s], alFil.est.has(s))).join('')}</div>
+    <input type="search" id="alQ" placeholder="Buscar equipo, parte, lubricante" value="${esc(alFil.q)}" style="min-width:220px"></div>
+    <div class="tbl-wrap"><table class="tbl" style="min-width:1050px"><thead><tr><th>Estado</th><th>Punto</th><th>Equipo</th><th>Parte · componente</th><th>Lubricante</th><th>Intervalo</th><th>Consumido</th><th>Última</th><th>Vence</th><th></th></tr></thead><tbody>
+    ${rows.map(p => { const e = IX.eq[p.equipo_sap] || {}, pc = Math.min(100, (p.pct || 0) * 100); return `<tr><td><span class="pill ${p.estado}">${EST[p.estado]}</span></td><td class="tnum nw"><b>${esc(p.punto_id)}</b></td>
+      <td><span class="chip ${eqLinea(e)}">${eqLinea(e)}</span> ${esc(cap(sinF(e.nombre)))}</td><td>${esc(nombreParte(IX.parte[p.parte_id]))} · <b>${esc(p.componente)}</b><div class="small muted">${esc(p.accion)}</div></td>
+      <td class="small">${esc(p.lubricante)}<div class="muted">${esc(cantTxt(p))}</div></td><td class="small tnum">${p.intervalo_h ? fmt(p.intervalo_h) + ' h' : '—'}${p.tope_dias ? '<br>tope ' + fmt(p.tope_dias) + ' d' : ''}</td>
+      <td class="tnum"><span class="meter"><i class="${p.estado}" style="width:${pc}%"></i></span> ${fmt((p.pct || 0) * 100)} %<div class="small muted">${fmt(p.horas, 1)} h · ${p.dias} d</div></td>
+      <td class="small tnum">${fday(p.ultima)}${p.con_registro ? '' : '<div class="muted">arranque</div>'}</td><td class="small tnum">${venceTxt(p)}</td>
+      <td><button class="btn" data-reg="${esc(p.punto_id)}" title="Registrar una lubricación hecha fuera de la OT">Registrar</button></td></tr>`; }).join('') || '<tr><td colspan="10" class="muted">Ningún punto con esos filtros.</td></tr>'}
+    </tbody></table></div></div>`;
+  $('#main').innerHTML = h;
+  $$('[data-fl]').forEach(b => b.onclick = () => { alFil.linea = b.dataset.fl; renderAlertas(); });
+  $$('[data-fe]').forEach(b => b.onclick = () => { const s = b.dataset.fe; alFil.est.has(s) ? alFil.est.delete(s) : alFil.est.add(s); renderAlertas(); });
+  const qi = $('#alQ'); qi.oninput = () => { alFil.q = qi.value; clearTimeout(qi._t); qi._t = setTimeout(() => { renderAlertas(); const n = $('#alQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 250); };
+  $$('[data-reg]').forEach(b => b.onclick = () => registrarSuelto(b.dataset.reg, b.closest('tr')));
+}
+function registrarSuelto(pid, tr) {
+  if (tr.nextElementSibling && tr.nextElementSibling.classList.contains('regrow')) { tr.nextElementSibling.remove(); return; }
+  const motivos = String(D.config.motivos || '').split('|').filter(Boolean);
+  const x = document.createElement('tr'); x.className = 'regrow';
+  x.innerHTML = `<td colspan="10"><div class="row"><b class="small">Registrar ${esc(pid)} fuera de la OT</b>
+    <select class="st"><option value="si">Hecho</option><option value="no">No se hizo</option></select>
+    <input type="date" class="fe" max="${D.hoy}" value="${D.hoy}" aria-label="Fecha"><select class="mo" disabled aria-label="Motivo"><option value="">Motivo…</option>${motivos.map(m => `<option>${esc(m)}</option>`).join('')}</select>
+    <input type="text" class="ob" placeholder="Observación" aria-label="Observación"><label class="small"><input type="checkbox" class="an"> Anomalía</label>
+    <button class="btn primary">Guardar</button></div></td>`;
+  tr.after(x);
+  $('.st', x).onchange = e => $('.mo', x).disabled = e.target.value !== 'no';
+  $('.btn.primary', x).onclick = async ev => {
+    const b = ev.currentTarget, st = $('.st', x).value, mo = $('.mo', x).value, ob = $('.ob', x).value.trim(), an = $('.an', x).checked;
+    if (st === 'no' && !mo) { toast('Falta el motivo', true); return; }
+    if (an && !ob) { toast('Describí la anomalía en observación', true); return; }
+    b.disabled = true;
+    try { await post({ accion: 'mant_registrar', registros: [{ punto_id: pid, fecha: $('.fe', x).value, realizado: st === 'si', motivo: mo, observacion: ob, anomalia: an }] }); toast('Registrado ' + pid); await cargar(); }
+    catch (e) { toast(e.message, true); b.disabled = false; }
+  };
+}
+
+// ───────────── calendario ─────────────
+// Proyección semanal: horas de cada semana por línea y operación (PLAN o ritmo) aplicadas
+// al estado actual de cada punto. Lo vencido cae en la primera semana.
+function proyectar() {
+  const sem = D.proy_semanas.slice(1, 9), hoy = pf(D.hoy), lun0 = pf(D.proy_semanas[0].lunes);
+  const resto = Math.max(0, 7 - Math.round((hoy - lun0) / 864e5)) / 7;   // fracción de la semana en curso que falta
+  const hEq = (e, pr, k = 1) => { let h = 0; lineasEq(e).forEach(L => opsEq(e).forEach(op => { h += ((pr[L] || {})[op] || 0) * k; })); return h; };
+  const celdas = {};
+  IX.activos.forEach(p => {
+    const e = IX.eq[p.equipo_sap]; if (!e || p.estado === 'sin_regla') return;
+    const ih = Number(p.intervalo_h) || 0, td = Number(p.tope_dias) || 0, cuentaH = ih > 0 && opsEq(e).length > 0;
+    let h = (p.horas || 0) + (cuentaH ? hEq(e, D.proy_semanas[0].proy, resto) : 0), d = (p.dias || 0) + Math.round(resto * 7);
+    sem.forEach((s, i) => {
+      h += cuentaH ? hEq(e, s.proy) : 0; d += 7;
+      if ((cuentaH && h >= ih) || (td && d >= td)) { const k = eqLinea(e) + '|' + i; (celdas[k] = celdas[k] || []).push(p); h = 0; d = 0; }
+    });
+  });
+  return { sem, celdas };
+}
+function renderCal() {
+  const { sem, celdas } = proyectar();
+  const mins = a => a.reduce((s, p) => s + (Number(p.tiempo_min) || 0), 0);
+  const maxM = Math.max(1, ...Object.values(celdas).map(mins));
+  const capH = Number(D.config.capacidad_hh_semana) || 0;
+  const fuente = (s, L) => (s.proy[L] || {}).fuente === 'PLAN' ? 'programa' : 'ritmo';
+  let h = `<div class="card"><h2>Vencimientos proyectados · próximas 8 semanas</h2>
+    <div class="sub">Horas de cada semana según el programa de producción cuando está cargado, y si no, el ritmo de las últimas 4 semanas. Cada celda: tareas y horas-hombre. Supone que cada tarea se hace en la semana en que vence.</div>
+    <div style="overflow-x:auto"><table class="cal"><thead><tr><th class="rh">Línea</th>${sem.map(s => `<th>Sem ${s.ot_id.slice(8, 10)}<br><span class="muted" style="text-transform:none;letter-spacing:0">${fday(s.lunes)}</span></th>`).join('')}</tr></thead><tbody>`;
+  LINEAS.forEach(L => {
+    if (!IX.activos.some(p => eqLinea(IX.eq[p.equipo_sap] || {}) === L)) return;
+    h += `<tr><th class="rh"><span class="chip ${L}">${L}</span></th>${sem.map((s, i) => { const a = celdas[L + '|' + i] || [], m = mins(a), v = m / maxM, k = L + '|' + i;
+      return `<td><button data-c="${k}" aria-pressed="${calSel === k}" title="Horas de la semana: ${L === 'SF' ? 'sin contador' : fuente(s, L)}" style="background:color-mix(in oklab, var(--ramp-hi) ${Math.round(v * 85)}%, var(--ramp-lo));color:${v > .55 ? '#fff' : 'var(--text)'}"><b>${a.length}</b><span>${fmt(m / 60, 1)} h-h</span></button></td>`; }).join('')}</tr>`;
+  });
+  h += `<tr><th class="rh small">Total</th>${sem.map((s, i) => { const a = LINEAS.flatMap(L => celdas[L + '|' + i] || []), m = mins(a) / 60; return `<td class="small tnum" style="text-align:center"><b>${a.length}</b> · ${fmt(m, 1)} h-h${capH && m > capH ? '<div style="color:var(--crit)">supera el tope</div>' : ''}</td>`; }).join('')}</tr>`;
+  h += `</tbody></table></div></div>`;
+  if (calSel && celdas[calSel]) {
+    const [L, i] = calSel.split('|'), s = sem[+i], a = celdas[calSel].slice().sort((x, y) => ordenEq(IX.eq[x.equipo_sap]) - ordenEq(IX.eq[y.equipo_sap]) || x.punto_id.localeCompare(y.punto_id));
+    h += `<div class="card"><h2>${L} · semana ${s.ot_id.slice(8, 10)} · ${fday(s.lunes)}</h2><div class="sub">${a.length} tareas · ${fmt(mins(a) / 60, 1)} h-h</div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Punto</th><th>Equipo</th><th>Parte · componente</th><th>Lubricante</th><th>Intervalo</th><th>Min</th></tr></thead><tbody>
+      ${a.map(p => { const e = IX.eq[p.equipo_sap]; return `<tr><td class="tnum nw"><b>${esc(p.punto_id)}</b></td><td>${esc(cap(sinF(e.nombre)))}</td><td>${esc(nombreParte(IX.parte[p.parte_id]))} · ${esc(p.componente)}</td><td class="small">${esc(p.lubricante)}</td><td class="small tnum">${p.intervalo_h ? fmt(p.intervalo_h) + ' h' : '—'}${p.tope_dias ? ' · ' + fmt(p.tope_dias) + ' d' : ''}</td><td class="n">${fmt(p.tiempo_min)}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+  } else h += `<div class="hint">Elegí una celda para ver qué puntos vencen esa semana.</div>`;
+  const us = D.uso_semanal;
+  h += `<div class="card"><h2>Horas de producción de las últimas 12 semanas</h2><div class="sub">OPINONA, Tiempo de Producción por línea. Es lo que alimenta los contadores.</div>
+    <div class="tbl-wrap" style="max-width:560px"><table class="tbl"><thead><tr><th>Semana del</th>${['L1', 'L2', 'L3'].map(L => `<th class="n">${L}</th>`).join('')}</tr></thead><tbody>${us.map(u => `<tr><td>${fday(u.lunes)}</td>${['L1', 'L2', 'L3'].map(L => `<td class="n">${fmt(u[L], 1)} h</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+  $('#main').innerHTML = h;
+  $$('[data-c]').forEach(b => b.onclick = () => { calSel = b.dataset.c; renderCal(); });
+}
+
+// ───────────── equipos (árbol + editor) ─────────────
+function peor(id) { return (IX.ptsEq[id] || []).filter(p => si(p.activo)).reduce((w, p) => RANK[p.estado] > RANK[w] ? p.estado : w, 'na'); }
+function renderEquipos() {
+  const q = eqQ.toLowerCase(), treeTop = $('.tree') ? $('.tree').scrollTop : 0;
+  const eqs = D.equipos.filter(e => !q || [e.equipo_sap, e.nombre, e.codigo_f, e.sector_nombre].join(' ').toLowerCase().includes(q));
+  if (!eqSel || !IX.eq[eqSel]) eqSel = (eqs[0] || {}).equipo_sap || null;
+  let tree = '';
+  LINEAS.forEach(L => {
+    const el = eqs.filter(e => eqLinea(e) === L).sort((a, b) => ordenEq(a) - ordenEq(b) || String(a.nombre).localeCompare(String(b.nombre)));
+    if (!el.length) return;
+    const secs = [...new Set(el.map(e => e.sector_nombre || '(sin sector)'))];
+    tree += `<details data-l="${L}" ${q || eqAbiertas.has(L) || el.some(e => e.equipo_sap === eqSel) ? 'open' : ''}><summary><span class="chip ${L}">${L}</span> ${L === 'SF' ? 'Sala de filtración' : 'Línea ' + L.slice(1)} <span class="muted small">${el.length}</span></summary>`;
+    secs.forEach(s => {
+      tree += `<div class="sec small muted" style="padding:4px 8px 2px 26px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px">${esc(s)}</div>`;
+      el.filter(e => (e.sector_nombre || '(sin sector)') === s).forEach(e => {
+        const n = (IX.ptsEq[e.equipo_sap] || []).filter(p => si(p.activo)).length, w = peor(e.equipo_sap);
+        tree += `<button class="eq" data-eq="${esc(e.equipo_sap)}" aria-current="${e.equipo_sap === eqSel}" style="${si(e.activo) ? '' : 'opacity:.5'}"><span class="dot ${w}"></span>${esc(cap(sinF(e.nombre)))}<span class="c">${n || '—'}</span></button>`;
+      });
+    });
+    tree += `</details>`;
+  });
+  let h = `<div class="eqlayout"><div class="card"><div class="row"><h2 class="grow">Equipos</h2>${D.editor ? '<button class="btn" id="eqNew">Alta local</button>' : ''}</div>
+    <input type="search" id="eqQ" placeholder="Buscar por nombre, SAP o código F" value="${esc(eqQ)}">
+    <div class="tree">${tree || '<div class="muted small">Sin resultados.</div>'}</div></div><div id="eqDet">${eqSel ? detalleEquipo(eqSel) : ''}</div></div>`;
+  $('#main').innerHTML = h;
+  $('.tree').scrollTop = treeTop;
+  barraCambios(renderEquipos);
+  const qi = $('#eqQ'); qi.oninput = () => { eqQ = qi.value; clearTimeout(qi._t); qi._t = setTimeout(() => { renderEquipos(); const n = $('#eqQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 250); };
+  $$('.tree details').forEach(d => d.addEventListener('toggle', () => { d.open ? eqAbiertas.add(d.dataset.l) : eqAbiertas.delete(d.dataset.l); }));
+  $$('[data-eq]').forEach(b => b.onclick = () => {
+    eqSel = b.dataset.eq; renderEquipos();
+    if (window.innerWidth <= 900) $('#eqDet').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  const nb = $('#eqNew'); if (nb) nb.onclick = altaEquipo;
+  bindEditor();
+}
+const E_OPERA = ['LLENADO', 'VESTIDO', 'SIEMPRE', 'SIN CONTADOR'];
+const NOTA_DEF = 'Parte asignada por defecto: validar';
+let eqAbiertas = new Set(), ptAbiertos = new Set();
+// Valor a mostrar: el cambio pendiente si lo hay, si no el guardado.
+function valP(tabla, id, k, v) { const c = pend.find(x => x.tabla === tabla && x.id === id && x.op === 'modificar' && x.campos && k in x.campos); return c ? c.campos[k] : v; }
+// Control editable; `opts` admite valores sueltos o pares [valor, texto].
+function campo(tabla, id, k, v, tipo, opts) {
+  if (!D.editor) return `<span>${esc(v === '' || v == null ? '—' : v)}</span>`;
+  const pv = pend.find(c => c.tabla === tabla && c.id === id && c.op === 'modificar' && c.campos && k in c.campos);
+  const val = pv ? pv.campos[k] : v, cls = 'cell' + (pv ? ' dirty' : ''), attrs = `data-t="${tabla}" data-id="${esc(id)}" data-k="${k}" data-v0="${esc(v)}"`;
+  if (opts) return `<select class="${cls}" ${attrs}>${opts.map(o => { const [ov, ol] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(ov)}" ${String(ov) === String(val) ? 'selected' : ''}>${esc(ol)}</option>`; }).join('')}</select>`;
+  if (tipo === 'textarea') return `<textarea class="${cls}" rows="2" ${attrs}>${esc(val)}</textarea>`;
+  return `<input class="${cls}" type="${tipo || 'text'}" ${tipo === 'number' ? 'min="0" step="any"' : ''} ${attrs} value="${esc(val)}">`;
+}
+function detalleEquipo(id) {
+  const e = IX.eq[id]; if (!e) return '';
+  const partes = (IX.partesEq[id] || []).slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  const conPts = partes.filter(pa => (IX.ptsParte[pa.parte_id] || []).length), sinPts = partes.filter(pa => !(IX.ptsParte[pa.parte_id] || []).length);
+  const pts = IX.ptsEq[id] || [], w = peor(id);
+  let h = `<div class="card"><div class="row"><span class="chip ${eqLinea(e)}">${eqLinea(e)}</span><b class="tnum">${esc(e.equipo_sap)}</b>${e.codigo_f ? `<span class="muted">${esc(e.codigo_f)}</span>` : ''}<span class="grow"></span>${w !== 'na' ? `<span class="pill ${w}">${EST[w]}</span>` : ''}</div>
+    <h2>${esc(cap(sinF(e.nombre)))}</h2><div class="sub">${esc(e.ubicacion_tecnica || '')} · ${esc(e.sector_nombre || '')}</div>
+    ${e.nota ? `<div class="warnbox">${esc(e.nota)}</div>` : ''}
+    <div class="fields">
+      <label class="f">Nombre ${campo('equipos', id, 'nombre', e.nombre)}</label>
+      <label class="f">Trabaja en ${campo('equipos', id, 'opera_en', e.opera_en, null, E_OPERA)}</label>
+      <label class="f">Horas de las líneas ${campo('equipos', id, 'lineas_horas', e.lineas_horas)}</label>
+      <label class="f">Línea ${campo('equipos', id, 'linea', e.linea, null, LINEAS)}</label>
+      <label class="f">Activo ${campo('equipos', id, 'activo', e.activo, null, ['SI', 'NO'])}</label>
+      <label class="f">Nota ${campo('equipos', id, 'nota', e.nota)}</label>
+    </div>
+    <div class="small muted">"Trabaja en" define qué horas de producción suma el equipo: llenado, vestido, siempre (todas) o sin contador (vence solo por tope de días). Uso de los últimos 28 días: ${fmt((pts[0] || {}).ritmo_dia * 28, 0)} h.</div></div>`;
+  conPts.forEach(pa => { h += tarjetaParte(pa, partes); });
+  if (sinPts.length) {
+    h += `<div class="card otras"><h2>Otras partes sin puntos de lubricación <span class="muted small">${sinPts.length}</span></h2>
+      ${sinPts.map(pa => `<div class="o" style="${si(pa.activo) ? '' : 'opacity:.5'}"><span class="grow">${esc(nombreParte(pa))} <span class="muted small">${pa.origen === 'LOCAL' ? 'parte local' : 'SAP ' + esc(pa.parte_sap)}${si(pa.activo) ? '' : ' · inactiva'}</span></span>
+        ${D.editor && si(pa.activo) ? `<button class="btn sm" data-addpt="${esc(pa.parte_id)}">+ Punto</button><button class="btn sm" data-bajapa="${esc(pa.parte_id)}">Dar de baja</button>` : ''}</div>`).join('')}</div>`;
+  }
+  if (D.editor) h += `<div class="row"><button class="btn" data-addpa="${esc(id)}">+ Parte local</button></div>`;
+  else h += `<div class="hint">Solo los correos autorizados de Mantenimiento pueden editar equipos, partes y puntos.</div>`;
+  return h;
+}
+function tarjetaParte(pa, partesEq) {
+  const ps = (IX.ptsParte[pa.parte_id] || []).slice().sort((a, b) => a.punto_id.localeCompare(b.punto_id)), reps = IX.rep[String(pa.parte_sap)] || [];
+  const ed = D.editor, num = (pid, k, v) => ed ? campo('puntos', pid, k, v, 'number') : (v !== '' && v != null ? fmt(v) : '—');
+  let h = `<div class="part card" style="padding:0;gap:0"><header>${esc(nombreParte(pa))}<span class="muted">${pa.origen === 'LOCAL' ? 'parte local' : 'SAP ' + esc(pa.parte_sap)}${si(pa.activo) ? '' : ' · inactiva'}</span><span class="grow"></span>
+    ${ed ? `<button class="btn sm" data-addpt="${esc(pa.parte_id)}">+ Punto</button>${si(pa.activo) ? `<button class="btn sm" data-bajapa="${esc(pa.parte_id)}">Dar de baja</button>` : ''}` : ''}</header>
+    <div class="tbl-wrap"><table class="tbl" style="min-width:${ed ? 880 : 760}px"><thead><tr><th>Nº</th><th>Componente · acción</th><th>Lubricante</th><th class="n">Min</th><th class="n">Cada (h)</th><th class="n">Tope (d)</th><th>Estado</th>${ed ? '<th></th>' : ''}</tr></thead><tbody>`;
+  ps.forEach(p => {
+    const pid = p.punto_id, act = si(valP('puntos', pid, 'activo', p.activo)), nota = valP('puntos', pid, 'nota', p.nota);
+    const cant = cantTxt({ cantidad: valP('puntos', pid, 'cantidad', p.cantidad), unidad: valP('puntos', pid, 'unidad', p.unidad) });
+    h += `<tr style="${act ? '' : 'opacity:.5'}"><td class="tnum"><b>${esc(pid.split('-').pop())}</b></td>
+      <td><b>${esc(valP('puntos', pid, 'componente', p.componente))}</b><div class="small muted">${esc(valP('puntos', pid, 'accion', p.accion))}</div>
+        ${nota ? `<div class="small row" style="color:var(--warn);gap:6px">${esc(nota)}${ed && nota === NOTA_DEF ? `<button class="btn sm" data-okparte="${esc(pid)}" title="Confirma que el punto está en la parte correcta y borra la nota">Parte correcta</button>` : ''}</div>` : ''}${act ? '' : '<div class="small muted">inactivo</div>'}</td>
+      <td class="small">${esc(valP('puntos', pid, 'lubricante', p.lubricante))}<div class="muted">${esc(cant)}</div></td>
+      <td class="n">${num(pid, 'tiempo_min', p.tiempo_min)}</td><td class="n">${num(pid, 'intervalo_h', p.intervalo_h)}</td><td class="n">${num(pid, 'tope_dias', p.tope_dias)}</td>
+      <td><span class="pill ${p.estado}">${EST[p.estado]}</span><div class="small muted tnum">${fmt(p.horas, 0)} h · ${fmt((p.pct || 0) * 100)} %</div></td>
+      ${ed ? `<td><button class="btn sm" data-edpt="${esc(pid)}" aria-expanded="${ptAbiertos.has(pid)}">${ptAbiertos.has(pid) ? 'Cerrar' : 'Editar'}</button></td>` : ''}</tr>`;
+    if (ed && ptAbiertos.has(pid)) h += filaEdicion(p, partesEq);
+  });
+  h += `</tbody></table></div>`;
+  if (reps.length) h += `<div class="rep">Repuestos SAP: ${reps.map(r => `${esc(r.material)} ${esc(r.descripcion)}`).join(' · ')}</div>`;
+  return h + `</div>`;
+}
+// Fila desplegable con todos los campos del punto (texto, parte, nota, activo).
+function filaEdicion(p, partesEq) {
+  const pid = p.punto_id, partes = partesEq.filter(pa => si(pa.activo) || pa.parte_id === p.parte_id)
+    .map(pa => [pa.parte_id, nombreParte(pa) + (pa.origen === 'LOCAL' ? ' · local' : ' · ' + pa.parte_sap)]);
+  return `<tr class="editrow"><td></td><td colspan="7"><div class="editgrid">
+    <label class="f">Componente ${campo('puntos', pid, 'componente', p.componente)}</label>
+    <label class="f">Lubricante ${campo('puntos', pid, 'lubricante', p.lubricante)}</label>
+    <label class="f">Cantidad ${campo('puntos', pid, 'cantidad', p.cantidad, 'number')}</label>
+    <label class="f">Unidad ${campo('puntos', pid, 'unidad', p.unidad)}</label>
+    <label class="f">Parte ${campo('puntos', pid, 'parte_id', p.parte_id, null, partes)}</label>
+    <label class="f">Activo ${campo('puntos', pid, 'activo', p.activo, null, ['SI', 'NO'])}</label>
+    <label class="f wide">Acción ${campo('puntos', pid, 'accion', p.accion, 'textarea')}</label>
+    <label class="f wide">Nota ${campo('puntos', pid, 'nota', p.nota)}</label>
+  </div></td></tr>`;
+}
+function bindEditor() {
+  if (!D.editor) return;
+  $$('#eqDet [data-t]').forEach(el => el.addEventListener('change', () => {
+    marcarCambio(el);
+    // Al mover un punto de parte, la nota de "validar" deja de aplicar.
+    if (el.dataset.k === 'parte_id') { const n = el.closest('.editrow').querySelector('[data-k="nota"]'); if (n && n.dataset.v0 === NOTA_DEF && n.value === NOTA_DEF) { n.value = ''; marcarCambio(n); } }
+    barraCambios(renderEquipos);
+  }));
+  $$('[data-edpt]').forEach(b => b.onclick = () => { const id = b.dataset.edpt; ptAbiertos.has(id) ? ptAbiertos.delete(id) : ptAbiertos.add(id); renderEquipos(); });
+  $$('[data-okparte]').forEach(b => b.onclick = () => {
+    const id = b.dataset.okparte; let c = pend.find(x => x.tabla === 'puntos' && x.id === id && x.op === 'modificar');
+    if (!c) { c = { tabla: 'puntos', op: 'modificar', id, campos: {} }; pend.push(c); }
+    c.campos.nota = ''; renderEquipos();
+  });
+  $$('[data-addpt]').forEach(b => b.onclick = () => {
+    const pa = IX.parte[b.dataset.addpt];
+    const comp = window.prompt ? prompt('Componente del nuevo punto (ej. Eje central):') : null;
+    if (!comp) return;
+    pend.push({ tabla: 'puntos', op: 'alta', campos: { equipo_sap: pa.equipo_sap, parte_id: pa.parte_id, componente: comp, accion: 'Lubricar', intervalo_h: 160 } });
+    guardarPend();
+  });
+  $$('[data-bajapa]').forEach(b => b.onclick = () => { pend.push({ tabla: 'partes', op: 'baja', id: b.dataset.bajapa }); b.disabled = true; b.textContent = 'Baja pendiente'; barraCambios(renderEquipos); });
+  $$('[data-addpa]').forEach(b => b.onclick = () => {
+    const nom = window.prompt ? prompt('Nombre de la parte local (ej. EJE CENTRAL):') : null;
+    if (!nom) return;
+    pend.push({ tabla: 'partes', op: 'alta', campos: { equipo_sap: b.dataset.addpa, nombre: nom.toUpperCase() } });
+    guardarPend();
+  });
+}
+function altaEquipo() {
+  const nom = window.prompt ? prompt('Nombre del equipo nuevo (queda como equipo local hasta que tenga código SAP):') : null;
+  if (!nom) return;
+  const lin = (prompt('Línea (L1, L2, L3 o SF):', 'L2') || '').toUpperCase().trim();
+  if (!LINEAS.includes(lin)) { toast('Línea inválida', true); return; }
+  pend.push({ tabla: 'equipos', op: 'alta', campos: { nombre: nom.toUpperCase(), linea: lin, lineas_horas: lin === 'SF' ? '' : lin, opera_en: lin === 'SF' ? 'SIN CONTADOR' : 'SIEMPRE', nota: 'Alta local: pedir el alta en SAP' } });
+  guardarPend();
+}
+// Anota el cambio de una celda en `pend` sin redibujar (así no se pierde el foco al tabular).
+function marcarCambio(el) {
+  const t = el.dataset.t, id = el.dataset.id, k = el.dataset.k, v0 = el.dataset.v0, v = el.value;
+  let c = pend.find(x => x.tabla === t && x.id === id && x.op === 'modificar');
+  if (!c) { c = { tabla: t, op: 'modificar', id, campos: {} }; pend.push(c); }
+  if (String(v) === String(v0)) delete c.campos[k]; else c.campos[k] = v;
+  pend = pend.filter(x => x.op !== 'modificar' || Object.keys(x.campos).length);
+  el.classList.toggle('dirty', String(v) !== String(v0));
+}
+// Barra fija con los cambios sin guardar; `volver` redibuja la vista actual.
+function barraCambios(volver) {
+  let bar = $('#savebar');
+  const n = pend.reduce((a, c) => a + (c.op === 'modificar' ? Object.keys(c.campos).length : 1), 0);
+  if (!n) { if (bar) bar.remove(); return; }
+  if (!bar) { bar = document.createElement('div'); bar.id = 'savebar'; bar.className = 'savebar'; $('#main').appendChild(bar); }
+  bar.innerHTML = `<span><b>${n}</b> cambio${n === 1 ? '' : 's'} sin guardar</span><span class="row"><button class="btn" id="pdDesc">Descartar</button><button class="btn primary" id="pdSave">Guardar cambios</button></span>`;
+  $('#pdDesc').onclick = () => { pend = []; ptAbiertos.clear(); volver(); };
+  $('#pdSave').onclick = guardarPend;
+}
+async function guardarPend() {
+  if (!pend.length) return;
+  const b = $('#pdSave'); if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
+  try {
+    const r = await post({ accion: 'mant_editar', cambios: pend });
+    toast(`Guardado: ${r.cambios} cambio${r.cambios === 1 ? '' : 's'}${r.altas && r.altas.length ? ' · alta ' + r.altas.join(', ') : ''}`);
+    if (r.altas && r.altas.length && pend.some(c => c.tabla === 'equipos' && c.op === 'alta')) eqSel = r.altas[0];
+    const altaPt = pend.some(c => c.tabla === 'puntos' && c.op === 'alta');
+    pend = []; ptAbiertos.clear(); if (altaPt) r.altas.forEach(id => ptAbiertos.add(id));
+    await cargar();
+  } catch (e) { toast(e.message, true); if (b) { b.disabled = false; b.textContent = 'Guardar cambios'; } }
+}
+
+// ───────────── avisos SAP ─────────────
+function renderAvisos() {
+  const av = D.avisos.slice().sort((a, b) => (a.estado === 'PENDIENTE' ? 0 : 1) - (b.estado === 'PENDIENTE' ? 0 : 1) || String(b.fecha).localeCompare(String(a.fecha)));
+  let h = `<div class="card"><h2>Avisos para SAP</h2><div class="sub">Anomalías marcadas al lubricar. Quien carga el aviso en SAP (IW21) anota acá el número y se cierra.</div>
+    <div class="tbl-wrap"><table class="tbl" style="min-width:900px"><thead><tr><th>Fecha</th><th>Equipo SAP</th><th>Parte SAP</th><th>Punto</th><th>Descripción</th><th>Registró</th><th>Aviso SAP</th></tr></thead><tbody>
+    ${av.map(a => { const e = IX.eq[String(a.equipo_sap)] || {}; return `<tr><td class="tnum">${fday(String(a.fecha).slice(0, 10))}</td><td><b class="tnum">${esc(a.equipo_sap)}</b><div class="small muted">${esc(cap(sinF(e.nombre)))}</div></td>
+      <td class="tnum">${esc(a.parte_sap || '—')}<div class="small muted">${esc(nombreParte(IX.parte[String(a.parte_sap)]))}</div></td><td class="tnum">${esc(a.punto_id)}</td><td>${esc(a.descripcion)}</td><td class="small">${esc(a.registrado_por)}</td>
+      <td>${a.estado === 'PENDIENTE' ? `<div class="row"><input type="text" placeholder="N° de aviso" data-av="${esc(a.aviso_id)}" style="width:120px" aria-label="Número de aviso SAP"><button class="btn" data-avok="${esc(a.aviso_id)}">Guardar</button></div>` : `<b class="tnum">${esc(a.aviso_sap)}</b><div class="small muted">${esc(a.cerrado_por)}</div>`}</td></tr>`; }).join('') || '<tr><td colspan="7" class="muted">No hay avisos.</td></tr>'}
+    </tbody></table></div></div>`;
+  $('#main').innerHTML = h;
+  $$('[data-avok]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.avok, num = $(`[data-av="${CSS.escape(id)}"]`).value.trim();
+    if (!num) { toast('Falta el número de aviso', true); return; }
+    b.disabled = true;
+    try { await post({ accion: 'mant_aviso', aviso_id: id, aviso_sap: num }); toast('Aviso cerrado'); await cargar(); } catch (e) { toast(e.message, true); b.disabled = false; }
+  });
+}
+
+// ───────────── ajustes (editores) ─────────────
+const CFG_TXT = {
+  fecha_arranque: ['Fecha de arranque', 'date', 'Todos los puntos sin registro cuentan horas desde este día.'],
+  capacidad_hh_semana: ['Horas-hombre por semana', 'number', 'Tope de la OT. 0 = sin tope.'],
+  umbral_proximo: ['Umbral de "próximo"', 'number', 'Fracción del intervalo (0,8 = 80 %).'],
+  doc_codigo: ['Código del documento', 'text', ''], doc_version: ['Versión', 'text', ''],
+  destinatarios_pdf: ['Destinatarios del PDF', 'text', 'Correos separados por coma.'],
+  motivos: ['Motivos de no realización', 'text', 'Separados por |']
+};
+function renderAjustes() {
+  if (!D.editor) { view = 'ot'; renderOT(); return; }
+  let h = `<div class="card"><h2>Configuración</h2><div class="fields">${Object.keys(CFG_TXT).map(k => { const [lab, tipo, ayuda] = CFG_TXT[k]; return `<label class="f${k === 'motivos' || k === 'destinatarios_pdf' ? ' wide' : ''}">${lab}${campoCfg(k, tipo)}${ayuda ? `<span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:500">${ayuda}</span>` : ''}</label>`; }).join('')}</div></div>
+    <div class="card"><h2>Editores del maestro</h2><div class="sub">Correos que pueden editar equipos, partes, puntos y esta configuración.</div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Correo</th><th>Nombre</th><th>Activo</th></tr></thead><tbody>${D.editores.map(r => `<tr><td>${esc(r.email)}</td><td>${campo('editores', r.email, 'nombre', r.nombre)}</td><td>${campo('editores', r.email, 'activo', r.activo, null, ['SI', 'NO'])}</td></tr>`).join('')}</tbody></table></div>
+    <div class="row"><input type="email" id="edMail" placeholder="correo@vspt.com.ar"><input type="text" id="edNom" placeholder="Nombre"><button class="btn" id="edAdd">Agregar editor</button></div></div>
+    <div class="card"><h2>Lubricadores</h2><div class="sub">Aparecen como sugerencia al cargar lo realizado.</div>
+    <div class="row">${D.lubricadores.map(n => `<span class="chip" style="background:var(--card2);color:var(--text)">${esc(n)} <button class="btn" style="padding:0 6px;margin-left:6px;border:0" data-lubx="${esc(n)}" title="Quitar">×</button></span>`).join('') || '<span class="muted small">Sin lubricadores cargados.</span>'}</div>
+    <div class="row"><input type="text" id="lubNom" placeholder="Nombre y apellido"><button class="btn" id="lubAdd">Agregar lubricador</button></div></div>`;
+  $('#main').innerHTML = h;
+  barraCambios(renderAjustes);
+  $$('#main [data-t]').forEach(el => el.addEventListener('change', () => { marcarCambio(el); barraCambios(renderAjustes); }));
+  $('#edAdd').onclick = () => { const m = $('#edMail').value.trim().toLowerCase(); if (!/^[^@\s]+@vspt\.(com\.ar|cl)$/.test(m)) { toast('Correo inválido: tiene que ser @vspt.com.ar o @vspt.cl', true); return; } pend.push({ tabla: 'editores', op: 'alta', campos: { email: m, nombre: $('#edNom').value.trim() } }); guardarPend().then(renderAjustes); };
+  $('#lubAdd').onclick = () => { const n = $('#lubNom').value.trim(); if (!n) return; pend.push({ tabla: 'lubricadores', op: 'alta', campos: { nombre: n } }); guardarPend().then(renderAjustes); };
+  $$('[data-lubx]').forEach(b => b.onclick = () => { pend.push({ tabla: 'lubricadores', op: 'baja', id: b.dataset.lubx }); guardarPend().then(renderAjustes); });
+}
+function campoCfg(k, tipo) {
+  const v = D.config[k] == null ? '' : String(D.config[k]).slice(0, tipo === 'date' ? 10 : 400);
+  return campo('config', k, 'valor', v, tipo);
+}
+
+// ───────────── tema (lo decide el dashboard principal) ─────────────
+function applyTheme(dark) { document.body.classList.toggle('light', !dark); $('#btnTheme').textContent = dark ? 'Claro' : 'Oscuro'; }
+window.addEventListener('message', e => { if (e.data && e.data.type === 'vspt-theme') applyTheme(!!e.data.dark); });
+if (window.self === window.top) { $('#btnTheme').hidden = false; $('#btnTheme').onclick = () => applyTheme(document.body.classList.contains('light')); }
+$('#btnReload').onclick = () => cargar();
+window.addEventListener('beforeunload', e => { if (pend.length) { e.preventDefault(); e.returnValue = ''; } });
+(window.VSPT_API_READY || Promise.resolve()).then(cargar);
+</script>
+</body>
+</html>
