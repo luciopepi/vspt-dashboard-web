@@ -414,6 +414,7 @@
   <button class="tab-btn" data-tab="objetivos" onclick="changeTab('objetivos')">Objetivos</button>
   <button class="tab-btn" data-tab="calidad" onclick="changeTab('calidad')">Calidad</button>
   <button class="tab-btn" data-tab="personal" onclick="changeTab('personal')">Personal</button>
+  <button class="tab-btn" data-tab="mantenimiento" onclick="changeTab('mantenimiento')">Mantenimiento</button>
   <button class="tab-btn" data-tab="aplicaciones" onclick="changeTab('aplicaciones')">Aplicaciones</button>
 </div>
 
@@ -524,6 +525,11 @@
     </div>
     <div id="tab-personal"  class="tab-panel" style="display:none;">
       <iframe id="iframePersonal" src="about:blank" allow="microphone" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>
+    </div>
+    <!-- Mantenimiento: plan de lubricación por horas de uso. Se carga recién al
+         abrir la pestaña (no se precarga) para no consultar la API de más. -->
+    <div id="tab-mantenimiento" class="tab-panel" style="display:none;">
+      <iframe id="iframeMantenimiento" src="about:blank" title="Mantenimiento" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>
     </div>
     <!-- Aplicaciones: accesos directos a las herramientas del área. Cada tarjeta
          es un hipervínculo que abre la app en una pestaña nueva. La lista vive
@@ -759,7 +765,7 @@ const CAT_COLORS = {
   'NoNa':                 '#701F52',
   'Tiempos de No Uso':    '#4E1742'
 };
-const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', diario:'#4E1742', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808', aplicaciones:'#98A040' };
+const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', diario:'#4E1742', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808', aplicaciones:'#98A040', mantenimiento:'#4E1742' };
 
 // Pestaña Aplicaciones: accesos directos a las herramientas del área.
 // Cada entrada se dibuja como una tarjeta-hipervínculo que abre la app en una
@@ -1706,7 +1712,8 @@ function changeTab(id) {
   const EMBED = {
     calidad:   { iframeId:'iframeCalidad',   src:'Dashboard_calidad.html' },
     programas: { iframeId:'iframeProgramas', src:'Dashboard_programas.html' },
-    personal:  { iframeId:'iframePersonal',  src:'Dashboard_personal.html' }
+    personal:  { iframeId:'iframePersonal',  src:'Dashboard_personal.html' },
+    mantenimiento: { iframeId:'iframeMantenimiento', src:'Dashboard_mantenimiento.html' }
   };
   // Aplicaciones no es una página embebida: es una grilla de accesos directos.
   // Comparte con las embebidas que no usa los filtros, así que oculta el panel.
@@ -1742,7 +1749,7 @@ function changeTab(id) {
 }
 
 function render() {
-  if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal' || activeTab === 'aplicaciones') return;
+  if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal' || activeTab === 'mantenimiento' || activeTab === 'aplicaciones') return;
   if (!rawData.length) return;
   if (activeTab === 'planta')    renderTab('planta', filteredData);
   else if (activeTab === 'l1')   renderTab('l1', filteredData.filter(r => getLinea(r) === 'L1'));
@@ -4041,7 +4048,7 @@ function toggleTheme() {
 }
 
 function broadcastTheme() {
-  ['iframeProgramas','iframeCalidad','iframePersonal'].forEach(id => {
+  ['iframeProgramas','iframeCalidad','iframePersonal','iframeMantenimiento'].forEach(id => {
     const f = document.getElementById(id);
     if (f && f.contentWindow && f.src && f.src !== 'about:blank') {
       try { f.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
