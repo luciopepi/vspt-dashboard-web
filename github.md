@@ -3,10 +3,12 @@ branch: main
 publica: Netlify (deploy desde main)
 
 ## Last sync
-date: 2026-09-26T18:00:00Z
+date: 2026-09-26T21:00:00Z
 ### Updated in this project
-- **Mantenimiento · Ayuda (recorrido guiado)**: botón **?** arriba a la derecha del encabezado (también la tecla ?). Primero pregunta el rol (Mantenimiento · editor, Lubricador o Solo consulta) y después recorre la página paso a paso: abre cada pestaña, resalta la parte que explica y difumina el resto. Anterior / Siguiente, flechas del teclado y Esc; en el celular la tarjeta va arriba o abajo de lo resaltado. En el formulario del QR recorre la planilla sin preguntar el rol. No arranca si hay una planilla de "Cargar lo realizado" a medio pasar.
-- **Mantenimiento · Planta 3D, diseño v4** (hecho en Design): modelos relevados de fotos, acero inoxidable, producto Colon Selecto Tinto, baliza de torre roja/ámbar/verde y botón **En marcha** (botellas, cajas, palets y autoelevadores en movimiento; se recuerda por navegador).
+- **Mantenimiento · Planta en el celular**: la vista Planta del teléfono es un plano 2D liviano (canvas, sin WebGL) con el color de cada equipo, cintas, nombres, selección, pellizco y doble toque, y "Ubicar equipos" arrastrando. El 3D en el celular va más liviano. Si el 3D no arranca o se corta, queda el plano 2D con un cartel y "Reintentar 3D".
+- **Mantenimiento · Pantalla completa** de la planta (botón en la esquina del cuadro). Dashboard_v15: el iframe de Mantenimiento tiene `allow="fullscreen"` y, si el navegador no la permite (iPhone), agranda el iframe a toda la ventana cuando la página se lo pide (mensaje `vspt-mant-completa`, solo desde ese iframe).
+- **Mantenimiento · Ayuda (recorrido guiado)**: botón **?** arriba a la derecha; pregunta el rol (Mantenimiento · editor, Lubricador o Solo consulta) y recorre la página paso a paso con el resto difuminado.
+- **Mantenimiento · Planta 3D, diseño v4** (hecho en Design): modelos relevados de fotos, acero inoxidable, producto Colon Selecto Tinto, baliza de torre y botón **En marcha**.
 
 
 ## Screen map
@@ -24,6 +26,8 @@ date: 2026-09-26T18:00:00Z
 | Mantenimiento · Planta 3D (semáforo, capas, panel) | Dashboard_mantenimiento.html · renderPlanta / p3Iniciar / p3Crear / p3Sincronizar / p3Aplicar / p3Panel / p3Encuadre |
 | Mantenimiento · Planta 3D, modelos y ubicación | Dashboard_mantenimiento.html · P3_MODELOS / p3Forma / p3Maquina / p3Punteros / p3Guardar · assets/plano_fraccionamiento.json |
 | Mantenimiento · Planta 3D, línea en marcha y baliza | Dashboard_mantenimiento.html · p3Flujo / p3MarchaCuadro / p3AnimMaquina / p3AutoCuadro / p3Baliza / p3Encender |
+| Mantenimiento · Planta, plano 2D (celular y respaldo del 3D) | Dashboard_mantenimiento.html · p3Motor / p3Aviso / p2Montar / p2Aplicar / p2Dibujar / p2Punteros / p2Tocar / p2Encuadre |
+| Mantenimiento · Planta, pantalla completa | Dashboard_mantenimiento.html · p3Completa / p3CompletaCss · Dashboard_v15.html (iframeMantenimiento allow=fullscreen, mensaje vspt-mant-completa) |
 | Mantenimiento · Ayuda (botón ?, recorrido guiado) | Dashboard_mantenimiento.html · ayudaAbrir / ayudaRoles / ayudaPasos / ayudaPasosCarga / ayudaIr / ayudaCuadro / ayudaHueco / ayudaUbicar |
 | Mantenimiento · pestaña en v15 | Dashboard_v15.html · changeTab (EMBED.mantenimiento) / broadcastTheme |
 | API (Apps Script, repo luciopepi/Dashboard) | 01_API.gs · doGet / leerPestanaFmt_ / leerPestanaCompacta_ / normalizarFilas_ |

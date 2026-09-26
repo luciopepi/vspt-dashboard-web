@@ -375,6 +375,8 @@
   .filter-locked { opacity:0.45; pointer-events:none; }
   .filter-locked select, .filter-locked input { cursor:not-allowed; }
   .kpi-loading-hint { text-align:center; color:var(--muted); font-size:12px; padding:18px; font-style:italic; opacity:0.8; }
+  /* Mantenimiento: pantalla completa de la planta cuando el navegador no la permite (iPhone) */
+  #iframeMantenimiento.iframe-completa { position:fixed; inset:0; width:100vw !important; height:100vh !important; height:100dvh !important; z-index:5000; border-radius:0 !important; }
 </style>
 </head>
 <body class="light">
@@ -529,7 +531,7 @@
     <!-- Mantenimiento: plan de lubricación por horas de uso. Se carga recién al
          abrir la pestaña (no se precarga) para no consultar la API de más. -->
     <div id="tab-mantenimiento" class="tab-panel" style="display:none;">
-      <iframe id="iframeMantenimiento" src="about:blank" title="Mantenimiento" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>
+      <iframe id="iframeMantenimiento" src="about:blank" title="Mantenimiento" allow="fullscreen" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>
     </div>
     <!-- Aplicaciones: accesos directos a las herramientas del área. Cada tarjeta
          es un hipervínculo que abre la app en una pestaña nueva. La lista vive
@@ -716,6 +718,12 @@ window.addEventListener('message', (e) => {
   if (!e.data || typeof e.data !== 'object') return;
   if (e.data.type === '__activate_edit_mode') openTweaks();
   if (e.data.type === '__deactivate_edit_mode') dismissTweaks();
+  // La planta de Mantenimiento pide ocupar toda la ventana (pantalla completa sin permiso del navegador).
+  const fm = document.getElementById('iframeMantenimiento');
+  if (e.data.type === 'vspt-mant-completa' && fm && e.source === fm.contentWindow) {
+    fm.classList.toggle('iframe-completa', !!e.data.on);
+    document.body.style.overflow = e.data.on ? 'hidden' : '';
+  }
 });
 window.addEventListener('load', () => {
     applyTweaks();

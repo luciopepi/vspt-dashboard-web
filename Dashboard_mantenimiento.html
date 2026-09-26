@@ -191,7 +191,23 @@
   .p3-legend{position:absolute;left:10px;bottom:10px;max-width:calc(100% - 20px);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 10px;display:grid;gap:4px;font-size:11.5px;opacity:.95}
   .p3-legend .items{display:flex;flex-wrap:wrap;gap:3px 12px}
   .p3-legend .ramp{height:8px;border-radius:4px;min-width:200px}
-  .p3-edit{position:absolute;left:10px;right:10px;top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--vspt-orange);border-radius:9px;padding:7px 10px}
+  .p3-edit{position:absolute;left:10px;right:56px;top:10px;z-index:3;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--vspt-orange);border-radius:9px;padding:7px 10px}
+  .p3-stage.con-aviso .p3-edit{top:62px}
+  .p3-aviso{position:absolute;left:10px;right:56px;top:10px;z-index:3;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--warn);border-radius:9px;padding:7px 10px;font-size:12px}
+  .p3-stage canvas.p2{cursor:grab}
+  .p3-full{position:absolute;top:10px;right:10px;z-index:4;width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  .p3-full:hover{border-color:var(--accent)}
+  .p3-full svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  /* pantalla completa: la del navegador o, si no la permite (iPhone), la planta tapando la página */
+  .p3.completa{position:fixed;inset:0;z-index:70;width:100%;height:100%;max-width:none;margin:0;padding:10px;overflow:auto;align-content:start;background:var(--bg)}
+  .p3.completa .p3-hud{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .p3.completa .p3-hud > *{flex:none}
+  .p3.completa .p3-hud .seg button{white-space:nowrap}
+  .p3.completa .p3-hud::-webkit-scrollbar{display:none}
+  .p3.completa .p3-stage{height:calc(100vh - 96px);height:calc(100dvh - 96px)}
+  .p3.completa #p3ayuda{display:none}
+  .p3.completa .p3-side{position:static;max-height:none}
+  @media (min-width:1001px){.p3.completa .p3-side{position:sticky;top:0;max-height:calc(100vh - 20px)}}
   .p3-side{position:sticky;top:10px;max-height:calc(100vh - 20px);overflow:auto}
   .p3-list{display:grid;gap:2px}
   .p3-item{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:12.5px;color:var(--text)}
@@ -432,6 +448,7 @@ const cantTxt = p => (p.cantidad !== '' && p.cantidad != null ? `${fmt(p.cantida
 // ───────────── navegación ─────────────
 $$('.tab').forEach(t => t.addEventListener('click', () => { view = t.dataset.v; CG = null; $$('.tab').forEach(x => x.setAttribute('aria-selected', String(x === t))); render(); }));
 function render() {
+  if (p3.fija && (view !== 'planta' || CG)) p3CompletaCss(false);
   if (CG) return renderCarga();
   if (!D) return;
   const f = { ot: renderOT, indicadores: renderIndicadores, planta: renderPlanta, alertas: renderAlertas, calendario: renderCal, equipos: renderEquipos, avisos: renderAvisos, ajustes: renderAjustes }[view];
@@ -993,8 +1010,16 @@ const P3_HORNOS = { '300050968': [-1.1, -1.5, 2.0, 0.8], '300050988': [-0.25, -2
 const P3_ROL = { body: '--s-inox', trim: '--s-trim', accent: '--s-accent', steel: '--s-inox2', wood: '--s-wood', glass: '--s-glass', card: '--s-card', guard: '--s-body', belt: '--s-inox2', bottle: '--s-glass', dark: '--s-dark', screen: '--s-screen', film: '--s-film',
   vacia: '--s-vacia', frame: '--s-frame', handle: '--s-handle', panel: '--s-panel', red: '--s-red', blue: '--s-blue', white: '--s-white', tape: '--s-tape' };
 let P3 = null;             // escena, se arma una sola vez
-// En pantallas angostas arranca en vista Planta: la planta es casi cuadrada y aprovecha mejor el cuadro.
-let p3 = { capa: 'lub', linea: 'all', vista: matchMedia('(max-width: 700px)').matches ? 'top' : '3d', nombres: false, marcha: (() => { try { return !matchMedia('(prefers-reduced-motion: reduce)').matches && localStorage.getItem('vspt_p3_marcha') !== '0'; } catch (e) { return true; } })(), editar: false, sel: null, hover: null, mov: {} };
+let P2 = null;             // plano 2D (canvas): vista Planta del celular y respaldo si el 3D no anda
+let p3SinGL = '';          // por qué el 3D no está disponible en este equipo (vacío: anda)
+// Celular (también apaisado): el 3D va más liviano y la vista Planta es el plano 2D.
+const P3_CELU = matchMedia('(max-width: 700px)').matches || (matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) <= 500);
+// En el celular arranca en vista Planta: la planta es casi cuadrada y aprovecha mejor el cuadro.
+// "En marcha" se recuerda por navegador; si nunca se tocó, arranca prendido en la computadora y apagado en el celular.
+let p3 = { capa: 'lub', linea: 'all', vista: P3_CELU ? 'top' : '3d', nombres: false,
+  marcha: (() => { try { const g = localStorage.getItem('vspt_p3_marcha'); return g ? g === '1' : !P3_CELU && !matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })(),
+  editar: false, sel: null, hover: null, mov: {}, fija: false };
+const p3Es2D = () => !!p3SinGL || (p3.vista === 'top' && P3_CELU);
 
 const p3Css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
 const p3Num = v => parseFloat(String(v ?? '').replace(',', '.'));
@@ -1034,63 +1059,144 @@ function p3Datos() {
   const maxUso = Math.max(1, ...Object.values(uso).filter(v => v != null));
   return { base, ot, uso, maxUso };
 }
+// Datos de la capa del motor que está a la vista (los arma p3Aplicar o p2Aplicar).
+const p3Dat = () => (p3Es2D() ? P2 && P2.dat : P3 && P3.dat) || p3Datos();
+// Estado de cada equipo en la capa elegida: la clave del color (el 3D, el 2D, la leyenda y las etiquetas usan la misma).
+const P3_TONO = { vencido: '--s-crit', proximo: '--s-warn', ok: '--s-ok', na: '--na', pend: '--s-pend' };
+function p3Clave(id, dat) {
+  if (p3.capa === 'ot') { const o = dat.ot[id]; return !o ? 'na' : o.c >= o.n ? 'ok' : 'pend'; }
+  const s = peor(id); return P3_TONO[s] ? s : 'na';
+}
+// Color CSS de un equipo; en Horas de uso, la rampa (mezclada en luz lineal, como la del 3D).
+function p3ColorCss(id, dat) {
+  if (p3.capa !== 'uso') return p3Css(P3_TONO[p3Clave(id, dat)]);
+  const u = dat.uso[id]; return u == null ? p3Css('--na') : p3Mezcla(p3Css('--ramp-uso-lo'), p3Css('--ramp-uso-hi'), Math.sqrt(u / dat.maxUso));
+}
+const p3Rgb = c => { const m = String(c).trim().match(/^#([0-9a-f]{6})$/i); if (m) return [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16)); const n = String(c).match(/[\d.]+/g); return n ? n.slice(0, 3).map(Number) : [128, 128, 128]; };
+function p3Mezcla(a, b, t) {
+  const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const srgb = v => Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
+  const A = p3Rgb(a).map(lin), B = p3Rgb(b).map(lin);
+  return `rgb(${A.map((v, i) => srgb(v + (B[i] - v) * Math.max(0, Math.min(1, t)))).join(',')})`;
+}
+const p3Alfa = (c, a) => `rgba(${p3Rgb(c).join(',')},${a})`;
+// Sin posición guardada (o dentro de la zona "sin ubicar"): el equipo espera que lo ubiquen.
+const p3SinUbicar = id => { const e = IX.eq[id]; if (!e || P3_CINTAS[id]) return false; const p = p3Pos(e); return !p || p3EnEspera(p); };
+const p3Centrar = id => { if (p3Es2D()) p2Enfocar(id); else if (P3) p3Enfocar(id, 2.2); };
 
 function renderPlanta() {
   const seg = (k, v, lab, on) => `<button data-${k}="${v}" aria-pressed="${on}">${lab}</button>`;
   const lineas = ['all', ...LINEAS.filter(L => D.equipos.some(e => eqLinea(e) === L))];
-  $('#main').innerHTML = `<div class="p3">
+  $('#main').innerHTML = `<div class="p3${p3.fija ? ' completa' : ''}">
     <div class="card p3-card">
       <div class="row p3-hud">
         <div class="seg" role="group" aria-label="Línea">${lineas.map(L => seg('p3l', L, L === 'all' ? 'Todas' : L, p3.linea === L)).join('')}</div>
         <div class="seg" role="group" aria-label="Qué muestra">${[['lub', 'Semáforo'], ['ot', 'OT de la semana'], ['uso', 'Horas de uso']].map(([k, t]) => seg('p3c', k, t, p3.capa === k)).join('')}</div>
         <div class="seg" role="group" aria-label="Vista">${seg('p3v', '3d', '3D', p3.vista === '3d')}${seg('p3v', 'top', 'Planta', p3.vista === 'top')}</div>
         <button class="btn sm" id="p3Nom" aria-pressed="${p3.nombres}">Nombres</button>
-        <button class="btn sm" id="p3Run" aria-pressed="${p3.marcha}" title="Botellas, cajas, palets y autoelevadores en movimiento">En marcha</button>
+        <button class="btn sm" id="p3Run" aria-pressed="${p3.marcha}" title="Botellas, cajas, palets y autoelevadores en movimiento" ${p3Es2D() ? 'hidden' : ''}>En marcha</button>
         <span class="grow"></span>
         ${D.editor ? `<button class="btn sm" id="p3Ed" aria-pressed="${p3.editar}">Ubicar equipos</button>` : ''}
       </div>
-      <div class="p3-stage" id="p3stage"><div class="p3-msg" id="p3msg">Cargando el plano 3D…</div>
-        <div class="p3-labels" id="p3labels"></div><div class="p3-legend" id="p3legend" hidden></div><div class="p3-edit" id="p3edit" hidden></div></div>
+      <div class="p3-stage" id="p3stage"><div class="p3-msg" id="p3msg">Cargando el plano…</div>
+        <div class="p3-labels" id="p3labels"></div><div class="p3-legend" id="p3legend" hidden></div><div class="p3-edit" id="p3edit" hidden></div>
+        <button class="p3-full" id="p3Full" type="button"></button></div>
       <div class="small muted" id="p3ayuda">${p3Ayuda()}</div>
     </div>
     <div class="card p3-side" id="p3side"></div></div>`;
   $$('[data-p3l]').forEach(b => b.onclick = () => {
     p3.linea = b.dataset.p3l; $$('[data-p3l]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     if (p3.sel && !p3Visible(IX.eq[p3.sel] || {})) p3.sel = null;
-    p3Aplicar(); p3Panel(); p3BarraEdicion(); if (P3) p3Encuadre();
+    p3Aplicar(); p2Aplicar(); p3Panel(); p3BarraEdicion();
+    if (p3Es2D()) p2Encuadre(); else if (P3) p3Encuadre();
   });
-  $$('[data-p3c]').forEach(b => b.onclick = () => { p3.capa = b.dataset.p3c; $$('[data-p3c]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); p3Aplicar(); p3Panel(); });
-  $$('[data-p3v]').forEach(b => b.onclick = () => { p3.vista = b.dataset.p3v; $$('[data-p3v]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); $('#p3ayuda').textContent = p3Ayuda(); if (P3) p3Encuadre(); });
-  $('#p3Nom').onclick = ev => { p3.nombres = !p3.nombres; ev.currentTarget.setAttribute('aria-pressed', String(p3.nombres)); if (P3) P3.dirty = true; };
+  $$('[data-p3c]').forEach(b => b.onclick = () => { p3.capa = b.dataset.p3c; $$('[data-p3c]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); p3Aplicar(); p2Aplicar(); p3Panel(); });
+  $$('[data-p3v]').forEach(b => b.onclick = () => {
+    const antes = p3Es2D();
+    p3.vista = b.dataset.p3v; $$('[data-p3v]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    if (p3Es2D() !== antes) p3Motor(); else { $('#p3ayuda').textContent = p3Ayuda(); p3Aviso(); }
+    if (!p3Es2D() && P3) p3Encuadre();
+  });
+  $('#p3Nom').onclick = ev => { p3.nombres = !p3.nombres; ev.currentTarget.setAttribute('aria-pressed', String(p3.nombres)); if (P3) P3.dirty = true; p2Pedir(); };
+  $('#p3Full').onclick = () => p3Completa();
+  p3CompletaBoton();
   $('#p3Run').onclick = ev => { p3.marcha = !p3.marcha; ev.currentTarget.setAttribute('aria-pressed', String(p3.marcha)); try { localStorage.setItem('vspt_p3_marcha', p3.marcha ? '1' : '0'); } catch (e) {} if (P3) P3.dirty = true; };
   const be = $('#p3Ed');
   if (be) be.onclick = () => { p3.editar = !p3.editar; be.setAttribute('aria-pressed', String(p3.editar)); p3BarraEdicion(); };
   p3Panel(); p3BarraEdicion();
-  if (P3) p3Montar(); else p3Iniciar();
+  p3Motor();
 }
-const p3Ayuda = () => (p3.vista === 'top'
-  ? 'Desplazá con un dedo o el botón izquierdo y acercá con dos dedos o la rueda.'
-  : 'Girá con un dedo o el botón izquierdo, desplazá con dos dedos o el botón derecho y acercá con la rueda.') + ' Tocá un equipo para ver sus puntos; doble clic para acercarte.';
+const p3Ayuda = () => (p3Es2D()
+  ? 'Desplazá con un dedo o el mouse y acercá con dos dedos o la rueda. Tocá un equipo para ver sus puntos; doble toque para acercarte.'
+  : (p3.vista === 'top'
+    ? 'Desplazá con un dedo o el botón izquierdo y acercá con dos dedos o la rueda.'
+    : 'Girá con un dedo o el botón izquierdo, desplazá con dos dedos o el botón derecho y acercá con la rueda.') + ' Tocá un equipo para ver sus puntos; doble clic para acercarte.');
+// Pone en el cuadro el motor que corresponde: el plano 2D (celular en vista Planta, o sin 3D) o la escena 3D.
+function p3Motor() {
+  const st = $('#p3stage'); if (!st) return;
+  const dos = p3Es2D(), run = $('#p3Run');
+  if (run) run.hidden = dos;
+  $('#p3ayuda').textContent = p3Ayuda();
+  if (dos) {
+    if (P3 && P3.renderer.domElement.isConnected) { P3.renderer.domElement.remove(); P3.etiq.forEach(el => el.remove()); P3.etiq.clear(); }
+    p2Montar();
+  } else {
+    if (P2 && P2.cv.isConnected) { P2.cv.remove(); P2.etiq.forEach(el => el.remove()); P2.etiq.clear(); }
+    if (P3) p3Montar(); else p3Iniciar();
+  }
+  p3Aviso();
+}
+// Cartel en el cuadro cuando el 3D no anda en este equipo y se muestra el plano 2D en su lugar.
+function p3Aviso() {
+  const st = $('#p3stage'); if (!st) return;
+  let a = $('#p3aviso');
+  const ver = !!p3SinGL && !(p3.vista === 'top' && P3_CELU);
+  st.classList.toggle('con-aviso', ver);
+  if (!ver) { if (a) a.remove(); return; }
+  if (!a) { a = document.createElement('div'); a.id = 'p3aviso'; a.className = 'p3-aviso'; a.setAttribute('role', 'status'); st.appendChild(a); }
+  a.innerHTML = `<span>${esc(p3SinGL)} Se muestra el plano 2D.</span><button class="btn sm" id="p3Re3d" type="button">Reintentar 3D</button>`;
+  $('#p3Re3d').onclick = () => { p3SinGL = ''; if (P3 && P3.renderer.getContext().isContextLost()) p3Descartar(); p3Motor(); };
+}
+// El plano del DWG lo usan el 3D y el 2D: se baja una sola vez.
+let p3PlanoProm = null;
+const p3CargarPlano = () => p3PlanoProm || (p3PlanoProm = fetch(P3_PLANO)
+  .then(r => { if (!r.ok) throw new Error('no se encontró el plano (' + r.status + ')'); return r.json(); })
+  .catch(e => { p3PlanoProm = null; throw e; }));
 async function p3Iniciar() {
   if (p3Iniciar.corriendo) return;
   p3Iniciar.corriendo = true;
+  const m = $('#p3msg'); if (m) { m.hidden = false; m.textContent = 'Cargando el plano 3D…'; }
   try {
-    const [T, OC, RE, plano] = await Promise.all([import('three'), import('three/addons/controls/OrbitControls.js'), import('three/addons/environments/RoomEnvironment.js'),
-      fetch(P3_PLANO).then(r => { if (!r.ok) throw new Error('no se encontró el plano (' + r.status + ')'); return r.json(); })]);
+    const [T, OC, RE, plano] = await Promise.all([import('three'), import('three/addons/controls/OrbitControls.js'), import('three/addons/environments/RoomEnvironment.js'), p3CargarPlano()]);
     p3Crear(T, OC.OrbitControls, plano, RE.RoomEnvironment);
-    if (view === 'planta' && !CG) p3Montar();
+    if (view === 'planta' && !CG && !p3Es2D()) p3Montar();
   } catch (e) {
     P3 = null;
-    const m = $('#p3msg');
-    if (m) { m.hidden = false; m.innerHTML = `No se pudo abrir el plano 3D: ${esc(e.message)}<br><br><button class="btn" id="p3Re">Reintentar</button>`; $('#p3Re').onclick = () => { m.textContent = 'Cargando el plano 3D…'; p3Iniciar(); }; }
+    // Sin WebGL (o si se perdió al arrancar) queda el plano 2D; si falló la descarga, se ofrece reintentar.
+    if (e.sinGL) { p3SinGL = e.message; if (view === 'planta' && !CG) p3Motor(); return; }
+    const m2 = $('#p3msg');
+    if (m2) { m2.hidden = false; m2.innerHTML = `No se pudo abrir el plano 3D: ${esc(e.message)}<br><br><button class="btn" id="p3Re">Reintentar</button>`; $('#p3Re').onclick = () => p3Iniciar(); }
   } finally { p3Iniciar.corriendo = false; }
 }
+// Deja la escena 3D (el contexto WebGL se perdió y no volvió): el próximo intento arma una nueva.
+function p3Descartar() {
+  const S = P3; if (!S) return;
+  if (S.ro) S.ro.disconnect();
+  S.etiq.forEach(el => el.remove());
+  try { S.renderer.dispose(); } catch (e) {}
+  S.renderer.domElement.remove();
+  P3 = null;
+}
 function p3Crear(T, OrbitControls, plano, RoomEnvironment) {
+  const chico = P3_CELU, noGL = msg => Object.assign(new Error(msg), { sinGL: true });
   let renderer;
-  try { renderer = new T.WebGLRenderer({ antialias: true }); }
-  catch (e) { throw new Error('este dispositivo no puede mostrar gráficos 3D (WebGL)'); }
-  const chico = matchMedia('(max-width: 700px)').matches;
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  try { renderer = new T.WebGLRenderer({ antialias: !chico }); }
+  catch (e) { throw noGL('Este equipo no puede mostrar gráficos 3D (WebGL).'); }
+  if (renderer.getContext().isContextLost()) { renderer.dispose(); throw noGL('El 3D no arrancó en este equipo.'); }
+  // Si el navegador corta el 3D, se pasa al plano 2D con un cartel para reintentar.
+  renderer.domElement.addEventListener('webglcontextlost', () => { if (!P3 || P3.renderer !== renderer) return; p3SinGL = 'El 3D se interrumpió en este equipo.'; if (view === 'planta' && !CG) p3Motor(); });
+  renderer.domElement.addEventListener('webglcontextrestored', () => { if (P3 && P3.renderer === renderer) P3.dirty = true; });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, chico ? 1.5 : 2));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
   const scene = new T.Scene(), cam = new T.OrthographicCamera(-1, 1, 1, -1, 0.1, 600);
   const controls = new OrbitControls(cam, renderer.domElement);
@@ -1105,9 +1211,10 @@ function p3Crear(T, OrbitControls, plano, RoomEnvironment) {
   P3 = { T, renderer, scene, cam, controls, hemi, sol, plano, texN: chico ? 2048 : 4096, maq: new Map(), cintas: [], picks: [], etiq: new Map(),
          ray: new T.Raycaster(), ptr: new T.Vector2(), piso: new T.Plane(new T.Vector3(0, 1, 0), 0), dirty: true, anim: null, reloj: 14, chico };
   controls.addEventListener('change', () => { P3.dirty = true; });
-  try { P3.env = new T.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; } catch (e) { P3.env = null; }   // reflejos del acero inoxidable
+  // reflejos del acero inoxidable (en el celular no: ahorra memoria de video)
+  P3.env = null; if (!chico) try { P3.env = new T.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; } catch (e) { P3.env = null; }
   p3Piso(); p3Estructura(); p3Sincronizar(); p3Punteros(); p3Tema();
-  (function bucle() { requestAnimationFrame(bucle); p3Cuadro(); })();
+  if (!p3Crear.bucle) { p3Crear.bucle = true; (function bucle() { requestAnimationFrame(bucle); p3Cuadro(); })(); }   // uno solo aunque se rearme la escena
 }
 // Pone el lienzo en la pestaña recién dibujada y actualiza equipos, colores y panel.
 function p3Montar() {
@@ -1128,6 +1235,8 @@ function p3Medir() {
 }
 function p3Cuadro() {
   const S = P3; if (!S || view !== 'planta' || CG || !S.renderer.domElement.isConnected) return;
+  // contexto perdido: no se dibuja (three.js fallaría al compilar) y se pasa al plano 2D sin esperar el evento
+  if (S.renderer.getContext().isContextLost()) { if (!p3SinGL) { p3SinGL = 'El 3D se interrumpió en este equipo.'; p3Motor(); } return; }
   if (S.anim) {
     const a = S.anim, t = Math.min(1, (performance.now() - a.t0) / 550), k = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     S.cam.position.lerpVectors(a.de, a.a, k); S.controls.target.lerpVectors(a.tDe, a.tA, k);
@@ -1157,13 +1266,20 @@ function p3Piso() {
   plano.rotation.x = -Math.PI / 2; plano.position.set(28, 0.006, -28); plano.renderOrder = 1; S.scene.add(plano);
 }
 function p3DibujarPlano() {
-  const S = P3, ctx = S.lienzo.getContext('2d'), N = S.texN, k = N / 60, s = N / 4096, oscuro = !document.body.classList.contains('light');
+  const S = P3, ctx = S.lienzo.getContext('2d');
+  ctx.clearRect(0, 0, S.texN, S.texN); p3PintarPlano(ctx, S.texN, S.plano);
+  S.tex.needsUpdate = true; S.dirty = true;
+}
+// Líneas del DWG y la zona "sin ubicar" en un cuadrado de N px que cubre 60 m (x e y de -2 a 58 m).
+// La usan la textura del piso del 3D y el plano 2D (este, además, a la escala de la pantalla).
+function p3PintarPlano(ctx, N, plano) {
+  const k = N / 60, s = N / 4096, oscuro = !document.body.classList.contains('light');
   const X = x => (x / 100 + 2) * k, Y = y => N - (y / 100 + 2) * k, tinta = p3Css('--s-lines');
   const est = { 'Texto': [0.58, 1.25], '0': [0.4, 1.1], 'Columnas': [0.55, 1.3], 'Mampostería': [0.8, 2.4], 'corte': [0.8, 2.4], 'proyección': [0.32, 1] };
-  ctx.clearRect(0, 0, N, N); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = tinta;
-  for (const [capa, polis] of Object.entries(S.plano.capas)) {
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = tinta;
+  for (const [capa, polis] of Object.entries(plano.capas)) {
     const [a, w] = est[capa] || [0.4, 1];
-    ctx.globalAlpha = a * (oscuro ? 0.85 : 0.85); ctx.lineWidth = Math.max(0.8, w * s * 1.15);
+    ctx.globalAlpha = a * 0.85; ctx.lineWidth = Math.max(0.8, w * s * 1.15);
     ctx.beginPath();
     for (const f of polis) {   // primer punto absoluto y después diferencias (cm)
       let x = f[0], y = f[1]; ctx.moveTo(X(x), Y(y));
@@ -1176,7 +1292,7 @@ function p3DibujarPlano() {
   ctx.strokeRect(X(Z.x0 * 100), Y(Z.y1 * 100), (Z.x1 - Z.x0) * k, (Z.y1 - Z.y0) * k); ctx.setLineDash([]);
   ctx.globalAlpha = oscuro ? 0.75 : 0.85; ctx.fillStyle = tinta; ctx.font = `700 ${Math.round(46 * s)}px Montserrat, sans-serif`;
   ctx.fillText('EQUIPOS SIN UBICAR', X(Z.x0 * 100 + 40), Y(Z.y1 * 100 + 55));
-  ctx.globalAlpha = 1; S.tex.needsUpdate = true; S.dirty = true;
+  ctx.restore();
 }
 function p3Estructura() {
   const S = P3, T = S.T;
@@ -2099,7 +2215,7 @@ function p3Aplicar() {
   const col = { vencido: c('--s-crit'), proximo: c('--s-warn'), ok: c('--s-ok'), na: c('--na'), pend: c('--s-pend') };
   const luz = { vencido: 0, proximo: 1, pend: 1, ok: 2 };   // torre: rojo arriba, ámbar al medio, verde abajo
   const cuerpo = c('--s-inox'), lo = c('--ramp-uso-lo'), hi = c('--ramp-uso-hi');
-  const claveDe = id => { if (p3.capa === 'ot') { const o = dat.ot[id]; return !o ? 'na' : o.c >= o.n ? 'ok' : 'pend'; } const s = peor(id); return col[s] ? s : 'na'; };
+  const claveDe = id => p3Clave(id, dat);
   const colorDe = id => { if (p3.capa === 'uso') { const u = dat.uso[id]; return u == null ? col.na : lo.clone().lerp(hi, Math.sqrt(u / dat.maxUso)); } return col[claveDe(id)]; };
   const fade = (obj, on) => { obj.tenue = !on; obj.mats.forEach(m => { const b = m.userData.base ?? 1; m.opacity = on ? b : 0.12; m.depthWrite = on && b === 1; }); };
   const baliza = (bz, id, cc) => { bz.b.visible = p3.capa !== 'uso'; p3Encender(bz, p3.capa === 'uso' ? -1 : (luz[claveDe(id)] ?? -1), cc); };
@@ -2129,8 +2245,9 @@ function p3Resaltar() {
   S.dirty = true;
 }
 function p3Leyenda() {
-  const el = $('#p3legend'); if (!el || !P3) return;
-  const S = P3, dat = S.dat, ids = [...S.maq.values()].filter(m => p3Visible(m.e) && si(m.e.activo)).map(m => m.id).concat(S.cintas.filter(b => p3Visible(b.e)).map(b => b.id));
+  const el = $('#p3legend'); if (!el || !D) return;
+  // equipos a la vista (los inactivos no cuentan) y cintas de la línea elegida
+  const dat = p3Dat(), ids = D.equipos.filter(e => p3Visible(e) && (P3_CINTAS[String(e.equipo_sap)] || si(e.activo))).map(e => String(e.equipo_sap));
   const it = (cls, txt, n) => `<span><span class="dot ${cls}"></span> ${txt} <b class="tnum">${n}</b></span>`;
   el.hidden = false;
   if (p3.capa === 'lub') {
@@ -2210,7 +2327,7 @@ function p3Ancla(id) {
   return new T.Vector3(b.ancla[0], 1.4, b.ancla[1]);
 }
 function p3TextoEtiqueta(id) {
-  const e = IX.eq[id] || {}, dat = P3.dat || {}, o = (dat.ot || {})[id], u = (dat.uso || {})[id];
+  const e = IX.eq[id] || {}, dat = p3Dat(), o = (dat.ot || {})[id], u = (dat.uso || {})[id];
   let dot = '', extra = '';
   if (p3.capa === 'lub') { const s = peor(id); dot = `<span class="dot ${s === 'sin_regla' ? 'na' : s}"></span>`; }
   else if (p3.capa === 'ot') { dot = `<span class="dot ${!o ? 'na' : o.c >= o.n ? 'ok' : 'pend'}"></span>`; if (o) extra = ` · ${o.c}/${o.n}`; }
@@ -2279,7 +2396,7 @@ function p3Punteros() {
 }
 function p3Elegir(id) {
   p3.sel = id || null;
-  p3Resaltar(); p3Panel(); p3BarraEdicion();
+  p3Resaltar(); p2Pedir(); p3Panel(); p3BarraEdicion();
 }
 
 // ── modo "Ubicar equipos" (editores): mover, girar y guardar en el maestro ──
@@ -2295,13 +2412,18 @@ function p3BarraEdicion() {
   if (!el) return;
   el.hidden = !p3.editar;
   if (!p3.editar) return;
-  const mc = p3.sel && P3 && P3.maq.get(p3.sel);
-  el.innerHTML = `<span class="small"><b>Ubicar equipos.</b> Arrastrá cada equipo a su lugar${mc ? `. Elegido: <b>${esc(cap(sinF(mc.e.nombre)))}</b>` : '; elegí uno para girarlo'}.</span>
-    <span class="row"><button class="btn sm" id="p3R90" ${mc ? '' : 'disabled'}>Girar 90°</button><button class="btn sm" id="p3R15" ${mc ? '' : 'disabled'}>Girar 15°</button>
+  const eSel = p3.sel && !P3_CINTAS[p3.sel] && IX.eq[p3.sel];   // las cintas no se mueven
+  el.innerHTML = `<span class="small"><b>Ubicar equipos.</b> Arrastrá cada equipo a su lugar${eSel ? `. Elegido: <b>${esc(cap(sinF(eSel.nombre)))}</b>` : '; elegí uno para girarlo'}.</span>
+    <span class="row"><button class="btn sm" id="p3R90" ${eSel ? '' : 'disabled'}>Girar 90°</button><button class="btn sm" id="p3R15" ${eSel ? '' : 'disabled'}>Girar 15°</button>
     <button class="btn sm" id="p3Desc" ${n ? '' : 'disabled'}>Descartar</button><button class="btn sm primary" id="p3Save" ${n ? '' : 'disabled'}>Guardar ubicación${n ? ` (${n})` : ''}</button></span>`;
-  const girar = gr => { if (!mc) return; mc.g.rotation.y -= gr * Math.PI / 180; P3.dirty = true; p3Movido(mc); };
+  const girar = gr => {
+    if (!eSel) return;
+    if (p3Es2D()) return p2Girar(p3.sel, gr);
+    const mc = P3 && P3.maq.get(p3.sel); if (!mc) return;
+    mc.g.rotation.y -= gr * Math.PI / 180; P3.dirty = true; p3Movido(mc);
+  };
   $('#p3R90').onclick = () => girar(90); $('#p3R15').onclick = () => girar(15);
-  $('#p3Desc').onclick = () => { p3.mov = {}; p3Sincronizar(); p3BarraEdicion(); p3Panel(); };
+  $('#p3Desc').onclick = () => { p3.mov = {}; p3Sincronizar(); p2Aplicar(); p3BarraEdicion(); p3Panel(); };
   $('#p3Save').onclick = p3Guardar;
 }
 async function p3Guardar() {
@@ -2317,7 +2439,7 @@ async function p3Guardar() {
 // ── panel lateral ──
 function p3Panel() {
   const el = $('#p3side'); if (!el) return;
-  const dat = (P3 && P3.dat) || p3Datos(), id = p3.sel, e = id && IX.eq[id];
+  const dat = p3Dat(), id = p3.sel, e = id && IX.eq[id];
   const nombre = x => esc(cap(sinF(x.nombre)));
   if (!e) {
     const vis = D.equipos.filter(x => p3Visible(x) && si(x.activo));
@@ -2337,24 +2459,314 @@ function p3Panel() {
     el.innerHTML = `<h2>${titulo}</h2><div class="sub">Tocá un equipo del plano o de la lista para ver sus puntos.</div>
       <div class="p3-list">${filas.slice(0, 14).map(r => `<button class="p3-item" data-p3eq="${esc(r.x.equipo_sap)}">${r.dot ? `<span class="dot ${r.dot}"></span>` : ''}<span class="grow">${nombre(r.x)}</span><span class="chip ${eqLinea(r.x)}">${eqLinea(r.x)}</span><span class="small muted nw">${r.txt}</span></button>`).join('') || '<div class="small muted">Ninguno.</div>'}</div>
       ${filas.length > 14 ? `<div class="small muted">y ${filas.length - 14} más</div>` : ''}`;
-    $$('[data-p3eq]', el).forEach(b => b.onclick = () => { p3Elegir(b.dataset.p3eq); if (P3) p3Enfocar(b.dataset.p3eq, 2.2); });
+    $$('[data-p3eq]', el).forEach(b => b.onclick = () => { p3Elegir(b.dataset.p3eq); p3Centrar(b.dataset.p3eq); });
     return;
   }
-  const st = peor(id), mc = P3 && P3.maq.get(id), o = dat.ot[id], u = dat.uso[id];
+  const st = peor(id), sinUb = p3SinUbicar(id), o = dat.ot[id], u = dat.uso[id];
   const pts = (IX.ptsEq[id] || []).filter(p => si(p.activo)).sort((a, b) => (RANK[b.estado] ?? -1) - (RANK[a.estado] ?? -1) || (b.pct || 0) - (a.pct || 0));
   const nv = pts.filter(p => p.estado === 'vencido').length, np = pts.filter(p => p.estado === 'proximo').length;
   el.innerHTML = `<div class="row"><span class="chip ${eqLinea(e)}">${eqLinea(e)}</span><b class="tnum">${esc(e.equipo_sap)}</b>${e.codigo_f ? `<span class="muted">${esc(e.codigo_f)}</span>` : ''}<span class="grow"></span>${st !== 'na' ? `<span class="pill ${st}">${EST[st]}</span>` : '<span class="pill sin_regla">Sin puntos</span>'}</div>
     <h2>${nombre(e)}</h2><div class="sub">${esc(e.sector_nombre || '')}${e.ubicacion_tecnica ? ' · ' + esc(e.ubicacion_tecnica) : ''}</div>
-    ${mc && mc.sinUbicar ? `<div class="warnbox">Todavía no está ubicado en el plano.${D.editor ? ' Con "Ubicar equipos", arrastralo a su lugar y guardá.' : ' Lo ubica un editor con "Ubicar equipos".'}</div>` : ''}
+    ${sinUb ? `<div class="warnbox">Todavía no está ubicado en el plano.${D.editor ? ' Con "Ubicar equipos", arrastralo a su lugar y guardá.' : ' Lo ubica un editor con "Ubicar equipos".'}</div>` : ''}
     <div class="small">${pts.length} punto${pts.length === 1 ? '' : 's'} activo${pts.length === 1 ? '' : 's'} · ${nv} vencido${nv === 1 ? '' : 's'} · ${np} próximo${np === 1 ? '' : 's'}${u != null ? ` · ${fmt(u)} h de uso en 28 días` : ''}</div>
     ${o ? `<div class="small">${esc(dat.base)}: ${o.n} tarea${o.n === 1 ? '' : 's'} · ${o.c} cargada${o.c === 1 ? '' : 's'}</div>` : ''}
     <div class="p3-pts">${pts.map(p => `<div class="p3-pt"><div class="row" style="gap:6px"><span class="pill ${p.estado}">${EST[p.estado]}</span><b class="tnum">${esc(p.punto_id.split('-').pop())}</b> ${esc(p.componente)}</div>
       <div class="small muted">${esc(nombreParte(IX.parte[p.parte_id]))} · ${esc(p.lubricante)} · ${fmt((p.pct || 0) * 100)} % · ${venceTxt(p)}</div></div>`).join('') || '<div class="small muted">Sin puntos de lubricación cargados.</div>'}</div>
-    <div class="row"><button class="btn sm" id="p3Ficha">Ver ficha en Equipos</button>${mc && !mc.sinUbicar ? '<button class="btn sm" id="p3Centrar">Centrar</button>' : ''}<button class="btn sm" id="p3Cerrar">Cerrar</button></div>`;
+    <div class="row"><button class="btn sm" id="p3Ficha">Ver ficha en Equipos</button>${!sinUb ? '<button class="btn sm" id="p3Centrar">Centrar</button>' : ''}<button class="btn sm" id="p3Cerrar">Cerrar</button></div>`;
   $('#p3Ficha').onclick = () => { eqSel = id; view = 'equipos'; $$('.tab').forEach(x => x.setAttribute('aria-selected', String(x.dataset.v === 'equipos'))); render(); };
-  const bc = $('#p3Centrar'); if (bc) bc.onclick = () => p3Enfocar(id, 2.2);
+  const bc = $('#p3Centrar'); if (bc) bc.onclick = () => p3Centrar(id);
   $('#p3Cerrar').onclick = () => p3Elegir(null);
 }
+
+// ───────────── plano 2D ─────────────
+// El mismo plano en un canvas liviano: es la vista Planta del celular y el respaldo cuando el 3D no anda.
+// Tiene las mismas capas, filtro de línea, nombres, selección y "Ubicar equipos". El fondo del DWG (54 mil
+// trazos) se dibuja una vez en una imagen; quieto y con mucho zoom, se redibuja nítido a la escala de la pantalla.
+const P2_FONDO = 2048;     // px de la imagen del fondo: 60 m → 34 px por metro
+const p2Pant = (x, y) => [P2.w / 2 + (x - P2.cx) * P2.z, P2.h / 2 - (y - P2.cy) * P2.z];     // plano (m) → cuadro (px)
+const p2Mundo = (px, py) => [P2.cx + (px - P2.w / 2) / P2.z, P2.cy - (py - P2.h / 2) / P2.z];
+const p2Limite = z => Math.max(P2.zMin || 1, Math.min(120, z));
+function p2Montar() {
+  const st = $('#p3stage'); if (!st) return;
+  if (!P2) {
+    const cv = document.createElement('canvas');
+    cv.className = 'p2'; cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', 'Plano de la planta con el estado de cada equipo');
+    P2 = { cv, ctx: cv.getContext('2d'), etiq: new Map(), eqs: [], cintas: [], z: 0, cx: 28, cy: 27, w: 0, h: 0, r: 1 };
+    p2Punteros();
+  }
+  st.insertBefore(P2.cv, st.firstChild);
+  if (P2.ro) P2.ro.disconnect();
+  P2.ro = new ResizeObserver(p2Medir); P2.ro.observe(st);
+  const m = $('#p3msg');
+  if (P2.fondo) { m.hidden = true; p2Medir(); p2Aplicar(); if (!P2.z) p2Encuadre(false); return; }
+  m.hidden = false; m.textContent = 'Cargando el plano…';
+  p3CargarPlano().then(plano => {
+    P2.plano = plano; p2Fondo();
+    if (!P2.cv.isConnected) return;
+    $('#p3msg').hidden = true; p2Medir(); p2Aplicar(); p2Encuadre(false);
+  }).catch(e => {
+    const m2 = $('#p3msg'); if (!m2 || !P2.cv.isConnected) return;
+    m2.hidden = false; m2.innerHTML = `No se pudo abrir el plano: ${esc(e.message)}<br><br><button class="btn" id="p3Re">Reintentar</button>`; $('#p3Re').onclick = p2Montar;
+  });
+}
+function p2Medir() {
+  const S = P2, st = $('#p3stage'); if (!S || !st || !S.cv.isConnected) return;
+  const w = st.clientWidth || 360, h = st.clientHeight || 420, r = Math.min(devicePixelRatio || 1, 2);
+  if (w !== S.w || h !== S.h || r !== S.r) { Object.assign(S, { w, h, r }); S.cv.width = Math.round(w * r); S.cv.height = Math.round(h * r); S.zMin = Math.min(w / 62, h / 60) * 0.7; }
+  p2Pedir();
+}
+// Pide un cuadro; cuando la vista se queda quieta, otro nítido.
+function p2Pedir(nitido) {
+  const S = P2; if (!S || !S.cv.isConnected) return;
+  S.nitido = !!nitido;
+  if (!S.raf) S.raf = requestAnimationFrame(() => { S.raf = 0; p2Dibujar(); });
+  if (!nitido) { clearTimeout(S.tq); S.tq = setTimeout(() => p2Pedir(true), 200); }
+}
+function p2Fondo() {
+  const S = P2, N = P2_FONDO, cv = S.fondo || (S.fondo = document.createElement('canvas'));
+  cv.width = cv.height = N;
+  const c = cv.getContext('2d'); p2Base(c, N); p3PintarPlano(c, N, S.plano);
+}
+// Piso (la losa: x de -2 a 58 m, y de -2 a 56 m), muros y columnas, en la escala de p3PintarPlano.
+function p2Base(c, N) {
+  const S = P2, k = N / 60, X = x => (x + 2) * k, Y = y => N - (y + 2) * k;
+  c.save();
+  c.fillStyle = p3Css('--s-floor'); c.fillRect(X(-2), Y(56), 60 * k, 58 * k);
+  c.strokeStyle = p3Css('--s-walls'); c.lineWidth = Math.max(1.5, 0.16 * k); c.lineCap = 'square';
+  c.beginPath(); for (const [x1, y1, x2, y2] of S.plano.estructura.muros) { c.moveTo(X(x1), Y(y1)); c.lineTo(X(x2), Y(y2)); } c.stroke();
+  c.fillStyle = p3Css('--s-cols'); for (const [x, y, w, d] of S.plano.estructura.columnas) c.fillRect(X(x - w / 2), Y(y + d / 2), w * k, d * k);
+  c.restore();
+}
+// Dónde va cada equipo (posición guardada, la que se está moviendo o su lugar en la zona de espera) y su color.
+function p2Aplicar() {
+  const S = P2; if (!S || !D) return;
+  if (p3.sel && !IX.eq[p3.sel]) p3.sel = null;
+  const dat = S.dat = p3Datos(), propios = D.equipos.filter(e => !P3_CINTAS[String(e.equipo_sap)]), colocados = [], sinPos = [];
+  propios.forEach(e => { const p = p3Pos(e); if (p) colocados.push(p); else sinPos.push(e); });
+  const espera = p3LugaresEspera(sinPos, colocados), rampa = id => p3.capa === 'uso' && dat.uso[id] != null;
+  S.tonos = { bg: p3Css('--s-bg'), foco: p3Css('--focus'), marco: p3Css('--s-frame'), cinta: p3Css('--s-inox2') };
+  S.eqs = propios.map(e => {
+    const id = String(e.equipo_sap), [, w, d] = p3Modelo(e), g = p3Pos(e), pos = g || espera.get(id), color = p3ColorCss(id, dat);
+    return { id, e, w, d, x: pos.x, y: pos.y, rot: pos.rot || 0, horno: P3_HORNOS[id], sinUbicar: !g || p3EnEspera(g), color, relleno: p3Alfa(color, rampa(id) ? 0.9 : 0.38) };
+  });
+  S.cintas = Object.keys(P3_CINTAS).filter(id => IX.eq[id]).map(id => {
+    const polys = P3_CINTAS[id], p0 = polys[0], color = p3ColorCss(id, dat);
+    return { id, e: IX.eq[id], polys, ancla: p0[Math.min(1, p0.length - 1)], color, tira: rampa(id) ? color : S.tonos.cinta };
+  });
+  S.etiq.forEach(el => el.remove()); S.etiq.clear();   // se rehacen con el texto de la capa
+  if (p3Es2D()) p3Leyenda();
+  p2Pedir();
+}
+const p2Caja = (c, cx, cy, w, d, z) => { const W = w * z, H = d * z, x = cx * z - W / 2, y = -cy * z - H / 2, R = Math.min(4, W / 4, H / 4); if (c.roundRect) c.roundRect(x, y, W, H, R); else c.rect(x, y, W, H); };
+function p2Dibujar() {
+  const S = P2; if (!S || !S.cv.isConnected || !S.fondo || !S.z || !S.tonos) return;
+  const c = S.ctx, r = S.r, z = S.z, T = S.tonos;
+  c.setTransform(r, 0, 0, r, 0, 0); c.globalAlpha = 1;
+  c.fillStyle = T.bg; c.fillRect(0, 0, S.w, S.h);
+  const [x0, y0] = p2Pant(-2, 58), L = 60 * z;
+  if (S.nitido && z * r > P2_FONDO / 60 * 1.25) {   // quieto y cerca: el DWG en vectores, a la escala de la pantalla
+    c.save(); c.setTransform(1, 0, 0, 1, x0 * r, y0 * r); p2Base(c, L * r); p3PintarPlano(c, L * r, S.plano); c.restore();
+  } else { c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(S.fondo, x0, y0, L, L); }
+  // cintas: la banda y, donde el 3D pone la baliza, el estado
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const b of S.cintas) {
+    c.globalAlpha = p3Visible(b.e) ? 1 : 0.15;
+    c.beginPath(); for (const p of b.polys) p.forEach(([x, y], i) => { const [sx, sy] = p2Pant(x, y); if (i) c.lineTo(sx, sy); else c.moveTo(sx, sy); });
+    c.strokeStyle = b.id === p3.sel ? T.foco : T.marco; c.lineWidth = Math.max(4, 0.34 * z) + (b.id === p3.sel ? 3 : 0); c.stroke();
+    c.strokeStyle = b.tira; c.lineWidth = Math.max(2, 0.26 * z); c.stroke();
+    if (p3.capa !== 'uso') { const [sx, sy] = p2Pant(b.ancla[0], b.ancla[1]); c.beginPath(); c.arc(sx, sy, Math.max(4.5, 0.35 * z), 0, 2 * Math.PI); c.fillStyle = b.color; c.fill(); c.lineWidth = 1.5; c.strokeStyle = T.bg; c.stroke(); }
+  }
+  // equipos: la huella girada, pintada con el estado; el horno va pegado a su capsuladora
+  for (const o of S.eqs) {
+    const [sx, sy] = p2Pant(o.x, o.y), sel = o.id === p3.sel;
+    c.save(); c.globalAlpha = p3Visible(o.e) && si(o.e.activo) ? 1 : 0.15;
+    c.translate(sx, sy); c.rotate(o.rot * Math.PI / 180);
+    c.beginPath(); p2Caja(c, 0, 0, o.w, o.d, z); if (o.horno) p2Caja(c, o.horno[0], o.horno[1], o.horno[2], o.horno[3], z);
+    c.fillStyle = o.relleno; c.fill();
+    if (sel) { c.shadowColor = T.foco; c.shadowBlur = 10; }
+    c.lineWidth = sel ? 3 : o.id === p3.hover ? 2.4 : 1.5; c.strokeStyle = sel ? T.foco : o.color; c.stroke();
+    c.restore();
+  }
+  c.globalAlpha = 1;
+  p2Etiquetas();
+}
+// Nombres (con "Nombres", el elegido y el que está bajo el mouse), arriba de cada huella.
+function p2Etiquetas() {
+  const S = P2, cont = $('#p3labels'); if (!S || !cont) return;
+  const quiero = new Map();
+  S.eqs.forEach(o => { if ((p3.nombres && p3Visible(o.e) && si(o.e.activo)) || o.id === p3.sel || o.id === p3.hover) quiero.set(o.id, [o.x, o.y, Math.max(o.w, o.d) / 2]); });
+  S.cintas.forEach(b => { if ((p3.nombres && p3Visible(b.e)) || b.id === p3.sel || b.id === p3.hover) quiero.set(b.id, [b.ancla[0], b.ancla[1], 0.4]); });
+  for (const [id, el] of S.etiq) if (!quiero.has(id) || !el.isConnected) { el.remove(); S.etiq.delete(id); }
+  for (const [id, [x, y, rad]] of quiero) {
+    const [sx, sy] = p2Pant(x, y);
+    let el = S.etiq.get(id);
+    if (!el) { el = document.createElement('div'); el.className = 'mlabel'; el.innerHTML = p3TextoEtiqueta(id); cont.appendChild(el); S.etiq.set(id, el); }
+    el.classList.toggle('sel', id === p3.sel); el.style.zIndex = id === p3.sel ? 3 : id === p3.hover ? 2 : 1;
+    el.style.transform = `translate(${sx}px, ${sy - rad * S.z - 4}px) translate(-50%, -100%)`;
+  }
+}
+// Qué equipo (o cinta) hay en un punto del cuadro; solo los de la línea elegida. Si el punto cae en varias
+// huellas gana la que lo tiene más cerca de su centro; si no cae en ninguna, la más cercana a menos de 10 px (el dedo).
+function p2Tocar(px, py) {
+  const S = P2; if (!S || !S.z) return null;
+  const [x, y] = p2Mundo(px, py), tol = 10 / S.z;
+  let id = null, mejor = Infinity;
+  for (const o of S.eqs) { if (!p3Visible(o.e)) continue; const n = p2Nota(o, x, y, tol); if (n < mejor) { mejor = n; id = o.id; } }
+  for (const b of S.cintas) {
+    if (!p3Visible(b.e)) continue;
+    const d = Math.min(...b.polys.flatMap(p => p.slice(1).map((q, i) => p2Dist(x, y, p[i], q))));
+    const n = d <= 0.3 ? 0.9 : d <= 0.3 + tol ? 1 + (d - 0.3) / tol : Infinity;
+    if (n < mejor) { mejor = n; id = b.id; }
+  }
+  return id;
+}
+// 0 en el centro de la huella, 1 en el borde, entre 1 y 2 afuera pero a menos de tol; Infinity más lejos.
+function p2Nota(o, x, y, tol) {
+  const a = o.rot * Math.PI / 180, dx = x - o.x, dy = y - o.y, lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);   // a los ejes del equipo (rot es horario)
+  const caja = (cx, cy, w, d) => {
+    const ax = Math.abs(lx - cx), ay = Math.abs(ly - cy);
+    if (ax <= w / 2 && ay <= d / 2) return Math.max(ax / (w / 2), ay / (d / 2));
+    const e = Math.hypot(Math.max(0, ax - w / 2), Math.max(0, ay - d / 2)); return e <= tol ? 1 + e / tol : Infinity;
+  };
+  return Math.min(caja(0, 0, o.w, o.d), o.horno ? caja(...o.horno) : Infinity);
+}
+function p2Dist(x, y, [x1, y1], [x2, y2]) {
+  const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / L)) : 0;
+  return Math.hypot(x - x1 - t * dx, y - y1 - t * dy);
+}
+// Un dedo o el mouse desplazan, dos dedos o la rueda acercan, tocar elige y doble toque acerca.
+// Con "Ubicar equipos", arrastrar un equipo lo mueve de a 5 cm.
+function p2Punteros() {
+  const S = P2, cv = S.cv, dedos = new Map();
+  let g = null;
+  const aqui = ev => { const r = cv.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
+  const medio = () => { const [a, b] = [...dedos.values()]; return { d: Math.hypot(a[0] - b[0], a[1] - b[1]), m: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }; };
+  cv.addEventListener('pointerdown', ev => {
+    if (ev.button > 0 || !S.z) return;
+    cv.setPointerCapture(ev.pointerId); dedos.set(ev.pointerId, aqui(ev)); S.anim = null;
+    if (dedos.size === 2) { const q = medio(); g = { tipo: 'pellizco', d0: q.d, z0: S.z, w0: p2Mundo(q.m[0], q.m[1]) }; return; }
+    if (dedos.size > 2) return;
+    const [px, py] = aqui(ev), id = p2Tocar(px, py);
+    g = { tipo: 'vista', x0: px, y0: py, movio: false, id };
+    if (p3.editar && id && !P3_CINTAS[id]) {
+      const o = S.eqs.find(q => q.id === id), [wx, wy] = p2Mundo(px, py);
+      Object.assign(g, { tipo: 'equipo', o, dx: wx - o.x, dy: wy - o.y });
+      if (p3.sel !== id) p3Elegir(id);
+      cv.style.cursor = 'grabbing';
+    }
+  });
+  cv.addEventListener('pointermove', ev => {
+    if (!dedos.has(ev.pointerId)) {   // mouse sin apretar: resalta lo que tiene debajo
+      if (ev.pointerType !== 'mouse') return;
+      const id = p2Tocar(...aqui(ev));
+      if (id !== p3.hover) { p3.hover = id; cv.style.cursor = id ? (p3.editar && !P3_CINTAS[id] ? 'grab' : 'pointer') : ''; p2Pedir(); }
+      return;
+    }
+    const antes = dedos.get(ev.pointerId), ahora = aqui(ev); dedos.set(ev.pointerId, ahora);
+    if (!g) return;
+    if (g.tipo === 'pellizco') {
+      if (dedos.size < 2) return;
+      const q = medio(); S.z = p2Limite(g.z0 * q.d / Math.max(1, g.d0));
+      S.cx = g.w0[0] - (q.m[0] - S.w / 2) / S.z; S.cy = g.w0[1] + (q.m[1] - S.h / 2) / S.z;   // lo que estaba entre los dedos sigue ahí
+      p2Pedir(); return;
+    }
+    if (!g.movio && Math.hypot(ahora[0] - g.x0, ahora[1] - g.y0) < 6) return;
+    g.movio = true;
+    if (g.tipo === 'equipo') { const [wx, wy] = p2Mundo(ahora[0], ahora[1]), q = v => Math.round(v * 20) / 20; g.o.x = q(wx - g.dx); g.o.y = q(wy - g.dy); p2Pedir(); return; }
+    S.cx -= (ahora[0] - antes[0]) / S.z; S.cy += (ahora[1] - antes[1]) / S.z; p2Pedir();
+  });
+  const soltar = ev => {
+    if (!dedos.has(ev.pointerId)) return;
+    dedos.delete(ev.pointerId);
+    if (!g) return;
+    if (g.tipo === 'pellizco') { if (dedos.size === 1) { const [p] = [...dedos.values()]; g = { tipo: 'vista', x0: p[0], y0: p[1], movio: true }; } else g = null; return; }
+    const h = g; g = null;
+    if (h.tipo === 'equipo') { cv.style.cursor = 'grab'; if (h.movio) p2Movido(h.o); return; }
+    if (!h.movio && ev.type === 'pointerup') p2Toque(h, ev.pointerType);
+  };
+  cv.addEventListener('pointerup', soltar); cv.addEventListener('pointercancel', soltar);
+  cv.addEventListener('pointerleave', ev => { if (ev.pointerType === 'mouse' && p3.hover && !dedos.size) { p3.hover = null; cv.style.cursor = ''; p2Pedir(); } });
+  cv.addEventListener('wheel', ev => { ev.preventDefault(); const [px, py] = aqui(ev); p2Zoom(Math.exp(-ev.deltaY * 0.0015), px, py); }, { passive: false });
+  cv.addEventListener('dblclick', ev => { const [px, py] = aqui(ev), id = p2Tocar(px, py); if (id) p2Enfocar(id); else p2Zoom(2, px, py, true); });
+}
+function p2Toque(h, tipo) {
+  const S = P2, t = performance.now(), u = S.ultimo; S.ultimo = { t, x: h.x0, y: h.y0 };
+  // doble toque (en el celular no llega dblclick): acerca
+  if (tipo !== 'mouse' && u && t - u.t < 330 && Math.hypot(u.x - h.x0, u.y - h.y0) < 30) { S.ultimo = null; if (h.id) p2Enfocar(h.id); else p2Zoom(2, h.x0, h.y0, true); return; }
+  p3Elegir(h.id || null);
+}
+function p2Zoom(f, px, py, animar) {
+  const S = P2, [wx, wy] = p2Mundo(px, py), z = p2Limite(S.z * f), cx = wx - (px - S.w / 2) / z, cy = wy + (py - S.h / 2) / z;
+  if (animar) p2Ir(cx, cy, z); else { Object.assign(S, { cx, cy, z }); p2Pedir(); }
+}
+function p2Ir(cx, cy, z) {
+  const S = P2;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { Object.assign(S, { cx, cy, z }); p2Pedir(); return; }
+  const a = S.anim = { t0: performance.now(), de: [S.cx, S.cy, S.z] };
+  const paso = () => {
+    if (S.anim !== a) return;
+    const t = Math.min(1, (performance.now() - a.t0) / 320), k = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    S.cx = a.de[0] + (cx - a.de[0]) * k; S.cy = a.de[1] + (cy - a.de[1]) * k; S.z = a.de[2] * Math.pow(z / a.de[2], k);   // la escala, pareja en logaritmo
+    p2Pedir(); if (t < 1) requestAnimationFrame(paso); else S.anim = null;
+  };
+  requestAnimationFrame(paso);
+}
+// Toda la planta, o solo los equipos ubicados de la línea elegida.
+function p2Encuadre(animar = true) {
+  const S = P2; if (!S || !S.w) return;
+  let b = [-2, -2, 58, 56];
+  if (p3.linea !== 'all') {
+    const pts = [];
+    S.eqs.forEach(o => { if (p3Visible(o.e) && !o.sinUbicar) { const r = Math.max(o.w, o.d) / 2; pts.push([o.x - r, o.y - r], [o.x + r, o.y + r]); } });
+    S.cintas.forEach(c => { if (p3Visible(c.e)) c.polys.forEach(p => pts.push(...p)); });
+    if (pts.length) b = [Math.min(...pts.map(p => p[0])) - 1.5, Math.min(...pts.map(p => p[1])) - 1.5, Math.max(...pts.map(p => p[0])) + 1.5, Math.max(...pts.map(p => p[1])) + 1.5];
+  }
+  S.zMin = Math.min(S.w / 62, S.h / 60) * 0.7;
+  const z = p2Limite(Math.min(S.w / (b[2] - b[0]), S.h / (b[3] - b[1])) * 0.96), cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+  if (animar) p2Ir(cx, cy, z); else { Object.assign(S, { cx, cy, z }); p2Pedir(); }
+}
+function p2Enfocar(id) {
+  const S = P2; if (!S || !S.z) return;
+  const o = S.eqs.find(q => q.id === id), b = !o && S.cintas.find(q => q.id === id); if (!o && !b) return;
+  const [x, y] = o ? [o.x, o.y] : b.ancla, tam = o ? Math.max(o.w, o.d) : 3;
+  p2Ir(x, y, p2Limite(Math.max(S.z, Math.min(S.w, S.h) / (tam * 5))));
+}
+function p2Movido(o) { p3.mov[o.id] = { x: o.x, y: o.y, rot: o.rot }; p2Aplicar(); p3BarraEdicion(); p3Panel(); }
+function p2Girar(id, gr) { const o = P2 && P2.eqs.find(q => q.id === id); if (!o) return; o.rot = (((o.rot + gr) % 360) + 360) % 360; p2Movido(o); }
+function p2Tema() { const S = P2; if (!S) return; if (S.plano) p2Fondo(); p2Aplicar(); }
+
+// ── pantalla completa ──
+// La del navegador cuando se puede (en v15 el iframe tiene permiso). Si no (iPhone), la planta tapa la página y
+// le pide a v15 que agrande el iframe a toda la ventana.
+const P3_ICONO = { abrir: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', cerrar: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>' };
+const p3EnCompleta = () => { const el = $('#main .p3'); return !!el && el.classList.contains('completa'); };
+function p3Completa(on) {
+  const el = $('#main .p3'); if (!el) return;
+  if (on === undefined) on = !p3EnCompleta();
+  const nativa = document.fullscreenElement || document.webkitFullscreenElement;
+  if (!on) { if (nativa) (document.exitFullscreen || document.webkitExitFullscreen).call(document); else p3CompletaCss(false); return; }
+  if (el.requestFullscreen && document.fullscreenEnabled) el.requestFullscreen({ navigationUI: 'hide' }).catch(() => p3CompletaCss(true));
+  else if (el.webkitRequestFullscreen && document.webkitFullscreenEnabled) el.webkitRequestFullscreen();
+  else p3CompletaCss(true);
+}
+function p3CompletaCss(on) {
+  p3.fija = on;
+  const el = $('#main .p3'); if (el) el.classList.toggle('completa', on);
+  if (window.parent !== window) { try { parent.postMessage({ type: 'vspt-mant-completa', on }, '*'); } catch (e) {} }
+  p3CompletaBoton();
+}
+function p3CompletaBoton() {
+  const b = $('#p3Full'); if (!b) return;
+  const on = p3EnCompleta(), t = on ? 'Salir de pantalla completa' : 'Pantalla completa';
+  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${P3_ICONO[on ? 'cerrar' : 'abrir']}</svg>`;
+  b.setAttribute('aria-label', t); b.title = on ? t + ' (Esc)' : t;
+}
+['fullscreenchange', 'webkitfullscreenchange'].forEach(tipo => document.addEventListener(tipo, () => {
+  const el = $('#main .p3'), fs = document.fullscreenElement || document.webkitFullscreenElement;
+  if (el && !p3.fija) el.classList.toggle('completa', !!fs && fs === el);
+  p3CompletaBoton();
+}));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && p3.fija && !TOUR) p3CompletaCss(false); });
 
 // ───────────── alertas ─────────────
 function renderAlertas() {
@@ -2776,9 +3188,12 @@ function ayudaPasos(rol) {
     P.push({ v: 'indicadores', sel: card('[data-tog="t1"]'), max: 380, t: 'Semana a semana', x: 'Cada columna es una semana: en término, fuera de término, no se hizo y sin cargar. Tocá una columna o pasá el mouse para ver el detalle; Tabla muestra los números. Arriba elegís línea y período.' });
   }
   P.push({ v: 'planta', sel: '#p3stage', libre: true, t: 'Planta 3D: el semáforo',
-    x: (L ? 'Ubicá tus equipos en la planta. ' : '') + 'Cada equipo muestra el peor estado de sus puntos: la baliza enciende rojo (vencido), ámbar (próximo) o verde (al día), y el halo del piso toma el mismo color. Probá ahora: ' + (p3.vista === 'top' ? 'desplazá' : 'girá') + ' o acercá la vista.' });
+    x: (L ? 'Ubicá tus equipos en la planta. ' : '') + (p3Es2D()
+      ? 'Cada equipo se pinta con el peor estado de sus puntos: rojo (vencido), ámbar (próximo) o verde (al día). Probá ahora: desplazá o acercá el plano.'
+      : 'Cada equipo muestra el peor estado de sus puntos: la baliza enciende rojo (vencido), ámbar (próximo) o verde (al día), y el halo del piso toma el mismo color. Probá ahora: ' + (p3.vista === 'top' ? 'desplazá' : 'girá') + ' o acercá la vista.')
+      + ' El botón de la esquina la muestra en pantalla completa.' });
   if (!L) {
-    P.push({ v: 'planta', sel: '.p3-hud', t: 'Qué mostrar en el plano', x: 'Elegí la línea, la capa (Semáforo, OT de la semana u Horas de uso), la vista 3D o Planta y los nombres. En marcha mueve botellas, cajas y autoelevadores: apagalo si la computadora va lenta.' + (E && ed ? ' Ubicar equipos los arrastra a su lugar en el plano.' : '') });
+    P.push({ v: 'planta', sel: '.p3-hud', t: 'Qué mostrar en el plano', x: 'Elegí la línea, la capa (Semáforo, OT de la semana u Horas de uso), la vista 3D o Planta y los nombres.' + (p3Es2D() ? (P3_CELU ? ' En el celular, Planta es un plano liviano y 3D muestra las máquinas.' : '') : ' En marcha mueve botellas, cajas y autoelevadores: apagalo si la computadora va lenta.') + (E && ed ? ' Ubicar equipos los arrastra a su lugar en el plano.' : '') });
     P.push({ v: 'planta', sel: '#p3side', max: 420, t: 'El panel del costado', x: 'Lista los equipos con puntos vencidos, con tareas por cargar o con más horas, según la capa. Tocá uno, acá o en el plano, para ver sus puntos y cuándo vence cada uno.' });
   }
   P.push({ v: 'alertas', sel: card('#alQ'), max: 380, t: 'Alertas',
@@ -2825,6 +3240,7 @@ function ayudaArmar() {
 }
 function ayudaAbrir() {
   if (TOUR) return;
+  if (p3EnCompleta()) p3Completa(false);   // la ayuda se dibuja sobre la página, no dentro de la pantalla completa
   const root = ayudaArmar();
   TOUR = { root, velos: $$('.tour-velo', root), escudo: $('.tour-escudo', root), aro: $('.tour-aro', root), card: $('#tourCard'), vivo: $('#tourVivo'),
     foco0: document.activeElement, vista0: view, pasos: [], i: 0, els: [], modo: 'roles', clave: '' };
@@ -3013,7 +3429,7 @@ function ayudaCerrar(fin) {
 }
 
 // ───────────── tema (lo decide el dashboard principal) ─────────────
-function applyTheme(dark) { document.body.classList.toggle('light', !dark); $('#btnTheme').textContent = dark ? 'Claro' : 'Oscuro'; if (P3) p3Tema(); }
+function applyTheme(dark) { document.body.classList.toggle('light', !dark); $('#btnTheme').textContent = dark ? 'Claro' : 'Oscuro'; if (P3) p3Tema(); if (P2) p2Tema(); }
 window.addEventListener('message', e => { if (e.data && e.data.type === 'vspt-theme') applyTheme(!!e.data.dark); });
 if (window.self === window.top) { $('#btnTheme').hidden = false; $('#btnTheme').onclick = () => applyTheme(document.body.classList.contains('light')); }
 $('#btnReload').onclick = () => (CG ? abrirCarga(CG.ot_id) : cargar());
