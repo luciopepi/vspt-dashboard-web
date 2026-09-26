@@ -3,12 +3,10 @@ branch: main
 publica: Netlify (deploy desde main)
 
 ## Last sync
-date: 2026-09-25T18:00:00Z
+date: 2026-09-26T18:00:00Z
 ### Updated in this project
-- **Mantenimiento · Indicadores** (pestaña nueva): cumplimiento del plan de lubricación y **OTIF por equipo**, semana a semana. Filtros de línea y período (8/12/26 semanas). Tarjetas con el OTIF de la última semana cerrada (cifra principal, delta en pp y etiqueta de meta), el cumplimiento, el promedio ponderado del período y el avance de la semana en curso.
-- Gráficos: columnas 100 % apiladas por resultado (en término · fuera de término · no se hizo · sin cargar/pendiente) con la meta punteada, y líneas de OTIF con a tiempo (On Time) y completas (In Full) de contexto. Tooltips con mouse, dedo o flechas del teclado, y vista de tabla en cada gráfico. Tabla por línea, motivos de no realización y "Cómo se calcula".
-- Metas `meta_cumplimiento` y `meta_otif` (90 % por defecto) editables en Ajustes. Requiere la versión nueva de `07_MANTENIMIENTO.gs` en la API; con la versión anterior la pestaña avisa que falta publicarla.
-- Arreglo: con la barra "cambios sin guardar" visible, el primer clic en "Guardar cambios" después de editar otro campo se perdía (la barra se rehacía al salir del campo). Ahora solo se actualiza el contador.
+- **Mantenimiento · Ayuda (recorrido guiado)**: botón **?** arriba a la derecha del encabezado (también la tecla ?). Primero pregunta el rol (Mantenimiento · editor, Lubricador o Solo consulta) y después recorre la página paso a paso: abre cada pestaña, resalta la parte que explica y difumina el resto. Anterior / Siguiente, flechas del teclado y Esc; en el celular la tarjeta va arriba o abajo de lo resaltado. En el formulario del QR recorre la planilla sin preguntar el rol. No arranca si hay una planilla de "Cargar lo realizado" a medio pasar.
+- **Mantenimiento · Planta 3D, diseño v4** (hecho en Design): modelos relevados de fotos, acero inoxidable, producto Colon Selecto Tinto, baliza de torre roja/ámbar/verde y botón **En marcha** (botellas, cajas, palets y autoelevadores en movimiento; se recuerda por navegador).
 
 
 ## Screen map
@@ -25,6 +23,8 @@ date: 2026-09-25T18:00:00Z
 | Mantenimiento · Indicadores (cumplimiento y OTIF) | Dashboard_mantenimiento.html · renderIndicadores / indSerie / indColumnas / indLineas / indTip / indPorLinea / indDibujar |
 | Mantenimiento · Planta 3D (semáforo, capas, panel) | Dashboard_mantenimiento.html · renderPlanta / p3Iniciar / p3Crear / p3Sincronizar / p3Aplicar / p3Panel / p3Encuadre |
 | Mantenimiento · Planta 3D, modelos y ubicación | Dashboard_mantenimiento.html · P3_MODELOS / p3Forma / p3Maquina / p3Punteros / p3Guardar · assets/plano_fraccionamiento.json |
+| Mantenimiento · Planta 3D, línea en marcha y baliza | Dashboard_mantenimiento.html · p3Flujo / p3MarchaCuadro / p3AnimMaquina / p3AutoCuadro / p3Baliza / p3Encender |
+| Mantenimiento · Ayuda (botón ?, recorrido guiado) | Dashboard_mantenimiento.html · ayudaAbrir / ayudaRoles / ayudaPasos / ayudaPasosCarga / ayudaIr / ayudaCuadro / ayudaHueco / ayudaUbicar |
 | Mantenimiento · pestaña en v15 | Dashboard_v15.html · changeTab (EMBED.mantenimiento) / broadcastTheme |
 | API (Apps Script, repo luciopepi/Dashboard) | 01_API.gs · doGet / leerPestanaFmt_ / leerPestanaCompacta_ / normalizarFilas_ |
 | API de mantenimiento | 07_MANTENIMIENTO.gs · mantEstadoApi_ / mantIndicadores_ / mantHtmlApi_ / mantCargaApi_ / mantPost_ / mantGenerarOT_ / mantAsignarSap_ / mantQR_ |
