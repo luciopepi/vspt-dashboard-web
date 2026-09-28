@@ -1005,8 +1005,9 @@ async function init() {
   // que la persona tarda en loguearse y aborta pedidos que iban a responder bien.
   await apiGateReady();
 
-  // El pedido de OPINONA (fase 2, lento) arranca YA, en paralelo con el KPI
-  const opiPromise = withTimeout(fetch(API_URL + '?tabla=opinona&formato=compacto'), TIMEOUT_OPINONA);
+  // El pedido de OPINONA (fase 2, lento) arranca YA, en paralelo con el KPI.
+  // Programas (embebido) toma este mismo pedido en vez de bajar OPINONA otra vez.
+  const opiPromise = window.VSPT_OPINONA = pedirOpinona();
   opiPromise.catch(() => {});   // el error real se maneja al hacer await más abajo
 
   try {
@@ -1037,8 +1038,7 @@ async function init() {
   }
 
   try {
-    const res = await opiPromise;
-    const j = await res.json();
+    const j = await opiPromise;
     const filasOpi = j.status === 'success' ? rehidratarOpinona(j.opinona) : null;
     if (filasOpi && filasOpi.length) {
       rawData = filasOpi;
@@ -1263,6 +1263,29 @@ function rehidratarOpinona(payload) {
     for (let i = 0; i < cols.length; i++) o[cols[i]] = fila[i];
     return o;
   });
+}
+
+/* 28/09/2026: aun en compacto, OPINONA entera en UN pedido (~30.000 filas ×
+   50 columnas) dejó de llegar ("Failed to fetch"). Se pide en OPI_PARTES
+   tramos en paralelo (?tabla=opinona_parte): cada ejecución de Apps Script lee
+   sólo sus filas. Devuelve lo mismo que el pedido único, { status, opinona:{h, r} }.
+   Si la API todavía no tiene esa ruta (responde sin "opinona"), vuelve al
+   pedido único de siempre. Dashboard_programas.html usa la misma lógica. */
+const OPI_PARTES = 4;
+async function pedirJson(url, ms) {
+  const res = await withTimeout(fetch(url), ms);
+  return res.json();
+}
+async function pedirOpinona() {
+  const partes = await Promise.all(Array.from({ length: OPI_PARTES }, (_, i) =>
+    pedirJson(API_URL + '?tabla=opinona_parte&parte=' + i + '&partes=' + OPI_PARTES, TIMEOUT_OPINONA)));
+  const fallida = partes.find(j => j.status !== 'success');
+  if (fallida) return fallida;                    // error de la API: su msg se muestra en el tablero
+  if (partes.some(j => !j.opinona)) return pedirJson(API_URL + '?tabla=opinona&formato=compacto', TIMEOUT_OPINONA);
+  const p0 = partes[0].opinona, cols = JSON.stringify(p0.h);
+  if (partes.some(j => j.opinona.total !== p0.total || JSON.stringify(j.opinona.h) !== cols))
+    throw new Error('OPINONA cambió mientras se descargaba: reintentá en un momento');
+  return { status: 'success', opinona: { h: p0.h, r: [].concat(...partes.map(j => j.opinona.r)) } };
 }
 
 function withTimeout(promise, ms) {

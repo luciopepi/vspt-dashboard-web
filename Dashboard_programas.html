@@ -471,20 +471,50 @@ function applyPayload(payload) {
   render();
 }
 
+/* OPINONA: misma lógica que Dashboard_v15.html (pedirOpinona). Embebida en el
+   tablero toma el pedido que ya hizo el tablero: antes cada apertura bajaba
+   OPINONA entera dos veces a la vez, y acá en el formato más pesado. Suelta,
+   la pide en partes; con una API sin ?tabla=opinona_parte, en un solo pedido. */
+const OPI_PARTES = 4;
+function opinonaDelTablero() {
+  try { return (window.parent !== window && window.parent.VSPT_OPINONA) || null; } catch (e) { return null; }
+}
+async function pedirOpinona() {
+  const partes = await Promise.all(Array.from({ length: OPI_PARTES }, (_, i) =>
+    fetch(API_URL + '?tabla=opinona_parte&parte=' + i + '&partes=' + OPI_PARTES).then(r => r.json())));
+  const fallida = partes.find(j => j.status !== 'success');
+  if (fallida) return fallida;
+  if (partes.some(j => !j.opinona)) return fetch(API_URL + '?tabla=opinona&formato=compacto').then(r => r.json());
+  const p0 = partes[0].opinona, cols = JSON.stringify(p0.h);
+  if (partes.some(j => j.opinona.total !== p0.total || JSON.stringify(j.opinona.h) !== cols))
+    throw new Error('OPINONA cambió mientras se descargaba: reintentá en un momento');
+  return { status: 'success', opinona: { h: p0.h, r: [].concat(...partes.map(j => j.opinona.r)) } };
+}
+// Compacto {h:[columnas], r:[[valores]]} → un objeto por fila; el formato viejo pasa tal cual.
+function rehidratarOpinona(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || !Array.isArray(payload.h) || !Array.isArray(payload.r)) return null;
+  const cols = payload.h;
+  return payload.r.map(fila => {
+    const o = {};
+    for (let i = 0; i < cols.length; i++) o[cols[i]] = fila[i];
+    return o;
+  });
+}
+
 async function fetchFresh(silent) {
   if (!silent) setStatus('Cargando datos completos…');
   else setStatus('Actualizando…');
-  const [rPlan, rOpi, rVel] = await Promise.all([
+  const [rPlan, jOpi, rVel] = await Promise.all([
     fetch(API_URL + '?tabla=plan'),
-    fetch(API_URL + '?tabla=opinona'),
+    opinonaDelTablero() || pedirOpinona(),
     fetch(API_URL + '?tabla=velnominales')
   ]);
   const jPlan = await rPlan.json();
-  const jOpi  = await rOpi.json();
   const jVel  = await rVel.json();
   const payload = {
     plan:    jPlan.plan    || jPlan.data || [],
-    opinona: jOpi.opinona  || jOpi.data  || [],
+    opinona: rehidratarOpinona(jOpi.opinona) || jOpi.data || [],
     vel:     jVel.velnominales || []
   };
   writeCache(payload);
