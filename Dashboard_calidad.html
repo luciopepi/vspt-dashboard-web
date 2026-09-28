@@ -276,6 +276,63 @@
     .filter-bar { padding: 10px 14px; }
     .content { padding: 14px; }
   }
+
+  /* MAPA DE DESTINOS */
+  :root { --mapa-burbuja:#F8C040; --mapa-apagada:#6E665E; --tip-sombra:0 10px 30px rgba(0,0,0,0.45); }
+  body.light { --mapa-burbuja:#701F52; --mapa-apagada:#B9A79E; --tip-sombra:0 10px 30px rgba(48,16,48,0.18); }
+  .collapse-btn { width:100%; background:var(--card); border:1px dashed var(--border); color:var(--text); padding:11px 16px; margin:14px 0 0; border-radius:10px; font-family:inherit; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; transition:all .2s; }
+  .collapse-btn:hover { border-color:var(--tab-color,var(--vspt-amber)); border-style:solid; color:var(--tab-color,var(--vspt-amber)); }
+  .collapse-btn .collapse-arrow { transition:transform .3s; font-size:10px; color:var(--tab-color,var(--vspt-amber)); }
+  .collapse-btn.open .collapse-arrow { transform:rotate(180deg); }
+  .collapsible { margin-top:10px; animation:fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+  .collapse-btn .mapa-resumen { margin-left:10px; }
+  .mapa-toggle { margin-left:auto; display:inline-flex; align-items:center; gap:6px; background:var(--card2); border:1px solid var(--border); color:var(--text); border-radius:999px; padding:5px 12px 5px 10px; font-family:inherit; font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:none; cursor:pointer; }
+  .mapa-toggle:hover { border-color:var(--vspt-crimson); }
+  .mapa-toggle svg { transition:transform .2s ease; }
+  .mapa-toggle[aria-expanded="false"] svg { transform:rotate(-90deg); }
+  .mapa-resumen { font-size:10px; font-weight:500; letter-spacing:0; text-transform:none; color:var(--muted); }
+  .mapa-card { margin-bottom:14px; display:flex; flex-direction:column; gap:12px; }
+  .mapa-card[hidden] { display:none; }
+  .mapa-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .mapa-head .chart-title { margin-bottom:0; }
+  .mapa-cob { margin-left:auto; font-size:11px; color:var(--muted); }
+  .mapa-cob strong { color:var(--text); }
+  .mapa-wrap { display:flex; gap:18px; align-items:stretch; }
+  .mapa-lienzo { position:relative; flex:1 1 auto; min-width:0; aspect-ratio:1140/499; overflow:hidden; border-radius:10px; background:var(--card); }
+  .mapa-fondo { position:absolute; inset:0; transition:transform .35s ease; }
+  .mapa-fondo img { width:100%; height:100%; display:block; }
+  .mapa-capa { position:absolute; inset:0; }
+  .mapa-b { position:absolute; padding:0; border:none; background:transparent; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .mapa-b span { display:block; border-radius:50%; box-shadow:0 0 0 2px var(--card); transition:transform .15s ease, background .2s ease; }
+  .mapa-b:hover span, .mapa-b:focus-visible span { transform:scale(1.12); }
+  .mapa-tip { position:absolute; background:var(--card); border:1px solid var(--vspt-amber); border-radius:8px; padding:8px 12px; box-shadow:var(--tip-sombra); white-space:nowrap; pointer-events:none; display:flex; flex-direction:column; gap:2px; z-index:3; }
+  .mapa-tip[hidden] { display:none; }
+  .mapa-tip strong { font-size:14px; } .mapa-tip b { font-size:12px; font-weight:600; } .mapa-tip span { font-size:11px; color:var(--muted); }
+  .mapa-etq { position:absolute; background:var(--card); border:1px solid var(--border); border-radius:8px; padding:6px 10px; box-shadow:var(--tip-sombra); font-size:12px; white-space:nowrap; pointer-events:none; display:flex; gap:6px; align-items:baseline; z-index:2; }
+  .mapa-etq span { color:var(--muted); }
+  .mapa-chip { position:absolute; top:12px; left:12px; display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:6px 8px 6px 12px; box-shadow:var(--tip-sombra); color:var(--text); font-family:inherit; font-size:12px; cursor:pointer; z-index:4; }
+  .mapa-chip[hidden] { display:none; }
+  .mapa-chip small { font-size:9px; text-transform:uppercase; letter-spacing:0.16em; font-weight:700; color:var(--muted); }
+  .mapa-chip i { width:20px; height:20px; border-radius:50%; background:var(--card2); display:flex; align-items:center; justify-content:center; }
+  .mapa-zoom { position:absolute; top:12px; right:12px; display:flex; flex-direction:column; gap:6px; z-index:4; }
+  .mapa-zoom button { width:36px; height:36px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); box-shadow:0 2px 10px rgba(48,16,48,0.10); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .mapa-zoom button:disabled { opacity:.4; cursor:default; }
+  .mapa-rank { width:340px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; min-width:0; }
+  .mapa-rank-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:10px; color:var(--muted); }
+  .mapa-rank-head b { text-transform:uppercase; letter-spacing:0.16em; font-weight:700; }
+  .mapa-rank-list { display:flex; flex-direction:column; gap:2px; max-height:470px; overflow-y:auto; padding-right:4px; }
+  .mapa-sep { font-size:9px; text-transform:uppercase; letter-spacing:0.16em; font-weight:700; color:var(--muted); padding:10px 8px 4px; border-top:1px solid var(--border); margin-top:6px; }
+  .mapa-fila { display:grid; grid-template-columns:minmax(0,1fr) 96px 30px; align-items:center; gap:10px; min-height:30px; padding:5px 8px; border:none; border-radius:7px; background:transparent; color:var(--text); font-family:inherit; font-size:12px; text-align:left; cursor:pointer; }
+  .mapa-fila:hover { background:var(--tr-hover); }
+  .mapa-fila.on { background:var(--card2); font-weight:700; }
+  .mapa-fila .nom { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mapa-fila .barra { display:block; height:6px; border-radius:3px; background:var(--card2); overflow:hidden; }
+  .mapa-fila.on .barra { background:var(--card); }
+  .mapa-fila .barra i { display:block; height:6px; border-radius:3px; }
+  .mapa-fila .n { text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+  .dest-punto { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--mapa-burbuja); margin-right:6px; vertical-align:middle; }
+  @media (max-width: 1200px) { .mapa-wrap { flex-direction:column; } .mapa-rank { width:auto; } .mapa-rank-list { max-height:320px; } }
 </style>
 <style id="vsptBot-css">
 #vsptBot{position:fixed;right:18px;bottom:18px;z-index:900;font-family:'Montserrat',system-ui,sans-serif}
@@ -370,6 +427,15 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
       <option value="L3">L3</option>
       <option value="SIN">Sin dato</option>
     </select>
+  </div>
+  <div class="fg">
+    <label for="f-destino">Destino</label>
+    <select id="f-destino" style="min-width:170px"><option value="">Todos</option></select>
+  </div>
+  <div class="fg">
+    <label for="f-pedido">Pedido</label>
+    <input id="f-pedido" type="search" list="f-pedido-lista" placeholder="N° de pedido" autocomplete="off" style="min-width:0;width:150px">
+    <datalist id="f-pedido-lista"></datalist>
   </div>
   <div class="fg">
     <label>Estado</label>
@@ -493,8 +559,13 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
       </div>
 
       <!-- INSIGHTS -->
-      <div class="section-title"><span>Inteligencia Automática</span></div>
-      <div class="insights-grid" id="insightsGrid"></div>
+      <button type="button" class="collapse-btn" onclick="toggleCollapse('collapse-insights', this)" aria-expanded="false" aria-controls="collapse-insights">
+        <span class="collapse-label">Inteligencia Automática</span>
+        <span class="collapse-arrow">▼</span>
+      </button>
+      <div class="collapsible" id="collapse-insights" style="display:none;">
+        <div class="insights-grid" id="insightsGrid"></div>
+      </div>
 
       <!-- GRAFICOS POR LÍNEA -->
       <div class="section-title"><span>Análisis por Línea</span></div>
@@ -578,6 +649,34 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
         </div>
       </div>
 
+      <!-- DESTINOS -->
+      <button type="button" class="collapse-btn" id="mapaToggle" onclick="mapaColapsar()" aria-expanded="false" aria-controls="mapaCard">
+        <span class="collapse-label">Desvíos por destino del pedido <span class="mapa-resumen" id="mapaResumen"></span></span>
+        <span class="collapse-arrow">▼</span>
+      </button>
+      <div class="chart-card mapa-card collapsible" id="mapaCard" hidden>
+        <div class="mapa-head">
+          <div class="chart-title">Destinos <span class="hint">tamaño de la burbuja = cantidad de desvíos · tocá un país o una fila para filtrar todo el tablero</span></div>
+          <div class="mapa-cob" id="mapaCob"></div>
+        </div>
+        <div class="mapa-wrap">
+          <div class="mapa-lienzo" id="mapaLienzo">
+            <div class="mapa-fondo" id="mapaFondo"><img id="mapaImg" src="assets/mapa-mundo-claro.svg" alt=""></div>
+            <div class="mapa-capa" id="mapaCapa"></div>
+            <button type="button" class="mapa-chip" id="mapaChip" hidden onclick="mapaElegir('')" aria-label="Quitar el filtro de destino"><small>Destino</small><strong id="mapaChipTxt"></strong><i><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></i></button>
+            <div class="mapa-zoom">
+              <button type="button" id="mapaMas" onclick="mapaZoom(1.5)" title="Acercar" aria-label="Acercar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+              <button type="button" id="mapaMenos" onclick="mapaZoom(1/1.5)" title="Alejar" aria-label="Alejar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+              <button type="button" id="mapaTodo" onclick="mapaZoom(0)" title="Ver el mundo entero" aria-label="Ver el mundo entero"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
+            </div>
+          </div>
+          <div class="mapa-rank">
+            <div class="mapa-rank-head"><b>Ranking</b><span id="mapaRankTot"></span></div>
+            <div class="mapa-rank-list" id="mapaRanking"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- TABLA -->
       <div class="section-title"><span>Detalle de Desvíos</span></div>
       <div class="chart-card" style="margin-bottom:20px;">
@@ -593,6 +692,8 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
                 <th onclick="sortTable('FECHA')">Fecha ↕</th>
                 <th onclick="sortTable('Línea')">Línea ↕</th>
                 <th onclick="sortTable('PRODUCTO')">Producto ↕</th>
+                <th onclick="sortTable('Pedido')">Pedido ↕</th>
+                <th onclick="sortTable('destino_pais')">Destino ↕</th>
                 <th onclick="sortTable('Motivo de Desvio')">Defecto ↕</th>
                 <th onclick="sortTable('Botellas')">Botellas ↕</th>
                 <th onclick="sortTable('Estado')">Estado ↕</th>
@@ -631,7 +732,7 @@ body.light #vsptBot-launcher{filter:drop-shadow(0 6px 9px rgba(0,0,0,.26))}
     <div class="cnc-modal-body">
       <div class="table-wrap">
         <table class="drill-table">
-          <thead><tr><th>N°</th><th>Fecha</th><th>Línea</th><th>Producto</th><th>Defecto</th><th style="text-align:right;">Botellas</th><th>Estado</th><th>Responsable</th><th>Grupo</th><th>Inocuidad</th><th style="text-align:right;">Costo CNC</th></tr></thead>
+          <thead><tr><th>N°</th><th>Fecha</th><th>Línea</th><th>Producto</th><th>Pedido</th><th>Destino</th><th>Defecto</th><th style="text-align:right;">Botellas</th><th>Estado</th><th>Responsable</th><th>Grupo</th><th>Inocuidad</th><th style="text-align:right;">Costo CNC</th></tr></thead>
           <tbody id="drillBody"></tbody>
         </table>
       </div>
@@ -716,6 +817,7 @@ function isFilaValida(r) {
 
 let ALL_ROWS = [];
 let FILTERED_ROWS = [];
+let BASE_ROWS = [];
 let sortCol = '|';
 let sortAsc = true;
 let currentPage = 1;
@@ -843,7 +945,7 @@ function chartColors() {
 
 // ─── FETCH DATOS ─────────────────────────────────────────────────────────────
 // ─── FETCH — Stale-While-Revalidate con TTL 15 min ──────────────────────────
-const CACHE_KEY_CAL = 'vspt_cal_cache_v3';   // v3: filas con Línea / linea_origen
+const CACHE_KEY_CAL = 'vspt_cal_cache_v4';   // v4: filas con Pedido / Destino del plan
 const TTL_MS_CAL = 15 * 60 * 1000;
 
 function readCacheCal() {
@@ -891,6 +993,10 @@ async function fetchFreshCal(silent) {
 
 // Datos demo para retocar el HTML fuera de Netlify (el Apps Script responde "forbidden").
 const DEMO_MODE = false;
+function demoDest(i) {
+  const D = ['Argentina','Estados Unidos','Argentina','Brasil','Reino Unido','Argentina','Canadá','Irlanda','Estados Unidos','Colombia','Argentina','México','Finlandia','','Japón','Estados Unidos','Perú','Argentina','Paraguay','Exportación (sin país)','Taiwán','Brasil','Chipre','Guatemala'];
+  return D[(i * 7) % D.length];
+}
 function demoData() {
   const prods = ['MALBEC 750 GRAFFIGNA','CABERNET SAUVIGNON 750','SYRAH 1.5L','TORRONTES 750','CHARDONNAY 375','BONARDA 750','ROSADO 750','MALBEC RESERVA','PINOT NOIR 750','BLEND 750','ESPUMANTE BRUT'];
   const grps = ['Etiquetado','Llenado','Tapado','Embalaje','Materia prima'];
@@ -904,6 +1010,7 @@ function demoData() {
       PRODUCTO: prods[Math.floor(Math.sqrt(i * 1.3)) % 11], 'Motivo de Desvio': motivos[i % 6], 'Grupo del Defecto': grps[(i * 7 + i % 3) % 5],
       'Clasificación del defecto': ['Menor','Mayor','Crítico'][i % 3], Solicita: resp[(i * i + i) % 7], Estado: i % 3 ? 'Cerrado' : 'Pendiente',
       'Lead Time (días)': i % 25, Botellas: (i * 137) % 3000, 'Afecta la Inocuidad': i % 7 ? 'No' : 'Si', 'Disposición': disp[(i * i) % 4],
+      'Pedido': demoDest(i) && demoDest(i) !== 'Argentina' ? String(110001600 + (i * 13) % 140) : '', 'Destino': demoDest(i), 'destino_pais': demoDest(i),
       'Línea': i % 23 === 0 ? 'L1/L3' : i % 31 === 0 ? '' : ['L1','L3','L1','L2','L3','L1','L1'][i % 7], linea_origen: i % 23 === 0 ? 'ambigua' : i % 31 === 0 ? 'sin_dato' : 'cruce_opinona' });
   }
   CNC_ROWS = rows.filter((_, i) => i % 4 === 0).map(r => ({ anio: 2026, nro_desvio: parseInt(r['|'].slice(4), 10), costo_total: 60000 + r.Botellas * 90,
@@ -964,6 +1071,12 @@ function populateFilters() {
   fill('f-responsable', getUnique('Solicita'));
   const disposVals = [...new Set(ALL_ROWS.map(r => String(r['Disposición'] || '').trim()).filter(Boolean))].sort();
   fill('f-disposicion', disposVals);
+  const dests = [...new Set(ALL_ROWS.map(destinoDe).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  if (ALL_ROWS.some(r => !destinoDe(r))) dests.push('SIN');
+  fill('f-destino', dests);
+  const sinOpt = document.querySelector('#f-destino option[value="SIN"]'); if (sinOpt) sinOpt.textContent = 'Sin dato';
+  document.getElementById('f-pedido-lista').innerHTML = [...new Set(ALL_ROWS.map(pedidoDe).filter(Boolean))].sort()
+    .map(p => '<option value="' + escHtml(p) + '"></option>').join('');
 }
 
 // ─── FILTROS ──────────────────────────────────────────────────────────────────
@@ -979,8 +1092,11 @@ function applyFilters() {
   const inoc = document.getElementById('f-inocuidad').value;
   const disp = document.getElementById('f-disposicion').value;
   const linea = document.getElementById('f-linea').value;
+  const destino = document.getElementById('f-destino').value;
+  const pedido = document.getElementById('f-pedido').value.trim().toLowerCase();
 
-  FILTERED_ROWS = ALL_ROWS.filter(r => {
+  // BASE_ROWS: todos los filtros salvo Destino (el mapa y el ranking cuentan sobre esto)
+  BASE_ROWS = ALL_ROWS.filter(r => {
     const fecha = r['FECHA'] ? String(r['FECHA']).substring(0,10) : '';
     if(desde && fecha && fecha < desde) return false;
     if(hasta && fecha && fecha > hasta) return false;
@@ -1000,8 +1116,10 @@ function applyFilters() {
       const ls = lineasDe(r);
       if(linea === 'SIN' ? ls.length : ls.indexOf(linea) < 0) return false;
     }
+    if(pedido && pedidoDe(r).toLowerCase().indexOf(pedido) < 0) return false;
     return true;
   });
+  FILTERED_ROWS = BASE_ROWS.filter(r => !destino || (destino === 'SIN' ? !destinoDe(r) : destinoDe(r) === destino));
   currentPage = 1;
   renderAll();
 }
@@ -1018,15 +1136,18 @@ document.getElementById('f-grupo').addEventListener('change', function() {
   applyFilters();
 });
 
-['f-desde','f-hasta','f-linea','f-estado','f-mes','f-producto','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'].forEach(id => {
+['f-desde','f-hasta','f-linea','f-destino','f-estado','f-mes','f-producto','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'].forEach(id => {
   document.getElementById(id).addEventListener('change', applyFilters);
 });
+document.getElementById('f-pedido').addEventListener('input', applyFilters);
 
 function clearFilters() {
-  ['f-desde','f-hasta','f-linea','f-estado','f-mes','f-producto','f-grupo','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'].forEach(id => {
+  ['f-desde','f-hasta','f-linea','f-destino','f-pedido','f-estado','f-mes','f-producto','f-grupo','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'].forEach(id => {
     document.getElementById(id).value = '';
   });
   FILTERED_ROWS = [...ALL_ROWS];
+  BASE_ROWS = [...ALL_ROWS];
+  MAPA.zoom = 1;
   currentPage = 1;
   renderAll();
 }
@@ -1034,6 +1155,7 @@ function clearFilters() {
 // ─── RENDER ALL ───────────────────────────────────────────────────────────────
 function renderAll() {
   renderKPIs();
+  renderMapa();
   renderInsights();
   renderTopProductos();
   renderGrupo();
@@ -1302,12 +1424,13 @@ function openDrill(titulo, rows) {
     const o = cncForRow(r), key = cncKeyOf(r), nro = S(r['|']);
     const inoc = S(r['Afecta la Inocuidad']).toLowerCase().startsWith('s');
     return '<tr><td style="font-weight:700;">' + (nro || '—') + '</td><td>' + (S(r['FECHA']).substring(0, 10) || '—') + '</td><td>' + lineaChip(r) + '</td><td>' + (S(r['PRODUCTO']) || '—') +
+      '</td><td>' + (escHtml(pedidoDe(r)) || '—') + '</td><td>' + (escHtml(destinoDe(r)) || '—') +
       '</td><td>' + (S(r['Motivo de Desvio']) || '—') + '</td><td style="text-align:right;">' + (parseFloat(r['Botellas']) || 0).toLocaleString('es-AR') +
       '</td><td>' + (esCerrado(r) ? '<span class="badge badge-green">Cerrado</span>' : '<span class="badge badge-amber">' + (S(r['Estado']) || 'Pendiente') + '</span>') +
       '</td><td>' + (S(r['Solicita']) || '—') + '</td><td>' + (S(r['Grupo del Defecto']) || '—') +
       '</td><td>' + (inoc ? '<span class="badge badge-red">Sí</span>' : 'No') + '</td><td style="text-align:right;">' +
       (o && o.total > 0 ? '<a href="#" onclick="closeDrill();openCncModal(\'' + key + '\',\'' + nro + '\');return false;" style="color:var(--text);font-weight:700;text-decoration:none;border-bottom:1px dotted var(--vspt-crimson);">' + fmtMoney(o.total) + '</a>' : '<span style="color:var(--muted);">—</span>') + '</td></tr>';
-  }).join('') || '<tr><td colspan="11" class="no-data">Sin desvíos</td></tr>';
+  }).join('') || '<tr><td colspan="13" class="no-data">Sin desvíos</td></tr>';
   document.getElementById('drillModal').classList.add('open');
 }
 function closeDrill() { document.getElementById('drillModal').classList.remove('open'); }
@@ -1595,7 +1718,7 @@ function renderTable(page) {
   const search = (document.getElementById('tableSearch').value||'').toLowerCase();
   let rows = [...FILTERED_ROWS];
   if(search) {
-    rows = rows.filter(r => ['|','FECHA','Línea','PRODUCTO','Motivo de Desvio','Estado','Solicita','Grupo del Defecto'].some(k=>String(r[k]||'').toLowerCase().includes(search)));
+    rows = rows.filter(r => ['|','FECHA','Línea','PRODUCTO','Pedido','destino_pais','Destino','Motivo de Desvio','Estado','Solicita','Grupo del Defecto'].some(k=>String(r[k]||'').toLowerCase().includes(search)));
   }
   rows.sort((a,b) => {
     let va = a[sortCol]; let vb = b[sortCol];
@@ -1610,7 +1733,7 @@ function renderTable(page) {
 
   document.getElementById('tableCount').textContent = `${total} registros`;
   const tbody = document.getElementById('tableBody');
-  if(!pageRows.length) { tbody.innerHTML = `<tr><td colspan="12" class="no-data">Sin datos para los filtros seleccionados</td></tr>`; }
+  if(!pageRows.length) { tbody.innerHTML = `<tr><td colspan="14" class="no-data">Sin datos para los filtros seleccionados</td></tr>`; }
   else {
     tbody.innerHTML = pageRows.map(r => {
       const estado = String(r['Estado']||'').trim();
@@ -1647,6 +1770,8 @@ function renderTable(page) {
         <td>${String(r['FECHA']||'').substring(0,10)||'—'}</td>
         <td>${lineaChip(r)}</td>
         <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;" title="${r['PRODUCTO']||''}">${String(r['PRODUCTO']||'').substring(0,25)||'—'}</td>
+        <td style="font-variant-numeric:tabular-nums;${pedidoDe(r)?'':'color:var(--muted);'}">${escHtml(pedidoDe(r))||'—'}</td>
+        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;${destinoDe(r)?'':'color:var(--muted);'}" title="${destinoDe(r)?'En el plan: '+escHtml(r['Destino']||destinoDe(r)):'Sin destino en el plan'}">${posDe(r)?'<span class="dest-punto"></span>':''}${escHtml(destinoDe(r))||'—'}</td>
         <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;" title="${r['Motivo de Desvio']||''}">${String(r['Motivo de Desvio']||'').substring(0,30)||'—'}</td>
         <td style="text-align:right;">${isNaN(parseFloat(r['Botellas']))?'—':Math.round(parseFloat(r['Botellas'])).toLocaleString('es-AR')}</td>
         <td>${estadoBadge}</td>
@@ -1668,6 +1793,155 @@ function renderTable(page) {
   for(let i=from;i<=to;i++) pagHtml += `<button class="page-btn${i===page?' active':''}" onclick="renderTable(${i})">${i}</button>`;
   if(page<pages) pagHtml += `<button class="page-btn" onclick="renderTable(${page+1})">›</button>`;
   pag.innerHTML = pagHtml;
+}
+
+// Colapsables (mismo comportamiento que toggleCollapse de Dashboard_v15)
+function toggleCollapse(id, btn) {
+  const el = document.getElementById(id);
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : '';
+  btn.classList.toggle('open', !isOpen);
+  btn.setAttribute('aria-expanded', String(!isOpen));
+}
+
+// ─── MAPA DE DESTINOS ──────────────────────────────────────────────────────────
+// Destino y pedido salen del cruce N° de orden ↔ PLAN (01_API.gs · agregarPlanCalidad_). La API manda
+// destino_pais (nombre unificado), destino_lat y destino_lon; sin coordenadas se usa GEO_DEST por nombre.
+const GEO_DEST = {
+  'Argentina': [-34.0, -64.0], 'Brasil': [-10.0, -52.0], 'Canadá': [56.0, -100.0], 'Chipre': [35.0, 33.2],
+  'Colombia': [4.0, -73.0], 'Estados Unidos': [39.8, -98.6], 'Finlandia': [63.0, 26.0], 'Guatemala': [15.6, -90.3],
+  'Irlanda': [53.2, -8.0], 'Japón': [36.2, 138.3], 'México': [23.6, -102.5], 'Paraguay': [-23.4, -58.4],
+  'Perú': [-9.2, -75.0], 'Reino Unido': [53.0, -1.5], 'Taiwán': [23.7, 121.0]
+};
+let MAPA = { zoom: 1, abierto: false };   // oculto por defecto, como los colapsables de Dashboard_v15
+
+// Natural Earth (igual que d3.geoNaturalEarth1 ajustada a 1000 × 438): lat/lon → % del mapa
+function proyectar(lat, lon) {
+  const l = lon * Math.PI / 180, q = lat * Math.PI / 180, q2 = q * q, q4 = q2 * q2;
+  const x = l * (0.8707 - 0.131979 * q2 + q4 * (-0.013791 + q4 * (0.003971 * q2 - 0.001529 * q4)));
+  const y = q * (1.007226 + q2 * (0.015085 + q4 * (-0.044475 + 0.028874 * q2 - 0.005916 * q4)));
+  return { x: (500 + 185.013 * x) / 10, y: (255.0845 - 185.013 * y) / 4.38 };
+}
+function destinoDe(r) { return String(r['destino_pais'] || r['Destino'] || '').trim(); }
+function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+function pedidoDe(r) { return String(r['Pedido'] || r['pedido'] || '').trim(); }
+function posDe(r) {
+  const lat = parseFloat(r['destino_lat']), lon = parseFloat(r['destino_lon']);
+  if (isFinite(lat) && isFinite(lon)) return proyectar(lat, lon);
+  const g = GEO_DEST[destinoDe(r)];
+  return g ? proyectar(g[0], g[1]) : null;
+}
+
+function mapaColapsar(forzar) {
+  MAPA.abierto = typeof forzar === 'boolean' ? forzar : !MAPA.abierto;
+  renderMapa();
+}
+function mapaElegir(clave) {
+  const el = document.getElementById('f-destino');
+  el.value = el.value === clave ? '' : clave;
+  applyFilters();
+}
+function mapaZoom(f) {
+  MAPA.zoom = f === 0 ? 1 : Math.min(4, Math.max(1, Math.round(MAPA.zoom * f * 1000) / 1000));
+  renderMapa();
+}
+
+function renderMapa() {
+  const card = document.getElementById('mapaCard');
+  if (!card) return;
+  const num = v => Number(v).toLocaleString('es-AR');
+  const plural = (n, uno, varios) => num(n) + ' ' + (n === 1 ? uno : varios);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const destino = document.getElementById('f-destino').value;
+  const base = BASE_ROWS;
+
+  const grupos = {};
+  base.forEach(r => {
+    const d = destinoDe(r), clave = d || 'SIN';
+    const g = grupos[clave] || (grupos[clave] = { clave, nombre: d || 'Sin dato', n: 0, botellas: 0, pedidos: {}, pos: d ? posDe(r) : null });
+    g.n++; g.botellas += parseFloat(r['Botellas']) || 0;
+    const p = pedidoDe(r); if (p) g.pedidos[p] = true;
+  });
+  const lista = Object.values(grupos);
+  const enMapa = lista.filter(g => g.pos).sort((a, b) => b.n - a.n);
+  const fuera = lista.filter(g => !g.pos).sort((a, b) => ((a.clave === 'SIN') - (b.clave === 'SIN')) || (b.n - a.n));
+  const conDestino = base.filter(r => destinoDe(r)).length;
+
+  const tog = document.getElementById('mapaToggle');
+  tog.setAttribute('aria-expanded', MAPA.abierto ? 'true' : 'false');
+  tog.classList.toggle('open', MAPA.abierto);
+  card.hidden = !MAPA.abierto;
+  const sel = destino ? grupos[destino] : null;
+  document.getElementById('mapaResumen').textContent = plural(enMapa.length, 'país', 'países') + ' · ' +
+    plural(conDestino, 'desvío con destino', 'desvíos con destino') +
+    (destino ? ' · filtrando: ' + (destino === 'SIN' ? 'Sin dato' : destino) : '');
+  if (!MAPA.abierto) return;
+
+  document.getElementById('mapaImg').src = isDark ? 'assets/mapa-mundo-oscuro.svg' : 'assets/mapa-mundo-claro.svg';
+  document.getElementById('mapaCob').innerHTML = 'Destino identificado en <strong>' + num(conDestino) + '</strong> de ' + num(base.length) +
+    ' desvíos (' + (base.length ? Math.round(conDestino / base.length * 100) + ' %' : '—') + ') · cruce por N° de orden con el plan';
+
+  const maxMapa = enMapa.reduce((m, g) => Math.max(m, g.n), 1);
+  const maxTodo = lista.reduce((m, g) => Math.max(m, g.n), 1);
+  const color = clave => (!destino || destino === clave) ? 'var(--mapa-burbuja)' : 'var(--mapa-apagada)';
+  const foco = sel && sel.pos ? sel.pos : proyectar(50, 12);
+  const z = MAPA.zoom;
+  const pant = p => ({ x: foco.x + (p.x - foco.x) * z, y: foco.y + (p.y - foco.y) * z });
+  const diam = n => Math.max(10, Math.round(44 * Math.sqrt(n / maxMapa)));
+  const pct = v => v.toFixed(2) + '%';
+  const dentro = p => p.x > 0 && p.x < 100 && p.y > 0 && p.y < 100;
+
+  const fondo = document.getElementById('mapaFondo');
+  fondo.style.transformOrigin = pct(foco.x) + ' ' + pct(foco.y);
+  fondo.style.transform = 'scale(' + z + ')';
+
+  let html = enMapa.map(g => {
+    const p = pant(g.pos), dm = diam(g.n), hit = Math.max(dm, 26);
+    if (!(p.x > -2 && p.x < 102 && p.y > -2 && p.y < 102)) return '';
+    return '<button type="button" class="mapa-b" data-clave="' + esc(g.clave) + '" aria-pressed="' + (destino === g.clave) + '" aria-label="' +
+      esc(g.nombre) + ': ' + plural(g.n, 'desvío', 'desvíos') + '" style="left:' + pct(p.x) + ';top:' + pct(p.y) + ';width:' + hit + 'px;height:' + hit +
+      'px;margin:' + (-hit / 2) + 'px 0 0 ' + (-hit / 2) + 'px"><span style="width:' + dm + 'px;height:' + dm + 'px;background:' + color(g.clave) + '"></span></button>';
+  }).join('');
+  if (sel && sel.pos) {
+    const p = pant(sel.pos), off = diam(sel.n) / 2 + 8;
+    if (dentro(p)) html += '<div class="mapa-etq" style="left:' + pct(p.x) + ';top:' + pct(p.y) + ';transform:' +
+      (p.x > 78 ? 'translate(calc(-100% - ' + off + 'px), -50%)' : 'translate(' + off + 'px, -50%)') + '"><strong>' + esc(sel.nombre) + '</strong><span>' +
+      plural(sel.n, 'desvío', 'desvíos') + '</span></div>';
+  }
+  html += '<div class="mapa-tip" id="mapaTip" hidden></div>';
+  const capa = document.getElementById('mapaCapa');
+  capa.innerHTML = html;
+  capa.querySelectorAll('.mapa-b').forEach(b => {
+    const g = grupos[b.dataset.clave];
+    b.onclick = () => mapaElegir(g.clave);
+    const ver = () => {
+      if (g.clave === destino) return;
+      const tip = document.getElementById('mapaTip'), p = pant(g.pos), off = diam(g.n) / 2 + 8, np = Object.keys(g.pedidos).length;
+      tip.innerHTML = '<strong>' + plural(g.n, 'desvío', 'desvíos') + '</strong><b>' + esc(g.nombre) + '</b><span>' +
+        plural(Math.round(g.botellas), 'botella', 'botellas') + (np ? ' · ' + plural(np, 'pedido', 'pedidos') : '') + '</span>';
+      tip.style.left = pct(p.x); tip.style.top = pct(p.y);
+      tip.style.transform = p.y < 24 ? 'translate(-50%, ' + off + 'px)' : 'translate(-50%, calc(-100% - ' + off + 'px))';
+      tip.hidden = false;
+    };
+    const ocultar = () => { const t = document.getElementById('mapaTip'); if (t) t.hidden = true; };
+    b.onmouseenter = ver; b.onfocus = ver; b.onmouseleave = ocultar; b.onblur = ocultar;
+  });
+
+  document.getElementById('mapaChip').hidden = !destino;
+  document.getElementById('mapaChipTxt').textContent = destino === 'SIN' ? 'Sin dato' : destino;
+  document.getElementById('mapaMas').disabled = z >= 4;
+  document.getElementById('mapaMenos').disabled = z <= 1;
+  document.getElementById('mapaTodo').disabled = z <= 1;
+
+  document.getElementById('mapaRankTot').textContent = plural(base.length, 'desvío', 'desvíos') + ' · ' + plural(enMapa.length, 'país', 'países');
+  const rk = document.getElementById('mapaRanking');
+  rk.innerHTML = enMapa.map(g => [g, false]).concat(fuera.map((g, i) => [g, i === 0])).map(([g, sep]) =>
+    (sep ? '<div class="mapa-sep">Sin ubicación en el mapa</div>' : '') +
+    '<button type="button" class="mapa-fila' + (destino === g.clave ? ' on' : '') + '" data-clave="' + esc(g.clave) + '" aria-pressed="' + (destino === g.clave) + '" title="' +
+    (g.clave === 'SIN' ? 'Desvíos sin orden o con una orden que no está en el plan' : esc(g.nombre)) + '">' +
+    '<span class="nom">' + esc(g.nombre) + '</span><span class="barra"><i style="width:' + Math.max(3, Math.round(g.n / maxTodo * 100)) + '%;background:' + color(g.clave) + '"></i></span>' +
+    '<span class="n">' + num(g.n) + '</span></button>').join('') || '<div class="no-data">Sin datos para los filtros seleccionados</div>';
+  rk.querySelectorAll('.mapa-fila').forEach(b => { b.onclick = () => mapaElegir(b.dataset.clave); });
 }
 
 // ─── FILTRO DESDE EL DASHBOARD ────────────────────────────────────────────────
@@ -1697,7 +1971,7 @@ function aplicarFiltroExterno(f) {
   if (!f) return;
   const linea = /^L[123]$/.test(f.linea || '') ? f.linea : '';
   const iso = v => /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : '';
-  ['f-desde','f-hasta','f-linea','f-estado','f-mes','f-producto','f-grupo','f-clasificacion','f-responsable','f-inocuidad','f-disposicion']
+  ['f-desde','f-hasta','f-linea','f-destino','f-pedido','f-estado','f-mes','f-producto','f-grupo','f-clasificacion','f-responsable','f-inocuidad','f-disposicion']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('f-linea').value = linea;
   document.getElementById('f-desde').value = iso(f.desde);
@@ -1725,8 +1999,8 @@ fetchData();
   const _n=s=>String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
   function st(t,e){const el=document.getElementById('asistC-st');if(el){el.textContent=t||'';el.style.color=e?'var(--vspt-crimson)':'var(--muted)';}}
   function _esComando(t){ const s=_n(t); return /^(filtr|mostr|resalt|marc|pint|anda|ir |pone|saca|limpi|borr|agreg|quit|cambi|abri|selecc)/.test(s); }
-  function _fuzzyOpts(sel,texto){ const stop={filtra:1,filtrame:1,mostra:1,mostrame:1,fallas:1,falla:1,tuvo:1,para:1,turno:1,semana:1,desvios:1,desvio:1}; const toks=_n(texto).split(/[^a-z0-9]+/).filter(w=>w.length>=4&&!stop[w]&&!MESES[w]&&!/^(filtr|mostr|resalt|marc|pint|anda|pone|saca|limpi|borr|agreg|quit|cambi|abri|selecc)/.test(w)); const vals=[],seen={};let term=''; for(const o of sel.options){ const ov=_n(o.value); if(!ov||ov.length<=2) continue; for(const tk of toks){ if(ov.includes(tk)||tk.includes(ov)){ if(!seen[o.value]){seen[o.value]=1;vals.push(o.value);} if(!term)term=tk; break; } } } return {term,vals}; }
-  const SELS=['f-estado','f-mes','f-producto','f-grupo','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'];
+  function _fuzzyOpts(sel,texto){ const stop={filtra:1,filtrame:1,mostra:1,mostrame:1,fallas:1,falla:1,tuvo:1,para:1,turno:1,semana:1,desvios:1,desvio:1}; const toks=_n(texto).split(/[^a-z0-9]+/).filter(w=>w.length>=4&&!stop[w]&&!MESES[w]&&!/^(filtr|mostr|resalt|marc|pint|anda|pone|saca|limpi|borr|agreg|quit|cambi|abri|selecc)/.test(w)); const vals=[],seen={};let term=''; for(const o of sel.options){ const ov=_n(o.value); if(!ov||ov.length<=2||o.value==='SIN') continue; for(const tk of toks){ if(ov.includes(tk)||tk.includes(ov)){ if(!seen[o.value]){seen[o.value]=1;vals.push(o.value);} if(!term)term=tk; break; } } } return {term,vals}; }
+  const SELS=['f-estado','f-mes','f-destino','f-producto','f-grupo','f-clasificacion','f-responsable','f-inocuidad','f-disposicion'];
   function _anio(){ return new Date().getFullYear(); }
   function _iso(y,m,d){ return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
   function buscarFechas(t){
@@ -1763,10 +2037,11 @@ fetchData();
     else if(/cerrad/.test(t)) f['f-estado']='Cerrado';
     if(/inocuidad/.test(t)){ if(/\bno\b/.test(t)) f['f-inocuidad']='No'; else if(/\bs[ií]\b/.test(t)) f['f-inocuidad']='Sí'; }
     for(const k in MESES){ if(new RegExp('\\b'+k+'\\b').test(t)){ const sel=document.getElementById('f-mes'); if(sel){ for(const o of sel.options){ if(_n(o.value).indexOf(k)===0||_n(o.text).indexOf(k)===0){ f['f-mes']=o.value; break; } } } break; } }
-    ['f-producto','f-grupo','f-clasificacion','f-responsable','f-disposicion'].forEach(id=>{
+    const mp=t.match(/pedido\D{0,12}(\d{6,})/); if(mp) f['f-pedido']=mp[1];
+    ['f-destino','f-producto','f-grupo','f-clasificacion','f-responsable','f-disposicion'].forEach(id=>{
       const sel=document.getElementById(id); if(!sel) return;
       let hit=false;
-      for(const o of sel.options){ const ov=_n(o.value); if(ov && ov.length>2 && t.includes(ov)){ f[id]=o.value; hit=true; break; } }
+      for(const o of sel.options){ const ov=_n(o.value); if(o.value!=='SIN' && ov && ov.length>2 && t.includes(ov)){ f[id]=o.value; hit=true; break; } }
       if(!hit){ const r=_fuzzyOpts(sel,txt); if(r.vals.length===1){ f[id]=r.vals[0]; } else if(r.vals.length>=2){ amb.push({id,term:r.term,vals:r.vals}); } }
     });
     return (Object.keys(f).length||amb.length) ? {a:'filtros',f,amb} : null;
@@ -1795,6 +2070,7 @@ fetchData();
     st('Comando no aplicable.', true);
   }
   const CTX='Página CALIDAD (desvíos). Filtros (id→control): f-estado (Pendiente/Cerrado), f-mes, '+
+    'f-destino (país de destino del pedido; "SIN" = sin dato), f-pedido (N° de pedido, texto), '+
     'f-producto, f-grupo, f-clasificacion, f-responsable, f-inocuidad (Sí/No), f-disposicion, f-desde, f-hasta (AAAA-MM-DD). '+
     'Acciones: {"accion":"setfiltros","filtros":{"<id>":"<valor>"}}, '+
     '{"accion":"fechas","desde":"AAAA-MM-DD","hasta":"..."}, '+
@@ -1844,6 +2120,8 @@ fetchData();
     out+='## Por motivo (top 40)\n'+_rowsCSV(['motivo','desvios','cajas_9L'],porMot.map(g=>[g.k,g.n,g.cajas.toFixed(1)]))+'\n\n';
     const porSku=_grp(R,r=>String(r['SKU']||r['PRODUCTO']||'').trim(),cj).sort((a,b)=>b.n-a.n).slice(0,40);
     out+='## Por producto/SKU (top 40)\n'+_rowsCSV(['sku_producto','desvios','cajas_9L'],porSku.map(g=>[g.k,g.n,g.cajas.toFixed(1)]))+'\n\n';
+    const porDest=_grp(R,r=>(typeof destinoDe==='function'?destinoDe(r):'')||'Sin dato',cj).sort((a,b)=>b.n-a.n).slice(0,40);
+    out+='## Por destino del pedido (top 40)\n'+_rowsCSV(['destino','desvios','cajas_9L'],porDest.map(g=>[g.k,g.n,g.cajas.toFixed(1)]))+'\n\n';
     const porSol=_grp(R,r=>String(r['Solicita']||'').trim(),cj).sort((a,b)=>b.n-a.n).slice(0,30);
     out+='## Por solicita (top 30)\n'+_rowsCSV(['solicita','desvios','cajas_9L'],porSol.map(g=>[g.k,g.n,g.cajas.toFixed(1)]))+'\n\n';
     const porDet=_grp(R,r=>String(r['Detecto']||'').trim(),cj).sort((a,b)=>b.n-a.n).slice(0,30);
@@ -1872,7 +2150,7 @@ fetchData();
     _burbuja('u',tx); st('Analizando datos…'); if(window.vsptBotPensando)vsptBotPensando(true);
     let resumen=''; try{ resumen=await resumenDatosCal(tx); }catch(e){ resumen=''; }
     try{
-      const ctx='Página CALIDAD (desvíos de calidad de la planta embotelladora). El digest trae todos los desvíos cargados: por mes, motivo, producto/SKU, solicita, detecto, lead time, costos CNC, y opcionalmente maquinista/supervisor por desvío.';
+      const ctx='Página CALIDAD (desvíos de calidad de la planta embotelladora). El digest trae todos los desvíos cargados: por mes, motivo, producto/SKU, destino del pedido, solicita, detecto, lead time, costos CNC, y opcionalmente maquinista/supervisor por desvío.';
       const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'preguntar',texto:tx,resumen,contexto:ctx})});
       const raw=await res.text(); let j;
       try{ j=JSON.parse(raw); }catch(_){ throw new Error('Respuesta no-JSON (HTTP '+res.status+')'); }
