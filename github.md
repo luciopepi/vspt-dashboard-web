@@ -3,9 +3,9 @@ branch: main
 publica: Netlify (deploy desde main)
 
 ## Last sync
-date: 2026-09-28T21:30:00Z
+date: 2026-09-29T02:57:00Z
 ### Updated in this project
-- **Calidad · destino y pedido de cada desvío** (diseño hecho en Design): filtros **Destino** y **Pedido** (texto con sugerencias), sección colapsable **Desvíos por destino del pedido** con mapamundi (una burbuja por país, tamaño = desvíos), ranking y zoom; tocar un país o una fila filtra todo el tablero (un destino por vez; tocar el mismo lo quita). Columnas Pedido y Destino en la tabla de detalle y en la ventana de detalle de los gráficos. "Inteligencia Automática" pasa a colapsable. Requiere el `01_API.gs` con `agregarPlanCalidad_` (repo Dashboard, `API_VERSION` 2026-09-28d).
+- **Calidad · destino y pedido de cada desvío** (diseño hecho en Design): filtros **Destino** y **Pedido** (texto con sugerencias), sección colapsable **Desvíos por destino del pedido** con mapamundi (una burbuja por país, tamaño = desvíos), ranking y zoom; tocar un país o una fila filtra todo el tablero (un destino por vez; tocar el mismo lo quita). Columnas Pedido y Destino en la tabla de detalle y en la ventana de detalle de los gráficos. "Inteligencia Automática" pasa a colapsable. Requiere el `01_API.gs` con `agregarPlanCalidad_` (repo Dashboard): funciona con la 2026-09-28d y con la 2026-09-29a o posterior, que sirve `calidad` desde la foto (hasta 15 min de atraso) para no frenar la carga del tablero.
 - **Calidad · datos**: el destino es `destino_pais` (nombre unificado: EE.UU. → Estados Unidos, COTO → Argentina); el texto del plan (`Destino`) queda en el tooltip de la celda y en el buscador. Burbujas con `destino_lat`/`destino_lon` de la API. Caché `vspt_cal_cache_v4`.
 - **Calidad · asistente**: entiende filtros por destino ("filtrá Brasil") y por N° de pedido ("pedido 110001713"); el análisis por pregunta incluye desvíos por destino.
 - Mapas base `assets/mapa-mundo-claro.svg` y `assets/mapa-mundo-oscuro.svg` (Natural Earth 110m, proyección Natural Earth 1, 1000 × 438, sin Antártida).
