@@ -50,7 +50,10 @@ Reglas para el HTML:
 6. Para diagnosticar: `?tabla=ping` de la API y F12 → Red → filtro `echo`. Los 404 muestran
    qué pedido perdió la respuesta. No se gastan deploys de Netlify para probar.
 7. Los commits que solo tocan documentación llevan `[skip netlify]` en el mensaje, para no
-   gastar un deploy.
+   gastar un deploy. El deploy lo decide el mensaje del último commit que llega a `main`: el
+   merge que publica un HTML no lleva `[skip netlify]` (si lo lleva, no se publica). Si el
+   HTML depende de una API nueva, tiene que andar también con la anterior y se mergea después
+   de publicar y comprobar la API (un solo deploy).
 8. **Todo GET a la API pasa por `pedirJson`** (en v15, Programas, Calidad y Personal; en
    Mantenimiento, `pedirMant`). Si Google pierde la respuesta (404 con HTML, texto que no es
    JSON o corte de red), reintenta 3 veces con espera creciente. Nunca `fetch(...)` +
