@@ -3,10 +3,12 @@ branch: main
 publica: Netlify (deploy desde main)
 
 ## Last sync
-date: 2026-09-28T15:30:00Z
+date: 2026-09-29T02:57:00Z
 ### Updated in this project
-- **Carga del detalle (OPINONA) por partes**: v15 pide OPINONA en 4 partes en paralelo (`?tabla=opinona_parte`, requiere el `01_API.gs` nuevo) y las une controlando columnas y total; con una API sin esa ruta vuelve al pedido único. Motivo: el detalle mostraba "No se pudo cargar el detalle · Failed to fetch".
-- **Programas**: embebido en v15 usa la OPINONA que ya bajó el tablero (antes la volvía a pedir entera, en el formato más pesado); suelto, la pide por partes.
+- **Calidad · destino y pedido de cada desvío** (diseño hecho en Design): filtros **Destino** y **Pedido** (texto con sugerencias), sección colapsable **Desvíos por destino del pedido** con mapamundi (una burbuja por país, tamaño = desvíos), ranking y zoom; tocar un país o una fila filtra todo el tablero (un destino por vez; tocar el mismo lo quita). Columnas Pedido y Destino en la tabla de detalle y en la ventana de detalle de los gráficos. "Inteligencia Automática" pasa a colapsable. Requiere el `01_API.gs` con `agregarPlanCalidad_` (repo Dashboard): funciona con la 2026-09-28d y con la 2026-09-29a o posterior, que sirve `calidad` desde la foto (hasta 15 min de atraso) para no frenar la carga del tablero.
+- **Calidad · datos**: el destino es `destino_pais` (nombre unificado: EE.UU. → Estados Unidos, COTO → Argentina); el texto del plan (`Destino`) queda en el tooltip de la celda y en el buscador. Burbujas con `destino_lat`/`destino_lon` de la API. Caché `vspt_cal_cache_v4`.
+- **Calidad · asistente**: entiende filtros por destino ("filtrá Brasil") y por N° de pedido ("pedido 110001713"); el análisis por pregunta incluye desvíos por destino.
+- Mapas base `assets/mapa-mundo-claro.svg` y `assets/mapa-mundo-oscuro.svg` (Natural Earth 110m, proyección Natural Earth 1, 1000 × 438, sin Antártida).
 
 
 ## Screen map
@@ -29,7 +31,10 @@ date: 2026-09-28T15:30:00Z
 | Mantenimiento · Planta, pantalla completa | Dashboard_mantenimiento.html · p3Completa / p3CompletaCss · Dashboard_v15.html (iframeMantenimiento allow=fullscreen, mensaje vspt-mant-completa) |
 | Mantenimiento · Ayuda (botón ?, recorrido guiado) | Dashboard_mantenimiento.html · ayudaAbrir / ayudaRoles / ayudaPasos / ayudaPasosCarga / ayudaIr / ayudaCuadro / ayudaHueco / ayudaUbicar |
 | Mantenimiento · pestaña en v15 | Dashboard_v15.html · changeTab (EMBED.mantenimiento) / broadcastTheme |
-| API (Apps Script, repo luciopepi/Dashboard) | 01_API.gs · doGet / leerPestanaFmt_ / leerPestanaCompacta_ / leerPestanaParte_ / normalizarFilas_ |
+| Calidad · filtros Destino y Pedido | Dashboard_calidad.html · populateFilters / applyFilters (BASE_ROWS, FILTERED_ROWS) / destinoDe / pedidoDe |
+| Calidad · mapa de destinos (burbujas, ranking, zoom) | Dashboard_calidad.html · renderMapa / mapaElegir / mapaZoom / mapaColapsar / posDe / proyectar · assets/mapa-mundo-*.svg |
+| Calidad · tabla y detalle con Pedido y Destino | Dashboard_calidad.html · renderTable / openDrill |
+| API (Apps Script, repo luciopepi/Dashboard) | 01_API.gs · doGet / leerPestanaFmt_ / leerPestanaCompacta_ / leerPestanaParte_ / normalizarFilas_ / agregarPlanCalidad_ (pedido y destino, DESTINOS_GEO) |
 | API de mantenimiento | 07_MANTENIMIENTO.gs · mantEstadoApi_ / mantIndicadores_ / mantHtmlApi_ / mantCargaApi_ / mantPost_ / mantGenerarOT_ / mantAsignarSap_ / mantQR_ |
 | Control de acceso Google | auth.js |
 | Portada | index.html |
