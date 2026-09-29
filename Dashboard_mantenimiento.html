@@ -384,15 +384,32 @@ const cacheGet = () => { try { return JSON.parse(localStorage.getItem(CACHE_KEY)
 const cacheSet = v => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(v)); } catch (e) {} };
 
 // ───────────── datos ─────────────
+/* 29/09/2026: Google a veces pierde la respuesta aunque el script contestó bien
+   (la redirección a script.googleusercontent.com/macros/echo termina en 404 con
+   una página HTML: "Unexpected token '<'…"). Se reintenta con espera creciente;
+   un JSON de error de la API no se reintenta. Los POST no se reintentan nunca. */
+async function pedirMant() {
+  const esperas = [1500, 4000, 9000];
+  let error;
+  for (let i = 0; i <= esperas.length; i++) {
+    if (i) await new Promise(r => setTimeout(r, esperas[i - 1]));
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      const r = await fetch(API_URL + '?tabla=mant', { signal: ctrl.signal });
+      const texto = await r.text(); clearTimeout(to);
+      try { return JSON.parse(texto); } catch (e) { error = new Error('la API no devolvió datos (HTTP ' + r.status + ')'); }
+    } catch (e) { clearTimeout(to); error = e; if (e.name === 'AbortError') break; }
+    console.warn('[API] intento ' + (i + 1) + ' sin datos · mant · ' + error.message);
+  }
+  throw error;
+}
 async function cargar() {
   if (CARGA) return abrirCarga(CARGA);
   setStatus('Cargando…');
   const c = cacheGet();
   if (c && c.data && !D) { D = c.data; indexar(); render(); setStatus('Datos guardados · actualizando…'); }
   try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    const r = await fetch(API_URL + '?tabla=mant', { signal: ctrl.signal }); clearTimeout(to);
-    const j = await r.json();
+    const j = await pedirMant();
     if (j.status !== 'success' || !j.mant) throw new Error(j.msg || j.reason || (j.status === 'success' ? 'la API todavía no tiene el módulo de mantenimiento (falta publicar la versión con 07_MANTENIMIENTO.gs)' : 'respuesta sin datos'));
     D = j.mant; cacheSet({ t: Date.now(), data: D }); indexar(); render();
     setStatus('Actualizado · uso al ' + fday(D.uso_hasta), 'ok');

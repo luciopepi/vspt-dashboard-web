@@ -890,11 +890,29 @@ function cncForRow(r) {
   return key ? (CNC_LOOKUP[key] || null) : null;
 }
 
+/* 29/09/2026: Google a veces pierde la respuesta aunque el script contestó bien
+   (la redirección a script.googleusercontent.com/macros/echo termina en 404 con
+   una página HTML: "Unexpected token '<'…"). pedirJson reintenta esos casos con
+   espera creciente; un JSON de error de la API no se reintenta. Igual que en v15. */
+const REINTENTOS_API = [1500, 4000, 9000];
+async function pedirJson(url) {
+  let error;
+  for (let i = 0; i <= REINTENTOS_API.length; i++) {
+    if (i) await new Promise(r => setTimeout(r, REINTENTOS_API[i - 1]));
+    try {
+      const res = await fetch(url);
+      const texto = await res.text();
+      try { return JSON.parse(texto); }
+      catch (e) { error = new Error('la API no devolvió datos (HTTP ' + res.status + ')'); }
+    } catch (err) { error = err; }
+    console.warn('[API] intento ' + (i + 1) + ' sin datos · ' + url.split('?')[1] + ' · ' + error.message);
+  }
+  throw error;
+}
+
 async function fetchCNC() {
   try {
-    const res = await fetch(SCRIPT_URL + '?tabla=cnc');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const json = await res.json();
+    const json = await pedirJson(SCRIPT_URL + '?tabla=cnc');
     if (json.error) throw new Error(json.error);
     CNC_ROWS = json.cnc || [];
     buildCncLookup();
@@ -975,9 +993,7 @@ function applyRows(rows, sourceLabel) {
 
 async function fetchFreshCal(silent) {
   if (silent) document.getElementById('lastUpdate').textContent = 'Actualizando…';
-  const res = await fetch(SCRIPT_URL + '?tabla=calidad');
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const json = await res.json();
+  const json = await pedirJson(SCRIPT_URL + '?tabla=calidad');
   if (json.error) throw new Error(json.error);
   const rawRows = json.calidad || json.rows || [];
   const norm = rawRows
@@ -2132,7 +2148,7 @@ fetchData();
     out+='## CNC (costos no calidad, top 30 por total)\n'+_rowsCSV(['nro_desvio','producto','costo_total','costo_mo','costo_ajustes','horas'],cncRows)+'\n\n';
     if(/maquinista|supervisor|turno|operari|etiquet/.test(q)){
       try{
-        if(!_dpCache){ const rr=await fetch(SCRIPT_URL+'?tabla=desvios_personal'); const jj=await rr.json(); _dpCache=jj.desvios_personal||[]; }
+        if(!_dpCache){ const jj=await pedirJson(SCRIPT_URL+'?tabla=desvios_personal'); _dpCache=jj.desvios_personal||[]; }
         const D=_dpCache; const okN=D.filter(x=>String(x.match)==='ok').length; const cob=D.length?Math.round((D.length-okN)/D.length*100):0;
         const byMaq={}, bySup={};
         D.forEach(x=>{ const m=String(x.fecha||'').slice(0,7);

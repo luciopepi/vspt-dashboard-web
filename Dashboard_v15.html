@@ -725,15 +725,21 @@ window.addEventListener('message', (e) => {
     document.body.style.overflow = e.data.on ? 'hidden' : '';
   }
 });
+// Se resuelve cuando el detalle (OPINONA) terminó de cargar o de fallar.
+let marcarDetalleListo;
+const detalleListo = new Promise(r => { marcarDetalleListo = r; });
 window.addEventListener('load', () => {
     applyTweaks();
     try { window.parent.postMessage({ type:'__edit_mode_available' }, '*'); } catch(e){}
-    // Precargar TODAS las pestañas embebidas en background (Programas, Calidad
-    // y Personal) para que al abrirlas ya estén listas
-    setTimeout(() => {
+    // Precargar las pestañas embebidas (Programas, Calidad y Personal) para que al
+    // abrirlas ya estén listas. 29/09/2026: recién DESPUÉS del detalle (tope 90 s):
+    // sus ~9 pedidos a la vez con los de OPINONA hacían que Google perdiera
+    // respuestas (404 en script.googleusercontent.com/macros/echo).
+    // Una pestaña cada 4,5 s, así sus pedidos tampoco salen todos juntos.
+    Promise.race([detalleListo, new Promise(r => setTimeout(r, 90000))]).then(() => {
       [ ['iframeProgramas','Dashboard_programas.html'],
         ['iframeCalidad','Dashboard_calidad.html'],
-        ['iframePersonal','Dashboard_personal.html'] ].forEach(([id, src]) => {
+        ['iframePersonal','Dashboard_personal.html'] ].forEach(([id, src], i) => setTimeout(() => {
         const f = document.getElementById(id);
         if (f && f.src === 'about:blank') {
           f.addEventListener('load', () => {
@@ -741,8 +747,8 @@ window.addEventListener('load', () => {
           }, { once:true });
           f.src = src;
         }
-      });
-    }, 1500);
+      }, 1500 + i * 4500));
+    });
   });
 
 const history2025 = {
@@ -1011,8 +1017,7 @@ async function init() {
   opiPromise.catch(() => {});   // el error real se maneja al hacer await más abajo
 
   try {
-    const resK = await withTimeout(fetch(API_URL + '?tabla=kpi_planta_mensual'), TIMEOUT_KPI);
-    const jK = await resK.json();
+    const jK = await pedirJson(API_URL + '?tabla=kpi_planta_mensual', TIMEOUT_KPI);
     if (jK.status === 'success' && Array.isArray(jK.kpi_planta_mensual)) {
       kpiData = jK.kpi_planta_mensual;
       trySet(CACHE_KPI_KEY, JSON.stringify(kpiData));
@@ -1057,6 +1062,8 @@ async function init() {
     else if (kpiData.length) { showContent(); setStatus('amber', 'KPI · SIN DETALLE'); marcarDetalleCaido(err.message); }
     else if (DEMO_MODE) { cargarDatosDemo(err); }
     else { setStatus('red', 'ERROR API'); showError(err.message); }
+  } finally {
+    marcarDetalleListo();   // recién ahora se precargan las pestañas embebidas
   }
 }
 
@@ -1265,26 +1272,49 @@ function rehidratarOpinona(payload) {
   });
 }
 
-/* 28/09/2026: aun en compacto, OPINONA entera en UN pedido (~30.000 filas ×
-   50 columnas) dejó de llegar ("Failed to fetch"). Se pide en OPI_PARTES
-   tramos en paralelo (?tabla=opinona_parte): cada ejecución de Apps Script lee
-   sólo sus filas. Devuelve lo mismo que el pedido único, { status, opinona:{h, r} }.
-   Si la API todavía no tiene esa ruta (responde sin "opinona"), vuelve al
-   pedido único de siempre. Dashboard_programas.html usa la misma lógica. */
+/* 28/09/2026: OPINONA se pide en OPI_PARTES tramos (?tabla=opinona_parte), que la
+   API sirve ya armados desde la foto de Drive. Devuelve lo mismo que el pedido
+   único, { status, opinona:{h, r} }. Si la API no tiene esa ruta (responde sin
+   "opinona"), vuelve al pedido único. Dashboard_programas.html usa la misma lógica.
+   29/09/2026: Google a veces pierde la respuesta aunque el script haya contestado
+   bien en 2 s: la redirección a script.googleusercontent.com/macros/echo vuelve a
+   /exec y termina en 404 con una página HTML ("Unexpected token '<', "<!DOCTYPE"…").
+   Pasa más cuanto más pedidos hay en vuelo a la vez. Por eso las partes van de a
+   una y pedirJson reintenta esos casos (404, HTML en vez de JSON, corte de red)
+   con espera creciente. Un JSON de error de la API ({status:"error"}) no se
+   reintenta: se devuelve y el tablero muestra su mensaje. */
 const OPI_PARTES = 4;
+const REINTENTOS_API = [1500, 4000, 9000];   // espera antes de cada reintento (ms)
 async function pedirJson(url, ms) {
-  const res = await withTimeout(fetch(url), ms);
-  return res.json();
+  let error;
+  for (let i = 0; i <= REINTENTOS_API.length; i++) {
+    if (i) await new Promise(r => setTimeout(r, REINTENTOS_API[i - 1]));
+    try {
+      const res = await withTimeout(fetch(url), ms);
+      const texto = await res.text();
+      try { return JSON.parse(texto); }
+      catch (e) { error = new Error('la API no devolvió datos (HTTP ' + res.status + ')'); }
+    } catch (err) {
+      error = err;
+      if (/sin respuesta de la API/.test(err.message)) break;   // venció el tope: no insistir
+    }
+    console.warn('[API] intento ' + (i + 1) + ' sin datos · ' + url.split('?')[1] + ' · ' + error.message);
+  }
+  throw error;
 }
-async function pedirOpinona() {
-  const partes = await Promise.all(Array.from({ length: OPI_PARTES }, (_, i) =>
-    pedirJson(API_URL + '?tabla=opinona_parte&parte=' + i + '&partes=' + OPI_PARTES, TIMEOUT_OPINONA)));
-  const fallida = partes.find(j => j.status !== 'success');
-  if (fallida) return fallida;                    // error de la API: su msg se muestra en el tablero
-  if (partes.some(j => !j.opinona)) return pedirJson(API_URL + '?tabla=opinona&formato=compacto', TIMEOUT_OPINONA);
+async function pedirOpinona(esReintento) {
+  const partes = [];
+  for (let i = 0; i < OPI_PARTES; i++) {
+    const j = await pedirJson(API_URL + '?tabla=opinona_parte&parte=' + i + '&partes=' + OPI_PARTES, TIMEOUT_OPINONA);
+    if (j.status !== 'success') return j;       // error de la API: su msg se muestra en el tablero
+    if (!j.opinona) return pedirJson(API_URL + '?tabla=opinona&formato=compacto', TIMEOUT_OPINONA);
+    partes.push(j);
+  }
   const p0 = partes[0].opinona, cols = JSON.stringify(p0.h);
-  if (partes.some(j => j.opinona.total !== p0.total || JSON.stringify(j.opinona.h) !== cols))
+  if (partes.some(j => j.opinona.total !== p0.total || JSON.stringify(j.opinona.h) !== cols)) {
+    if (!esReintento) return pedirOpinona(true); // la foto se renovó en medio: una vuelta más
     throw new Error('OPINONA cambió mientras se descargaba: reintentá en un momento');
+  }
   return { status: 'success', opinona: { h: p0.h, r: [].concat(...partes.map(j => j.opinona.r)) } };
 }
 

@@ -50,3 +50,17 @@ Reglas para el HTML:
    qué pedido perdió la respuesta. No se gastan deploys de Netlify para probar.
 7. Los commits que solo tocan documentación llevan `[skip netlify]` en el mensaje, para no
    gastar un deploy.
+8. **Todo GET a la API pasa por `pedirJson`** (en v15, Programas, Calidad y Personal; en
+   Mantenimiento, `pedirMant`). Si Google pierde la respuesta (404 con HTML, texto que no es
+   JSON o corte de red), reintenta 3 veces con espera creciente. Nunca `fetch(...)` +
+   `res.json()` directo. Los POST (guardar, asistente) no se reintentan: podrían duplicar
+   una acción.
+9. Visto el 29-sep-2026: aun con cada `doGet` respondiendo en 1-2 s, Google redirigía el `echo`
+   de vuelta a `/exec` y terminaba en 404 casi todo lo que no era chico, cuando salían ~14
+   pedidos juntos. Por eso:
+   - las partes de OPINONA salen de a una;
+   - las pestañas embebidas se precargan recién cuando termina el detalle, una cada 4,5 s
+     (`detalleListo` en v15).
+   No volver a lanzar todo en paralelo.
+10. Si la API falla, se avisa. **Nunca** se pasa a datos de ejemplo: se ven como reales y, en
+    Personal, se podían guardar encima de la asignación real.

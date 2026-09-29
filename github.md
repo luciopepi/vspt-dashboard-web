@@ -3,8 +3,14 @@ branch: main
 publica: Netlify (deploy desde main)
 
 ## Last sync
-date: 2026-09-29T02:57:00Z
+date: 2026-09-29T03:23:00Z
 ### Updated in this project
+- **Carga resistente a respuestas perdidas por Google (29-sep)**: con la API sirviendo todo en 1-2 s, Google igual perdía las respuestas medianas y grandes cuando salían ~14 pedidos juntos (el `echo` volvía a `/exec` y terminaba en 404 con HTML: "No se pudo cargar el detalle · Unexpected token '<'…").
+  - Todo GET a la API pasa por `pedirJson` (`pedirMant` en Mantenimiento), que reintenta 3 veces con espera creciente si no vuelve JSON. Los POST no se reintentan.
+  - En v15 las 4 partes de OPINONA salen de a una. Las pestañas embebidas (Programas, Calidad, Personal) se precargan recién cuando termina el detalle, una cada 4,5 s.
+  - Si igual falla, el aviso dice "la API no devolvió datos (HTTP 404)".
+  - Personal ya no carga datos de ejemplo cuando la API falla: avisa "SIN CONEXIÓN CON LA API".
+  - Probado en Chromium con la API simulada perdiendo 13 de 27 respuestas: todo carga.
 - **Calidad · destino y pedido de cada desvío** (diseño hecho en Design): filtros **Destino** y **Pedido** (texto con sugerencias), sección colapsable **Desvíos por destino del pedido** con mapamundi (una burbuja por país, tamaño = desvíos), ranking y zoom; tocar un país o una fila filtra todo el tablero (un destino por vez; tocar el mismo lo quita). Columnas Pedido y Destino en la tabla de detalle y en la ventana de detalle de los gráficos. "Inteligencia Automática" pasa a colapsable. Requiere el `01_API.gs` con `agregarPlanCalidad_` (repo Dashboard): funciona con la 2026-09-28d y con la 2026-09-29a o posterior, que sirve `calidad` desde la foto (hasta 15 min de atraso) para no frenar la carga del tablero.
 - **Calidad · datos**: el destino es `destino_pais` (nombre unificado: EE.UU. → Estados Unidos, COTO → Argentina); el texto del plan (`Destino`) queda en el tooltip de la celda y en el buscador. Burbujas con `destino_lat`/`destino_lon` de la API. Caché `vspt_cal_cache_v4`.
 - **Calidad · asistente**: entiende filtros por destino ("filtrá Brasil") y por N° de pedido ("pedido 110001713"); el análisis por pregunta incluye desvíos por destino.
@@ -18,6 +24,7 @@ date: 2026-09-29T02:57:00Z
 | Fallas de equipos: Horas vs % T. Efectivo | Dashboard_v15.html · fallaModeHTML / setFallaMode / drawFallaSemana / serieDomain |
 | Reporte Diario (pestaña) | Dashboard_v15.html · renderDiario / drawDiarioDonut / drawDiarioPareto / drawDiarioSemana / openModalDiarioClasif / openModalDiarioVel |
 | Carga de datos en dos fases · compacto y por partes | Dashboard_v15.html · init / pedirOpinona / rehidratarOpinona / marcarDetalleCaido |
+| Pedidos a la API con reintento · precarga de pestañas después del detalle | Dashboard_v15.html · pedirJson / REINTENTOS_API / detalleListo · Dashboard_programas.html, Dashboard_calidad.html, Dashboard_personal.html · pedirJson · Dashboard_mantenimiento.html · pedirMant |
 | Programas · OPINONA (la del tablero o por partes) | Dashboard_programas.html · fetchFresh / opinonaDelTablero / pedirOpinona / rehidratarOpinona |
 | Mantenimiento (pestaña embebida) | Dashboard_mantenimiento.html · cargar / renderOT / formCarga / renderAlertas / renderCal / renderEquipos / renderAvisos / renderAjustes |
 | Mantenimiento · edición del maestro | Dashboard_mantenimiento.html · campo / filaEdicion / marcarCambio / barraCambios / guardarPend |

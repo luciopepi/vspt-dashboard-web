@@ -479,15 +479,39 @@ const OPI_PARTES = 4;
 function opinonaDelTablero() {
   try { return (window.parent !== window && window.parent.VSPT_OPINONA) || null; } catch (e) { return null; }
 }
-async function pedirOpinona() {
-  const partes = await Promise.all(Array.from({ length: OPI_PARTES }, (_, i) =>
-    fetch(API_URL + '?tabla=opinona_parte&parte=' + i + '&partes=' + OPI_PARTES).then(r => r.json())));
-  const fallida = partes.find(j => j.status !== 'success');
-  if (fallida) return fallida;
-  if (partes.some(j => !j.opinona)) return fetch(API_URL + '?tabla=opinona&formato=compacto').then(r => r.json());
+/* 29/09/2026: Google a veces pierde la respuesta aunque el script contestó bien
+   (la redirección a script.googleusercontent.com/macros/echo termina en 404 con
+   una página HTML: "Unexpected token '<'…"). pedirJson reintenta esos casos con
+   espera creciente; un JSON de error de la API no se reintenta. Igual que en v15. */
+const REINTENTOS_API = [1500, 4000, 9000];
+async function pedirJson(url) {
+  let error;
+  for (let i = 0; i <= REINTENTOS_API.length; i++) {
+    if (i) await new Promise(r => setTimeout(r, REINTENTOS_API[i - 1]));
+    try {
+      const res = await fetch(url);
+      const texto = await res.text();
+      try { return JSON.parse(texto); }
+      catch (e) { error = new Error('la API no devolvió datos (HTTP ' + res.status + ')'); }
+    } catch (err) { error = err; }
+    console.warn('[API] intento ' + (i + 1) + ' sin datos · ' + url.split('?')[1] + ' · ' + error.message);
+  }
+  throw error;
+}
+// Suelta (fuera del tablero): las partes de a una, como v15.
+async function pedirOpinona(esReintento) {
+  const partes = [];
+  for (let i = 0; i < OPI_PARTES; i++) {
+    const j = await pedirJson(API_URL + '?tabla=opinona_parte&parte=' + i + '&partes=' + OPI_PARTES);
+    if (j.status !== 'success') return j;
+    if (!j.opinona) return pedirJson(API_URL + '?tabla=opinona&formato=compacto');
+    partes.push(j);
+  }
   const p0 = partes[0].opinona, cols = JSON.stringify(p0.h);
-  if (partes.some(j => j.opinona.total !== p0.total || JSON.stringify(j.opinona.h) !== cols))
+  if (partes.some(j => j.opinona.total !== p0.total || JSON.stringify(j.opinona.h) !== cols)) {
+    if (!esReintento) return pedirOpinona(true);
     throw new Error('OPINONA cambió mientras se descargaba: reintentá en un momento');
+  }
   return { status: 'success', opinona: { h: p0.h, r: [].concat(...partes.map(j => j.opinona.r)) } };
 }
 // Compacto {h:[columnas], r:[[valores]]} → un objeto por fila; el formato viejo pasa tal cual.
@@ -505,13 +529,11 @@ function rehidratarOpinona(payload) {
 async function fetchFresh(silent) {
   if (!silent) setStatus('Cargando datos completos…');
   else setStatus('Actualizando…');
-  const [rPlan, jOpi, rVel] = await Promise.all([
-    fetch(API_URL + '?tabla=plan'),
+  const [jPlan, jOpi, jVel] = await Promise.all([
+    pedirJson(API_URL + '?tabla=plan'),
     opinonaDelTablero() || pedirOpinona(),
-    fetch(API_URL + '?tabla=velnominales')
+    pedirJson(API_URL + '?tabla=velnominales')
   ]);
-  const jPlan = await rPlan.json();
-  const jVel  = await rVel.json();
   const payload = {
     plan:    jPlan.plan    || jPlan.data || [],
     opinona: rehidratarOpinona(jOpi.opinona) || jOpi.data || [],
@@ -536,8 +558,7 @@ async function fetchFase2() {
 
 async function fetchFreshSemana(silent) {
   if (!silent) setStatus('Cargando semana actual…');
-  const r1 = await fetch(API_URL + '?tabla=programa_semana');
-  const j1 = await r1.json();
+  const j1 = await pedirJson(API_URL + '?tabla=programa_semana');
   planData = j1.programa_semana || j1.data || [];
   writeCacheSemana(planData);
   buildFormatoLookup();

@@ -607,30 +607,45 @@ function deshacer(){
 }
 
 // ---------- carga ----------
+/* 29/09/2026: Google a veces pierde la respuesta aunque el script contestó bien
+   (la redirección a script.googleusercontent.com/macros/echo termina en 404 con
+   una página HTML: "Unexpected token '<'…"). pedirJson reintenta esos casos con
+   espera creciente; un JSON de error de la API no se reintenta. Igual que en v15. */
+const REINTENTOS_API = [1500, 4000, 9000];
+async function pedirJson(url){
+  let error;
+  for(let i = 0; i <= REINTENTOS_API.length; i++){
+    if(i) await new Promise(r => setTimeout(r, REINTENTOS_API[i-1]));
+    try{
+      const res = await fetch(url);
+      const texto = await res.text();
+      try{ return JSON.parse(texto); }
+      catch(e){ error = new Error("la API no devolvió datos (HTTP " + res.status + ")"); }
+    }catch(err){ error = err; }
+    console.warn("[API] intento " + (i+1) + " sin datos · " + url.split("?")[1] + " · " + error.message);
+  }
+  throw error;
+}
 async function load(){
   setStatus("CARGANDO…");
   try{
     // Los 4 pedidos salen en paralelo (antes eran secuenciales: 4 viajes a la API uno tras otro)
-    const [r, r2, r3, r4] = await Promise.all([
-      fetch(API_URL + "?tabla=asignacion"),
-      fetch(API_URL + "?tabla=personal"),
-      fetch(API_URL + "?tabla=personal_config").catch(()=>null),
-      fetch(API_URL + "?tabla=he").catch(()=>null)
+    const [d, d2, d3, d4] = await Promise.all([
+      pedirJson(API_URL + "?tabla=asignacion"),
+      pedirJson(API_URL + "?tabla=personal"),
+      pedirJson(API_URL + "?tabla=personal_config").catch(()=>null),
+      pedirJson(API_URL + "?tabla=he").catch(()=>null)
     ]);
-    const d  = await r.json();
-    const d2 = await r2.json();
     // Token vencido/inválido: la API contesta {error:"forbidden"} → re-login, NUNCA demo
     if(d.error==="forbidden" || d2.error==="forbidden"){ sesionVencida(d.reason||d2.reason); return; }
     ASIG = (d.asignacion||[]).map(normAsig);
     PERS = (d2.personal||[]).map(normPers);
     migrarEstadoBlocks();
     try{
-      const d3 = r3 ? await r3.json() : null;
       if(d3 && d3.personal_config) CONFIG = Object.assign(CONFIG, d3.personal_config);
     }catch(e){}
     try{
-      const d4 = r4 ? await r4.json() : {};
-      HE = (d4.he||[]).map(h=>({fecha:str(h.fecha),anio:Number(h.anio)||0,dia:str(h.dia_semana),
+      HE = ((d4 || {}).he||[]).map(h=>({fecha:str(h.fecha),anio:Number(h.anio)||0,dia:str(h.dia_semana),
         equipos:str(h.equipos),tpers:Number(h.t_con_personal)||0,
         ref:(h.referencia===""||h.referencia==null)?"":Number(h.referencia),
         he:Number(h.he_horas)||0,banda:str(h.banda),detalle:str(h.detalle_lineas)}));
@@ -643,7 +658,12 @@ async function load(){
     savedState = snap(); undoStack = []; dirty = false; updateUI();
     try{ sessionStorage.removeItem("vspt_relogin"); }catch(e){}   // carga OK → rearmar el auto-relogin
     if(!ASIG.length && !PERS.length) cargarDemo();   // editor sin conexión a la API → datos de ejemplo
-  }catch(e){ console.warn("API no disponible — cargando datos de ejemplo", e); cargarDemo(); }
+  }catch(e){
+    // 29/09/2026: antes caía a los datos de ejemplo, que se veían como reales y se
+    // podían guardar encima de la asignación real. Ahora avisa y no carga nada.
+    console.error("API no disponible", e);
+    setStatus("SIN CONEXIÓN CON LA API · " + (e.message || e) + " · recargá la página", "err");
+  }
 }
 // La API rechazó el pedido (token vencido/inválido). Antes esto caía en silencio a los
 // datos demo; ahora limpia la sesión guardada y recarga UNA sola vez para re-loguear.
