@@ -728,6 +728,12 @@ window.addEventListener('message', (e) => {
 // Se resuelve cuando el detalle (OPINONA) terminó de cargar o de fallar.
 let marcarDetalleListo;
 const detalleListo = new Promise(r => { marcarDetalleListo = r; });
+// OPINONA entera para Programas (embebido, ver opinonaDelTablero): se resuelve al
+// terminar el detalle con { status, opinona:{h, r} }. Existe desde que abre la página
+// para que Programas nunca la pida por su cuenta.
+let resolverOpinona, rechazarOpinona;
+window.VSPT_OPINONA = new Promise((res, rej) => { resolverOpinona = res; rechazarOpinona = rej; });
+window.VSPT_OPINONA.catch(() => {});   // el error lo muestra Programas si lo necesita
 window.addEventListener('load', () => {
     applyTweaks();
     try { window.parent.postMessage({ type:'__edit_mode_available' }, '*'); } catch(e){}
@@ -874,6 +880,17 @@ function setYear(y) {
   document.querySelectorAll('.year-btn').forEach(b => {
     b.classList.toggle('active', Number(b.dataset.year) === activeYear);
   });
+  if (opi.modo === 'mes') {
+    if (anioCompleto(activeYear)) { opi.anioDibujado = null; refrescarDetalle(); return; }   // como antes: filtros de tiempo a "todos"
+    // Ese año todavía no tiene todos sus meses: KPI de la hoja mensual y el
+    // avance hasta que lleguen (se piden primero). Nada de totales parciales.
+    opinonaCargada = false;
+    document.getElementById('f-periodo').innerHTML = '<option value="ALL">Vista Anual (YTD)</option>';
+    setFiltrosBloqueados(true);
+    if (rawData.length) render(); else renderKPIsOnly();
+    actualizarEstadoOpi();
+    return;
+  }
   if (opinonaCargada) {
     setupFilters();
     onFilterChange();
@@ -1011,54 +1028,35 @@ async function init() {
   // que la persona tarda en loguearse y aborta pedidos que iban a responder bien.
   await apiGateReady();
 
-  // El pedido de OPINONA (fase 2, lento) arranca YA, en paralelo con el KPI.
-  // Programas (embebido) toma este mismo pedido en vez de bajar OPINONA otra vez.
-  const opiPromise = window.VSPT_OPINONA = pedirOpinona();
-  opiPromise.catch(() => {});   // el error real se maneja al hacer await más abajo
+  // === FASE 2: OPINONA cruda, en segundo plano y en paralelo con el KPI ===
+  // Por mes, primero lo guardado en el navegador (ver OPINONA POR MES); con una
+  // API sin esa ruta, en las 4 partes de antes. Programas (embebido) la recibe
+  // por window.VSPT_OPINONA en vez de bajarla otra vez.
+  const detalle = cargarDetalle();
+  detalle.catch(() => {});   // el error se maneja al hacer await más abajo
 
   try {
     const jK = await pedirJson(API_URL + '?tabla=kpi_planta_mensual', TIMEOUT_KPI);
     if (jK.status === 'success' && Array.isArray(jK.kpi_planta_mensual)) {
       kpiData = jK.kpi_planta_mensual;
       trySet(CACHE_KPI_KEY, JSON.stringify(kpiData));
-      showContent();
-      renderKPIsOnly();
-      setStatus('amber', `KPI · CARGANDO DETALLE... (${kpiData.length} filas)`);
+      if (!opinonaCargada) {   // si el detalle ya se dibujó (con lo guardado), no taparlo
+        showContent();
+        renderKPIsOnly();
+        setStatus('amber', `KPI · CARGANDO DETALLE... (${kpiData.length} filas)`);
+        actualizarEstadoOpi();
+      }
     }
   } catch (err) {
     console.warn('[KPI] error fetch:', err);
   }
 
-  // === FASE 2: OPINONA cruda (lento, en background) ===
-  const cached = localStorage.getItem(CACHE_KEY);
-  if (cached) {
-    try {
-      rawData = rehidratarOpinona(JSON.parse(cached)) || [];
-      if (!rawData.length) throw new Error('caché vacía');
-      opinonaCargada = true;
-      showContent();
-      setupFilters(); setFiltrosBloqueados(false); onFilterChange();
-      setStatus('amber', `CACHE · ACTUALIZANDO... (${rawData.length} filas)`);
-    } catch(e) {}
-  }
-
   try {
-    const j = await opiPromise;
-    const filasOpi = j.status === 'success' ? rehidratarOpinona(j.opinona) : null;
-    if (filasOpi && filasOpi.length) {
-      rawData = filasOpi;
-      opinonaCargada = true;
-      // Se cachea el payload TAL CUAL vino: en compacto entra en localStorage,
-      // en el formato viejo supera la cuota y trySet lo descarta sin romper nada.
-      trySet(CACHE_KEY, JSON.stringify(j.opinona));
-      showContent();
-      setupFilters(); setFiltrosBloqueados(false); onFilterChange();
-      const conTurno = rawData.filter(r => get(r,'turno_plan')).length;
-      setStatus('green', `VINCULADO · ${rawData.length} REGISTROS · ${conTurno} con turno`);
-    } else { throw new Error(j.msg || 'respuesta inválida'); }
+    await detalle;
   } catch (err) {
     console.error(err);
-    if (rawData.length) { showContent(); setStatus('amber', 'CACHE · SIN CONEXIÓN'); }
+    rechazarOpinona(err);
+    if (opinonaCargada) { showContent(); setStatus('amber', 'CACHE · SIN CONEXIÓN'); }
     else if (kpiData.length) { showContent(); setStatus('amber', 'KPI · SIN DETALLE'); marcarDetalleCaido(err.message); }
     else if (DEMO_MODE) { cargarDatosDemo(err); }
     else { setStatus('red', 'ERROR API'); showError(err.message); }
@@ -1282,21 +1280,32 @@ function rehidratarOpinona(payload) {
    Pasa más cuanto más pedidos hay en vuelo a la vez. Por eso las partes van de a
    una y pedirJson reintenta esos casos (404, HTML en vez de JSON, corte de red)
    con espera creciente. Un JSON de error de la API ({status:"error"}) no se
-   reintenta: se devuelve y el tablero muestra su mensaje. */
+   reintenta: se devuelve y el tablero muestra su mensaje.
+   Desde la API 2026-09-29b v15 pide OPINONA por mes (ver OPINONA POR MES); las
+   partes quedan para una API anterior. */
 const OPI_PARTES = 4;
 const REINTENTOS_API = [1500, 4000, 9000];   // espera antes de cada reintento (ms)
-async function pedirJson(url, ms) {
+// ms: tope de cada intento (el pedido se corta de verdad). reintentarSiVence: con
+// true, vencer el tope también se reintenta, con 5 s más de margen cada vez (los
+// meses de OPINONA: una respuesta que Google perdió tarda ~30 s en volver como 404;
+// cortarla a los 15 s y pedirla de nuevo es más rápido).
+async function pedirJson(url, ms, reintentarSiVence) {
   let error;
   for (let i = 0; i <= REINTENTOS_API.length; i++) {
     if (i) await new Promise(r => setTimeout(r, REINTENTOS_API[i - 1]));
+    const tope = ms ? ms + (reintentarSiVence ? i * 5000 : 0) : 0;
+    const corte = new AbortController();
+    const reloj = tope ? setTimeout(() => corte.abort(), tope) : 0;
     try {
-      const res = await withTimeout(fetch(url), ms);
+      const res = await fetch(url, { signal: corte.signal });
       const texto = await res.text();
       try { return JSON.parse(texto); }
       catch (e) { error = new Error('la API no devolvió datos (HTTP ' + res.status + ')'); }
     } catch (err) {
-      error = err;
-      if (/sin respuesta de la API/.test(err.message)) break;   // venció el tope: no insistir
+      error = corte.signal.aborted ? new Error('sin respuesta de la API (' + (tope / 1000) + 's)') : err;
+      if (corte.signal.aborted && !reintentarSiVence) break;   // venció el tope: no insistir
+    } finally {
+      clearTimeout(reloj);
     }
     console.warn('[API] intento ' + (i + 1) + ' sin datos · ' + url.split('?')[1] + ' · ' + error.message);
   }
@@ -1318,11 +1327,268 @@ async function pedirOpinona(esReintento) {
   return { status: 'success', opinona: { h: p0.h, r: [].concat(...partes.map(j => j.opinona.r)) } };
 }
 
-function withTimeout(promise, ms) {
-  return Promise.race([
-    promise,
-    new Promise((_, rej) => setTimeout(() => rej(new Error('sin respuesta de la API (' + (ms/1000) + 's)')), ms))
-  ]);
+/* ═══════════════════════════════════════════════════════════════════════════
+   OPINONA POR MES + MEMORIA DEL NAVEGADOR (29/09/2026)
+   Aun de a una, las 4 partes (~1,4 MB cada una) se seguían perdiendo en la
+   redirección de Google (~30 s cada pérdida): el detalle tardaba hasta 4 minutos.
+   La API (2026-09-29b) sirve OPINONA mes por mes, comprimida (gzip + base64:
+   12-45 KB por mes, el tamaño de las respuestas que siempre llegaron):
+     ?tabla=opinona_meses           → { meses:[{ mes:'2026-09', filas, huella, kb }] }
+     ?tabla=opinona_mes&mes=AAAA-MM → { mes, filas, huella, gz }
+   - Memoria: cada mes queda guardado comprimido en localStorage (~550 KB en
+     total) con su huella. Al abrir se dibuja al instante con lo guardado y sólo
+     se bajan los meses cuya huella cambió (casi siempre, el mes en curso).
+   - Orden: el año activo primero, del mes en curso hacia enero; después el
+     resto (2025). De a MESES_EN_PARALELO; cada intento se corta a los 15 s.
+   - El detalle de un año se dibuja recién con TODOS sus meses: los totales del
+     año (YTD) nunca se ven parciales. Mientras tanto quedan los KPI de la hoja
+     mensual con el avance ("2026 · 4 de 9 meses").
+   - Programas (embebido) recibe OPINONA entera por window.VSPT_OPINONA al final.
+   - Con una API sin estas rutas se usa la carga por partes (cargarOpinonaPorPartes).
+   ═══════════════════════════════════════════════════════════════════════════ */
+const OPI_MES_KEY    = 'vspt_opi_mes_v1:';     // + 'AAAA-MM' → { huella, filas, gz }
+const OPI_INDICE_KEY = 'vspt_opi_meses_v1';    // último índice visto: [{ mes, filas, huella }]
+const TIMEOUT_MES = 15000;
+const MESES_EN_PARALELO = 2;
+const GZ_OK = typeof DecompressionStream === 'function' && typeof Blob.prototype.stream === 'function';
+const opi = {
+  modo: null,            // 'mes' | 'partes'
+  indice: null,          // [{ mes, filas, huella }], más nuevo primero
+  indiceApi: false,      // true: el índice ya vino de la API (si no, es el guardado)
+  sinConexion: false,    // la API no dio el índice: queda lo guardado
+  datos: new Map(),      // mes → { huella, filas, h, r, objs }
+  pendientes: [],        // meses por bajar, más nuevo primero
+  enVuelo: 0,
+  fallidos: new Map(),   // mes → mensaje
+  version: 0, versionDibujada: -1, anioDibujado: null
+};
+const anioDeMes = m => /^\d{4}-\d{2}$/.test(m) ? Number(m.slice(0, 4)) : null;
+const mesesDelAnio = y => (opi.indice || []).filter(x => anioDeMes(x.mes) === y).map(x => x.mes);
+function anioCompleto(y) {
+  if (opi.modo !== 'mes') return rawData.length > 0;
+  return !!opi.indice && mesesDelAnio(y).every(m => opi.datos.has(m));
+}
+
+async function cargarDetalle() {
+  if (await cargarOpinonaPorMes() === 'sin-meses') await cargarOpinonaPorPartes();
+}
+
+// API anterior (sin OPINONA por mes): las 4 partes de siempre, de a una.
+async function cargarOpinonaPorPartes() {
+  opi.modo = 'partes';
+  const j = await pedirOpinona();
+  resolverOpinona(j);
+  const filasOpi = j.status === 'success' ? rehidratarOpinona(j.opinona) : null;
+  if (!filasOpi || !filasOpi.length) throw new Error(j.msg || 'respuesta inválida');
+  rawData = filasOpi;
+  opinonaCargada = true;
+  showContent();
+  setupFilters(); setFiltrosBloqueados(false); onFilterChange();
+  const conTurno = rawData.filter(r => get(r,'turno_plan')).length;
+  setStatus('green', `VINCULADO · ${rawData.length} REGISTROS · ${conTurno} con turno`);
+}
+
+async function cargarOpinonaPorMes() {
+  opi.modo = 'mes';
+  const pIndice = pedirJson(API_URL + '?tabla=opinona_meses', TIMEOUT_MES, true).then(j => ({ j }), err => ({ err }));
+  // 1) Lo guardado en el navegador, mientras llega el índice
+  await leerMemoria();
+  if (opi.datos.size) refrescarDetalle();
+  // 2) Índice de la API
+  const { j, err } = await pIndice;
+  if (err) return sinIndice(err);
+  if (j.status === 'success' && !Array.isArray(j.meses)) return 'sin-meses';               // API anterior
+  if (j.status !== 'success') {
+    if (/sin foto por mes/.test(j.msg || '')) return 'sin-meses';                           // foto sin armar todavía
+    return sinIndice(new Error(j.msg || j.reason || 'la API no devolvió el índice de meses'));
+  }
+  opi.indice = j.meses.map(x => ({ mes: x.mes, filas: x.filas, huella: x.huella }));
+  opi.indiceApi = true;
+  try { localStorage.setItem(OPI_INDICE_KEY, JSON.stringify(opi.indice)); } catch (e) {}
+  for (const m of [...opi.datos.keys()]) {
+    if (!opi.indice.some(x => x.mes === m)) { opi.datos.delete(m); opi.version++; }
+  }
+  limpiarMemoriaVieja();
+  // 3) Los meses que faltan o cambiaron
+  opi.pendientes = opi.indice.filter(x => { const d = opi.datos.get(x.mes); return !d || d.huella !== x.huella; }).map(x => x.mes);
+  actualizarAvisoCarga(); actualizarEstadoOpi();
+  await Promise.all(Array.from({ length: MESES_EN_PARALELO }, trabajadorMeses));
+  refrescarDetalle();
+  resolverOpinona({ status: 'success', opinona: opinonaCompacta() });
+  if (!opinonaCargada) {
+    const faltan = mesesDelAnio(activeYear).filter(m => !opi.datos.has(m));
+    throw new Error('No llegaron ' + faltan.length + (faltan.length === 1 ? ' mes' : ' meses') + ' de ' + activeYear +
+                    ' (' + faltan.join(', ') + ') · ' + (opi.fallidos.get(faltan[0]) || ''));
+  }
+  return 'ok';
+}
+
+// Sin índice (Google perdió el pedido 4 veces o la API respondió con error): queda lo guardado.
+function sinIndice(err) {
+  if (!opi.datos.size) throw err;
+  resolverOpinona({ status: 'success', opinona: opinonaCompacta() });
+  if (!opinonaCargada) throw err;        // lo guardado no alcanza para el año activo
+  opi.sinConexion = true;
+  console.warn('[OPINONA] sin índice de meses, queda lo guardado:', err.message);
+  actualizarEstadoOpi();
+  return 'guardado';
+}
+
+// Meses guardados en el navegador según el último índice visto.
+async function leerMemoria() {
+  if (!GZ_OK) return;
+  let indice = null;
+  try { indice = JSON.parse(localStorage.getItem(OPI_INDICE_KEY) || 'null'); } catch (e) {}
+  if (!Array.isArray(indice) || !indice.length) return;
+  opi.indice = indice;
+  await Promise.all(indice.map(async x => {
+    let o = null;
+    try { o = JSON.parse(localStorage.getItem(OPI_MES_KEY + x.mes) || 'null'); } catch (e) {}
+    if (!o || !o.gz || !o.huella) return;
+    try { const c = await descomprimir(o.gz); ponerMes(x.mes, { huella: o.huella, filas: o.filas, h: c.h, r: c.r }, true); }
+    catch (e) { try { localStorage.removeItem(OPI_MES_KEY + x.mes); } catch (e2) {} }
+  }));
+}
+
+function siguienteMes() {   // el año activo primero (aunque se cambie de año mientras carga)
+  if (!opi.pendientes.length) return null;
+  const i = opi.pendientes.findIndex(m => anioDeMes(m) === activeYear);
+  return opi.pendientes.splice(i < 0 ? 0 : i, 1)[0];
+}
+async function trabajadorMeses() {
+  for (let mes = siguienteMes(); mes; mes = siguienteMes()) {
+    opi.enVuelo++;
+    try {
+      const o = await bajarMes(mes);
+      opi.enVuelo--; opi.fallidos.delete(mes);
+      ponerMes(mes, o);
+    } catch (err) {
+      opi.enVuelo--; opi.fallidos.set(mes, err.message);
+      console.warn('[OPINONA] no llegó ' + mes + ' · ' + err.message);
+      actualizarEstadoOpi();
+    }
+  }
+}
+async function bajarMes(mes) {
+  const url = API_URL + '?tabla=opinona_mes&mes=' + mes + (GZ_OK ? '' : '&gz=0');
+  for (let intento = 0; ; intento++) {
+    const j = await pedirJson(url, TIMEOUT_MES, true);
+    if (j.status === 'success') {
+      const c = j.gz ? await descomprimir(j.gz) : j.opinona;
+      if (!c || !Array.isArray(c.h) || !Array.isArray(c.r)) throw new Error('el mes ' + mes + ' llegó ilegible');
+      if (j.gz) guardarMesLocal(mes, j);
+      return { huella: j.huella, filas: j.filas, h: c.h, r: c.r };
+    }
+    // Error de la API (p. ej. lectura de Drive): una vez más y listo
+    if (intento) throw new Error(j.msg || j.reason || 'la API no devolvió ' + mes);
+    await new Promise(r => setTimeout(r, 2000));
+  }
+}
+async function descomprimir(b64) {
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const flujo = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return JSON.parse(await new Response(flujo).text());
+}
+function guardarMesLocal(mes, j) {
+  const val = JSON.stringify({ huella: j.huella, filas: j.filas, gz: j.gz });
+  try { localStorage.setItem(OPI_MES_KEY + mes, val); }
+  catch (e) {   // sin lugar: se borra lo viejo y se prueba una vez más
+    limpiarMemoriaVieja();
+    try { localStorage.setItem(OPI_MES_KEY + mes, val); }
+    catch (e2) { console.warn('[cache] no se pudo guardar el mes', mes, '-', e2.name); }
+  }
+}
+// OPINONA entera de antes (~5,6 MB: no entraba y se intentaba en cada apertura)
+// y los meses guardados que ya no están en el índice.
+function limpiarMemoriaVieja() {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+    const vigentes = new Set((opi.indice || []).map(x => OPI_MES_KEY + x.mes));
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(OPI_MES_KEY) && !vigentes.has(k)) localStorage.removeItem(k);
+    }
+  } catch (e) {}
+}
+
+function ponerMes(mes, o, silencioso) {
+  opi.datos.set(mes, { huella: o.huella, filas: o.filas, h: o.h, r: o.r, objs: null });
+  opi.version++;
+  if (silencioso) return;
+  const y = anioDeMes(mes);
+  if (y === null || anioCompleto(y)) programarRefresco();   // un año quedó completo (o cambió): redibujar
+  actualizarAvisoCarga(); actualizarEstadoOpi();
+}
+let _refrescoOpi = 0;
+function programarRefresco() { clearTimeout(_refrescoOpi); _refrescoOpi = setTimeout(refrescarDetalle, 150); }
+// Redibuja con todos los meses cargados, sólo si el año activo está completo.
+function refrescarDetalle() {
+  clearTimeout(_refrescoOpi);
+  if (opi.modo !== 'mes') return;
+  if (!anioCompleto(activeYear)) {   // si ya estaba dibujado, se redibuja cuando llegue lo que falta
+    if (!opinonaCargada) actualizarAvisoCarga();
+    actualizarEstadoOpi();
+    return;
+  }
+  const mismoAnio = opinonaCargada && opi.anioDibujado === activeYear;
+  if (mismoAnio && opi.versionDibujada === opi.version) { actualizarEstadoOpi(); return; }
+  rawData = [].concat(...[...opi.datos.keys()].sort().map(filasDeMes));   // orden de la hoja
+  opinonaCargada = true;
+  opi.anioDibujado = activeYear; opi.versionDibujada = opi.version;
+  showContent();
+  setupFilters(mismoAnio);   // redibujando el mismo año se conservan mes y semana elegidos
+  setFiltrosBloqueados(false);
+  onFilterChange();
+  actualizarEstadoOpi();
+}
+function filasDeMes(mes) {
+  const d = opi.datos.get(mes);
+  return d.objs || (d.objs = rehidratarOpinona({ h: d.h, r: d.r }));
+}
+// OPINONA entera en compacto { h, r }, en el orden de la hoja, para Programas. Un
+// mes guardado con otras columnas (la hoja cambió y todavía no se actualizó) se
+// reubica por nombre de columna.
+function opinonaCompacta() {
+  const meses = [...opi.datos.keys()].sort();
+  if (!meses.length) return { h: [], r: [] };
+  const h = opi.datos.get(meses.filter(m => m !== 'otros').pop() || meses[0]).h, cols = JSON.stringify(h), r = [];
+  for (const m of meses) {
+    const d = opi.datos.get(m);
+    if (JSON.stringify(d.h) === cols) { for (const f of d.r) r.push(f); continue; }
+    const idx = h.map(c => d.h.indexOf(c));
+    for (const f of d.r) r.push(idx.map(i => i < 0 ? '' : f[i]));
+  }
+  return { h, r };
+}
+
+function textoCargaDetalle() {
+  const ms = opi.modo === 'mes' ? mesesDelAnio(activeYear) : [];
+  if (!ms.length) return 'Cargando datos detallados (charts, tabla de control, filtros avanzados)...';
+  return `Cargando el detalle de ${activeYear} · ${ms.filter(m => opi.datos.has(m)).length} de ${ms.length} meses…`;
+}
+function actualizarAvisoCarga() {
+  const t = textoCargaDetalle();
+  document.querySelectorAll('.kpi-loading-hint:not([data-error])').forEach(el => { el.textContent = t; });
+}
+function actualizarEstadoOpi() {
+  if (opi.modo !== 'mes' || !opi.indice) return;
+  const n = rawData.length, pend = opi.pendientes.length + opi.enVuelo, fall = opi.fallidos.size;
+  if (!opinonaCargada) {
+    const ms = mesesDelAnio(activeYear);
+    setStatus('amber', `DETALLE ${activeYear} · ${ms.filter(m => opi.datos.has(m)).length}/${ms.length} MESES`);
+  } else if (opi.sinConexion) {
+    setStatus('amber', 'CACHE · SIN CONEXIÓN');
+  } else if (!opi.indiceApi || (pend && opi.indice.some(x => { const d = opi.datos.get(x.mes); return d && d.huella !== x.huella; }))) {
+    setStatus('amber', `CACHE · ACTUALIZANDO... (${n} filas)`);   // se ve lo guardado; falta bajar lo que cambió
+  } else if (pend) {
+    setStatus('amber', `VINCULADO · ${n} REGISTROS · CARGANDO ${pend} ${pend === 1 ? 'MES' : 'MESES'} MÁS`);
+  } else if (fall) {
+    setStatus('amber', `INCOMPLETO · SIN RESPUESTA: ${[...opi.fallidos.keys()].join(', ')}`);
+  } else {
+    const conTurno = rawData.filter(r => get(r,'turno_plan')).length;
+    setStatus('green', `VINCULADO · ${n} REGISTROS · ${conTurno} con turno`);
+  }
 }
 
 function trySet(key, val) {  try { localStorage.setItem(key, val); }
@@ -1345,6 +1611,7 @@ function normalizeTurno(v) {
    haya fracasado: sin esto el tablero aparenta estar cargando para siempre. */
 function marcarDetalleCaido(msg) {
   document.querySelectorAll('.kpi-loading-hint').forEach(el => {
+    el.dataset.error = '1';   // que el avance de meses no lo tape
     el.style.fontStyle = 'normal';
     el.innerHTML =
       '<div style="color:var(--vspt-crimson);font-weight:700;">No se pudo cargar el detalle</div>' +
@@ -1460,7 +1727,11 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.ms')) document.querySelectorAll('.ms.open').forEach(w => w.classList.remove('open'));
 });
 
-function setupFilters() {
+// conservar: al redibujar el mismo año con datos nuevos (llegó un mes) quedan el
+// mes y la semana que estaban elegidos. Al cambiar de año vuelven a "todos".
+function setupFilters(conservar) {
+  const perEl = document.getElementById('f-periodo'), semEl = document.getElementById('f-semana');
+  const perAntes = perEl.value, semAntes = semEl.value;
   const dataYear = rawData.filter(r => {
     const a = getAnio(r);
     return a === null || a === activeYear;
@@ -1487,6 +1758,11 @@ function setupFilters() {
 
   const formatos = [...new Set(dataYear.map(r => get(r,'Formato_1','Formato','FORMATO','formato')).filter(Boolean))].sort();
   msPopulate('f-formato', formatos);
+
+  if (conservar) {
+    if ([...perEl.options].some(o => o.value === perAntes)) perEl.value = perAntes;
+    if ([...semEl.options].some(o => o.value === semAntes)) semEl.value = semAntes;
+  }
 }
 
 function clearFilters() {
@@ -1812,6 +2088,13 @@ function changeTab(id) {
 function render() {
   if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal' || activeTab === 'mantenimiento' || activeTab === 'aplicaciones') return;
   if (!rawData.length) return;
+  // Año activo sin todos sus meses todavía (carga por mes): KPI de la hoja mensual,
+  // nunca totales parciales. El Reporte Diario va por día y usa lo que hay.
+  if (!opinonaCargada && activeTab !== 'diario') {
+    if (activeTab === 'objetivos' || !kpiData.length) document.getElementById('tab-' + activeTab).innerHTML = `<div class="kpi-loading-hint">${textoCargaDetalle()}</div>`;
+    else renderKPIsOnly();
+    return;
+  }
   if (activeTab === 'planta')    renderTab('planta', filteredData);
   else if (activeTab === 'l1')   renderTab('l1', filteredData.filter(r => getLinea(r) === 'L1'));
   else if (activeTab === 'l2')   renderTab('l2', filteredData.filter(r => getLinea(r) === 'L2'));
@@ -1945,7 +2228,7 @@ function renderTabKPIsOnly(tabId) {
       <div id="chart-${tabId}-evo" style="height:320px;"></div>
     </div>
 
-    <div class="kpi-loading-hint">Cargando datos detallados (charts, tabla de control, filtros avanzados)...</div>
+    <div class="kpi-loading-hint">${textoCargaDetalle()}</div>
   `;
 
   drawEvolutivoDesdeKPI(`chart-${tabId}-evo`, tabId, target, themeColor);

@@ -38,10 +38,11 @@ están en el `CLAUDE.md` de ese repo.
 Reglas para el HTML:
 1. No sumar pedidos a la API en la carga inicial ni en las pestañas que se precargan. Lo nuevo
    se pide a demanda: al abrir la pestaña o al tocar el botón.
-2. OPINONA se pide una sola vez (`pedirOpinona` de v15, en 4 partes). Programas embebido la
-   toma de `window.VSPT_OPINONA`. No volver a pedirla por otro camino ni en otro formato.
+2. OPINONA se pide una sola vez (`cargarDetalle` de v15: por mes, ver regla 11; con una API
+   anterior, las 4 partes de `pedirOpinona`). Programas embebido la toma de
+   `window.VSPT_OPINONA`. No volver a pedirla por otro camino ni en otro formato.
 3. No cambiar `API_URL`, ni `OPI_PARTES` (tiene que coincidir con la foto de la API), ni cómo
-   se unen las partes, sin cambiar también la API.
+   se unen las partes o los meses, sin cambiar también la API.
 4. Si una pestaña necesita datos pesados, se agregan a la foto de la API o a un pedido
    liviano. Nunca se lee en vivo una tabla grande al abrir.
 5. Si el cambio del HTML viene con un cambio de la API, correr el verificador del repo
@@ -64,3 +65,17 @@ Reglas para el HTML:
    No volver a lanzar todo en paralelo.
 10. Si la API falla, se avisa. **Nunca** se pasa a datos de ejemplo: se ven como reales y, en
     Personal, se podían guardar encima de la asignación real.
+11. **OPINONA por mes (29-sep, API 2026-09-29b o posterior).** Aun de a una, las partes de
+    1,4 MB se perdían (~30 s cada vez) y el detalle tardaba hasta 4 minutos. Lo que llega
+    siempre son las respuestas chicas. v15 (`cargarOpinonaPorMes`):
+    - pide el índice (`?tabla=opinona_meses`) y cada mes (`?tabla=opinona_mes&mes=AAAA-MM`,
+      gzip + base64, 12-45 KB), de a 2, cada intento cortado a los 15 s (`pedirJson` con
+      `reintentarSiVence`);
+    - guarda cada mes en `localStorage` (`vspt_opi_mes_v1:AAAA-MM` + índice `vspt_opi_meses_v1`,
+      ~600 KB): al abrir dibuja lo guardado y baja sólo los meses cuya huella cambió;
+    - orden: el año activo primero, del mes en curso hacia enero; después el resto;
+    - el detalle de un año se dibuja con **todos** sus meses (nunca YTD parcial); mientras,
+      quedan los KPI de la hoja mensual con el avance;
+    - sin `DecompressionStream` pide `&gz=0` y no guarda nada.
+    Si cambia el formato de lo guardado, cambiar la versión de las claves (`_v2`). Lo nuevo que
+    se pida al abrir, también chico (hasta ~100 KB por respuesta).

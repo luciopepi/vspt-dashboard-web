@@ -3,8 +3,14 @@ branch: main
 publica: Netlify (deploy desde main)
 
 ## Last sync
-date: 2026-09-29T03:23:00Z
+date: 2026-09-29T18:00:00Z
 ### Updated in this project
+- **Detalle de v15 por mes, con memoria del navegador (29-sep, requiere la API 2026-09-29b)**: el detalle tardaba hasta 4 minutos (cada parte de 1,4 MB que Google perdía costaba ~30 s).
+  - OPINONA llega mes por mes, comprimida (12-45 KB por mes), de a 2 pedidos, del mes en curso hacia enero y después 2025. Cada intento se corta a los 15 s y se reintenta.
+  - Cada mes queda guardado en el navegador (~600 KB): al volver a abrir se dibuja al instante y sólo se baja lo que cambió (casi siempre el mes en curso).
+  - El detalle de un año aparece cuando están todos sus meses: los totales del año nunca se ven parciales. Mientras tanto se ven los KPI de la hoja mensual con el avance ("2026 · 4 de 9 meses").
+  - Con la API anterior sigue cargando por partes, como antes. Programas embebido recibe OPINONA del tablero, igual que antes.
+  - Probado en Chromium con la API simulada sobre los datos reales: primera carga, segunda carga con un mes cambiado, pérdidas de Google (404 y pedidos colgados), API anterior, un mes que no llega, cambio de año mientras carga y navegador sin descompresión.
 - **Carga resistente a respuestas perdidas por Google (29-sep)**: con la API sirviendo todo en 1-2 s, Google igual perdía las respuestas medianas y grandes cuando salían ~14 pedidos juntos (el `echo` volvía a `/exec` y terminaba en 404 con HTML: "No se pudo cargar el detalle · Unexpected token '<'…").
   - Todo GET a la API pasa por `pedirJson` (`pedirMant` en Mantenimiento), que reintenta 3 veces con espera creciente si no vuelve JSON. Los POST no se reintentan.
   - En v15 las 4 partes de OPINONA salen de a una. Las pestañas embebidas (Programas, Calidad, Personal) se precargan recién cuando termina el detalle, una cada 4,5 s.
@@ -23,7 +29,8 @@ date: 2026-09-29T03:23:00Z
 | Dashboard completo (todas las pestañas) | Dashboard_v15.html |
 | Fallas de equipos: Horas vs % T. Efectivo | Dashboard_v15.html · fallaModeHTML / setFallaMode / drawFallaSemana / serieDomain |
 | Reporte Diario (pestaña) | Dashboard_v15.html · renderDiario / drawDiarioDonut / drawDiarioPareto / drawDiarioSemana / openModalDiarioClasif / openModalDiarioVel |
-| Carga de datos en dos fases · compacto y por partes | Dashboard_v15.html · init / pedirOpinona / rehidratarOpinona / marcarDetalleCaido |
+| Carga del detalle · OPINONA por mes con memoria del navegador | Dashboard_v15.html · init / cargarDetalle / cargarOpinonaPorMes / leerMemoria / trabajadorMeses / bajarMes / refrescarDetalle / actualizarEstadoOpi / textoCargaDetalle |
+| Carga del detalle · por partes (API anterior) | Dashboard_v15.html · cargarOpinonaPorPartes / pedirOpinona / rehidratarOpinona / marcarDetalleCaido |
 | Pedidos a la API con reintento · precarga de pestañas después del detalle | Dashboard_v15.html · pedirJson / REINTENTOS_API / detalleListo · Dashboard_programas.html, Dashboard_calidad.html, Dashboard_personal.html · pedirJson · Dashboard_mantenimiento.html · pedirMant |
 | Programas · OPINONA (la del tablero o por partes) | Dashboard_programas.html · fetchFresh / opinonaDelTablero / pedirOpinona / rehidratarOpinona |
 | Mantenimiento (pestaña embebida) | Dashboard_mantenimiento.html · cargar / renderOT / formCarga / renderAlertas / renderCal / renderEquipos / renderAvisos / renderAjustes |
