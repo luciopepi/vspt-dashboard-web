@@ -231,6 +231,12 @@
   .diario-tight .table-obj th { padding:4px 6px; font-size:8.5px; letter-spacing:0.4px; }
   .diario-tight .table-obj td { padding:4px 6px; }
   .diario-tight .table-obj tr[onclick]:hover { background:var(--tr-hover); }
+  /* Día en vivo desde AppSheet: botón y estado en la cabecera del Reporte Diario */
+  .diario-vivo { display:inline-flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap; }
+  .diario-vivo .dv-txt { font-size:10px; font-weight:700; color:var(--muted); letter-spacing:0.02em; }
+  .diario-vivo .dv-ok  { color:var(--vspt-olive); }
+  .diario-vivo .dv-err { color:var(--vspt-crimson); max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .diario-vivo .dv-x { background:none; border:none; padding:0; font:inherit; font-size:10px; font-weight:600; color:var(--muted); text-decoration:underline; cursor:pointer; }
   /* Composición del tiempo: hasta 9 filas (con NoNa y retrabajo) en el alto de la tarjeta */
   .diario-tight .casc-tabla td { padding:2.5px 6px; }
   @media (max-width:1500px) { .diario-tight .casc-nota { display:none; } }
@@ -3363,6 +3369,63 @@ function stepDiario(delta) {
 }
 function setDiarioLinea(l) { diarioLinea = l; renderDiario(); }
 
+/* ── Día en vivo desde AppSheet (4-oct-2026) ──
+   A la mañana se corrigen en la app los registros del día anterior y se presentan en la
+   reunión. "Traer de AppSheet" pide ese día leído en vivo de la planilla de la app
+   (?tabla=opinona_dia, API 2026-10-04a o posterior: sólo lectura, ~30 KB) y el Reporte
+   Diario se dibuja con esos registros en lugar de los de la BD. No cambia la BD ni las
+   otras pestañas: la BD se pone al día sola con el temporizador del ETL. */
+const diarioVivo = {};          // 'AAAA-MM-DD' → { filas, leida }
+let diarioVivoEstado = null;    // { fecha, cargando } | { fecha, error }
+const FECHA_CORTE_APPSHEET = '2026-07-07';   // antes, los datos vienen del Excel histórico
+
+// Datos del Reporte Diario: los de la BD, con el día leído en vivo (si se pidió) en lugar del de la BD.
+function diarioBase() {
+  const v = diarioVivo[diarioFecha];
+  if (!v) return rawData;
+  return rawData.filter(r => { const f = getFecha(r); return !(f && diaYMD(f) === diarioFecha); }).concat(v.filas);
+}
+
+// Lo que el ETL agrega a cada registro y AppSheet no tiene: las columnas del PLAN (por orden)
+// y PT A/B de los cambios. Se toman de la BD, del mismo registro o de la misma orden.
+function completarDiaDesdeBD(filas, fecha) {
+  const PLAN = ['turno_plan', 'codigo_vino', 'tipo_vino', 'semielaborado', 'codigo_botella'];
+  const op = r => String(get(r, 'Id. Producción') || '').trim();
+  const clave = r => [getLinea(r), get(r, 'Hora Inicio') || '', getClasif2(r), op(r)].join('|');
+  const porOp = {}, porClave = {};
+  rawData.forEach(r => {
+    const o = op(r);
+    if (o && !porOp[o] && PLAN.some(c => r[c])) porOp[o] = r;
+    const f = getFecha(r);
+    if (f && diaYMD(f) === fecha && getClasif1(r) === CATS.CAMBIO) porClave[clave(r)] = r;
+  });
+  filas.forEach(r => {
+    const b = porOp[op(r)];
+    if (b) PLAN.forEach(c => { if (!r[c]) r[c] = b[c]; });
+    const c = getClasif1(r) === CATS.CAMBIO && porClave[clave(r)];
+    if (c) ['Cambio Formato PT A', 'Cambio Formato PT B'].forEach(k => { if (!r[k]) r[k] = c[k]; });
+  });
+  return filas;
+}
+
+async function traerDiaEnVivo() {
+  const fecha = diarioFecha;
+  if (!fecha || (diarioVivoEstado && diarioVivoEstado.cargando)) return;
+  diarioVivoEstado = { fecha, cargando: true };
+  renderDiario();
+  try {
+    const j = await pedirJson(API_URL + '?tabla=opinona_dia&fecha=' + fecha, 45000);
+    if (!j || j.status !== 'success') throw new Error((j && (j.msg || j.reason || j.error)) || 'la API no respondió');
+    if (!Array.isArray(j.r)) throw new Error('hace falta publicar la API nueva (opinona_dia)');
+    diarioVivo[fecha] = { filas: completarDiaDesdeBD(rehidratarOpinona({ h: j.h, r: j.r }), fecha), leida: new Date(j.leida || Date.now()) };
+    diarioVivoEstado = null;
+  } catch (e) {
+    diarioVivoEstado = { fecha, error: (e && e.message) || String(e) };
+  }
+  if (activeTab === 'diario' && diarioFecha === fecha) renderDiario();
+}
+function soltarDiaEnVivo() { delete diarioVivo[diarioFecha]; diarioVivoEstado = null; renderDiario(); }
+
 // Recalcula alturas al cambiar el tamaño de ventana (y al cruzar el corte de 1100px)
 let _diarioResize;
 window.addEventListener('resize', () => {
@@ -3381,7 +3444,8 @@ function renderDiario() {
   if (!diarioFecha || !fechas.includes(diarioFecha)) diarioFecha = fechas[fechas.length - 1];
 
   const lineFilter = r => diarioLinea === 'planta' ? true : getLinea(r) === diarioLinea.toUpperCase();
-  const dayRows = rawData.filter(r => { const f = getFecha(r); return f && diaYMD(f) === diarioFecha && lineFilter(r); });
+  const base = diarioBase();   // la BD, con el día traído en vivo de AppSheet si se pidió
+  const dayRows = base.filter(r => { const f = getFecha(r); return f && diaYMD(f) === diarioFecha && lineFilter(r); });
 
   const fechaObj = new Date(diarioFecha + 'T12:00:00');
   const fechaTxt = fechaObj.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
@@ -3408,6 +3472,20 @@ function renderDiario() {
   const lineBtns = [['planta','Planta'],['l1','L1'],['l2','L2'],['l3','L3']]
     .map(([k,l]) => `<button type="button" class="opi-view-btn ${diarioLinea===k?'on':''}" onclick="setDiarioLinea('${k}')"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${THEME_COLOR[k]};margin-right:6px;vertical-align:-1px;box-shadow:0 0 0 1px rgba(0,0,0,.18);"></span>${l}</button>`).join('');
 
+  // Botón "Traer de AppSheet" y estado del día en vivo
+  const vivo = diarioVivo[diarioFecha];
+  const est = diarioVivoEstado && diarioVivoEstado.fecha === diarioFecha ? diarioVivoEstado : null;
+  const hhmm = d => d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', hour12:false });
+  const escTxt = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const vivoHtml = diarioFecha < FECHA_CORTE_APPSHEET ? '' : `<span class="diario-vivo">
+      <button type="button" class="opi-view-btn" onclick="traerDiaEnVivo()" ${est && est.cargando ? 'disabled' : ''}
+        title="${vivo ? 'Volver a traer de AppSheet' : 'Lee ahora de la app (AppSheet) los registros de este día, con las correcciones, y redibuja el reporte. No cambia la base: se pone al día sola con el temporizador.'}">⟳${vivo ? '' : ' Traer de AppSheet'}</button>
+      ${est && est.cargando ? '<span class="dv-txt">Leyendo AppSheet…</span>'
+        : est && est.error ? `<span class="dv-txt dv-err" title="${escTxt(est.error)}">No se pudo traer el día: ${escTxt(est.error)}</span>`
+        : vivo ? `<span class="dv-txt dv-ok" title="${vivo.filas.length} registros de este día leídos de AppSheet a las ${hhmm(vivo.leida)}. La base todavía puede no tenerlos: se actualiza sola con el temporizador.">● En vivo de AppSheet · ${hhmm(vivo.leida)}</span>
+          <button type="button" class="dv-x" onclick="soltarDiaEnVivo()" title="Volver a los datos de la base">usar la base</button>` : ''}
+    </span>`;
+
   const head = `
     <div class="chart-card full" style="margin-bottom:8px;padding:7px 12px;">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -3419,6 +3497,7 @@ function renderDiario() {
           <button type="button" class="opi-view-btn" onclick="stepDiario(1)" title="Día siguiente con datos">›</button>
         </div>
         <span class="opi-view-switch" style="display:inline-flex;gap:5px;">${lineBtns}</span>
+        ${vivoHtml}
       </div>
     </div>`;
 
@@ -3429,7 +3508,7 @@ function renderDiario() {
   const heroCls = m.opi >= target ? '' : 'below';
 
   // OPINONA del mes a la fecha, misma línea — referencia para el día
-  const mesRows = rawData.filter(r => {
+  const mesRows = base.filter(r => {
     const f = getFecha(r);
     return f && lineFilter(r) && f.getFullYear() === fechaObj.getFullYear() && f.getMonth() === fechaObj.getMonth() && diaYMD(f) <= diarioFecha;
   });
@@ -3663,7 +3742,7 @@ function renderDiario() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date(fechaObj); d.setDate(d.getDate() - i);
     const ymd = diaYMD(d);
-    const rs = rawData.filter(r => { const f = getFecha(r); return f && diaYMD(f) === ymd && lineFilter(r); });
+    const rs = base.filter(r => { const f = getFecha(r); return f && diaYMD(f) === ymd && lineFilter(r); });
     const opi = rs.length ? procesarMetricas(rs).opi : null;
     semanaSerie.push({ ymd, label: d.toLocaleDateString('es-AR', { weekday:'short' }).replace('.','') + ' ' + d.getDate(), opi: (opi && opi > 0) ? Number(opi.toFixed(1)) : null });
   }
@@ -4248,7 +4327,7 @@ function openModalDiarioClasif(clasif, subcat, scope) {
     ? 'del 1 al ' + fechaObj.getDate() + ' de ' + fechaObj.toLocaleDateString('es-AR', { month:'long' })
     : fechaObj.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' });
   const lineaTxt = diarioLinea === 'planta' ? 'Planta' : diarioLinea.toUpperCase();
-  const rows = rawData.filter(r => {
+  const rows = diarioBase().filter(r => {
     if (getClasif1(r) !== clasif) return false;
     if (diarioLinea !== 'planta' && getLinea(r) !== diarioLinea.toUpperCase()) return false;
     if (subcat && (getClasif2(r) || 'Sin clasificar') !== subcat) return false;
@@ -4327,7 +4406,7 @@ function openModalDiarioPNC() {
   const fechaObj = new Date(diarioFecha + 'T12:00:00');
   const lineaTxt = diarioLinea === 'planta' ? 'Planta' : diarioLinea.toUpperCase();
   const conRechazo = fechaObj >= FECHA_CORTE_PNC;
-  const rows = rawData.filter(r => {
+  const rows = diarioBase().filter(r => {
     if (getPNI(r) <= 0) return false;
     if (diarioLinea !== 'planta' && getLinea(r) !== diarioLinea.toUpperCase()) return false;
     const f = getFecha(r);
@@ -4374,7 +4453,7 @@ function openModalDiarioPNC() {
 /* Pérdidas de velocidad del día — una fila por orden de producción. */
 function openModalDiarioVel() {
   const fechaObj = new Date(diarioFecha + 'T12:00:00');
-  const rows = rawData.filter(r => {
+  const rows = diarioBase().filter(r => {
     if (getClasif1(r) !== CATS.PRODUCCION) return false;
     if (diarioLinea !== 'planta' && getLinea(r) !== diarioLinea.toUpperCase()) return false;
     const f = getFecha(r);
