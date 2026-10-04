@@ -231,6 +231,9 @@
   .diario-tight .table-obj th { padding:4px 6px; font-size:8.5px; letter-spacing:0.4px; }
   .diario-tight .table-obj td { padding:4px 6px; }
   .diario-tight .table-obj tr[onclick]:hover { background:var(--tr-hover); }
+  /* Composición del tiempo: hasta 9 filas (con NoNa y retrabajo) en el alto de la tarjeta */
+  .diario-tight .casc-tabla td { padding:2.5px 6px; }
+  @media (max-width:1500px) { .diario-tight .casc-nota { display:none; } }
   .diario-grid   { display:grid; grid-template-columns:1.18fr 1fr 1.02fr; gap:8px; margin-bottom:8px; }
   .diario-grid-2 { display:grid; grid-template-columns:1.35fr 1fr; gap:8px; }
   @media (max-width:1100px) {
@@ -783,7 +786,9 @@ const CAT_COLORS = {
   'Tiempos de Cambio':    '#F08808',
   'Tiempos Planeados':    '#F8C040',
   'NoNa':                 '#701F52',
-  'Tiempos de No Uso':    '#4E1742'
+  'Tiempos de No Uso':    '#4E1742',
+  'Rechazos y Reprocesos':   '#9C4F96',
+  'Mantención por Terceros': '#7A627A'
 };
 const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', diario:'#4E1742', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808', aplicaciones:'#98A040', mantenimiento:'#4E1742' };
 
@@ -3343,7 +3348,7 @@ let diarioLinea = 'planta';
 const DIARIO_H = { donut:260, pareto:240, row:300, row2:300 };
 
 const diaYMD = d => { const p = n => String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); };
-const diaMin = h => Math.round(h * 60);
+const diaMin = h => Math.round(h * 60) || 0;   // || 0: sin "-0"
 
 function diarioFechas() {
   const s = new Set();
@@ -3398,6 +3403,7 @@ function renderDiario() {
   const btnDiario = document.querySelector('.tab-btn[data-tab="diario"]');
   if (btnDiario) btnDiario.style.setProperty('--tab-color', themeColor);
   const target = targets[diarioLinea === 'planta' ? 'planta' : diarioLinea]?.anual ?? 40;
+  const ncTargetDia = targets[diarioLinea === 'planta' ? 'planta' : diarioLinea]?.noConf ?? NO_CONF_DEFAULT;
 
   const lineBtns = [['planta','Planta'],['l1','L1'],['l2','L2'],['l3','L3']]
     .map(([k,l]) => `<button type="button" class="opi-view-btn ${diarioLinea===k?'on':''}" onclick="setDiarioLinea('${k}')"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${THEME_COLOR[k]};margin-right:6px;vertical-align:-1px;box-shadow:0 0 0 1px rgba(0,0,0,.18);"></span>${l}</button>`).join('');
@@ -3502,31 +3508,47 @@ function renderDiario() {
       <td style="color:var(--muted);">${Math.round(diaMin(x.h)/x.n).toLocaleString('es-AR')}</td>
     </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);font-weight:400;">Sin cambios de orden en el día</td></tr>';
 
-  // ── Composición del tiempo del día: las 5 categorías OPINONA ──
-  // Base: Tiempo Efectivo de Trabajo (excluye No Uso). Clic → detalle del día.
-  const casc = [CATS.PRODUCCION, CATS.PLANEADO, CATS.FALLA, CATS.EXTERNA, CATS.CAMBIO]
-    .map(k => ({ k, h: m.tiempoPorClasif[k] || 0 }));
-  const cascTot = casc.reduce((s,x) => s + x.h, 0);
-  const cascMax = Math.max(...casc.map(x => x.h), 0.001);
+  // ── Composición del tiempo del día: todo menos No Uso ──
+  // Las 5 categorías OPINONA siempre; Rechazos y Reprocesos, Mant. por Terceros, otras y NoNa
+  // cuando hubo. Suman el T. con Personal (la misma base que la torta). El subtotal T. Efectivo
+  // (sin NoNa) es el de la tarjeta de arriba y el del OPINONA. Clic → detalle del día.
+  const CASC_BASE = [CATS.PRODUCCION, CATS.PLANEADO, CATS.FALLA, CATS.EXTERNA, CATS.CAMBIO];
+  const ordenExtra = k => { const i = CATS_RETRABAJO.indexOf(k); return i < 0 ? 99 : i; };
+  const cascExtra = Object.keys(m.paros)
+    .filter(k => !CASC_BASE.includes(k) && k !== CATS.NONA && Math.abs(m.paros[k]) > 1e-9)
+    .sort((a, b) => ordenExtra(a) - ordenExtra(b) || m.paros[b] - m.paros[a]);
+  const casc = [...CASC_BASE, ...cascExtra].map(k => ({ k, h: m.paros[k] || 0 }));
+  const cascNona = m.paros[CATS.NONA] || 0;
+  // Filas sin Clasificación_1: entran al T. Efectivo pero no a ninguna categoría
+  const cascSinClasif = m.tEfectivo - casc.reduce((s,x) => s + x.h, 0);
+  if (Math.abs(cascSinClasif) > 1e-6) casc.push({ k: 'Sin clasificar', h: cascSinClasif, sinClic: true });
+  const cascTot = m.tConPersonal;
+  const cascMax = Math.max(...casc.map(x => x.h), cascNona, 0.001);
   const CASC_LABEL = {
     [CATS.PRODUCCION]:'Tpo de Producción', [CATS.PLANEADO]:'Tpo Planeado', [CATS.FALLA]:'Falla Equipos',
-    [CATS.EXTERNA]:'Pdas Externas', [CATS.CAMBIO]:'Tpos de Cambio'
+    [CATS.EXTERNA]:'Pdas Externas', [CATS.CAMBIO]:'Tpos de Cambio', [CATS.NONA]:'NoNa',
+    'Rechazos y Reprocesos':'Rechazos y Reproc.', 'Mantención por Terceros':'Mant. Terceros'
   };
-  const cascRows = casc.map(({k, h}) => `<tr onclick="openModalDiarioClasif('${k.replace(/'/g,"\\'")}')" style="cursor:pointer;" title="${k} — ver registros del día">
+  const cascPct = h => cascTot ? (h/cascTot*100).toFixed(1) : '0.0';
+  const cascFila = ({k, h, sinClic}) => `<tr ${sinClic ? 'title="Registros sin Clasificación_1"' : `onclick="openModalDiarioClasif('${k.replace(/'/g,"\\'")}')" style="cursor:pointer;" title="${k} — ver registros del día"`}>
       <td style="font-weight:700;white-space:nowrap;width:1%;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${CAT_COLORS[k]||'#B61858'};margin-right:6px;vertical-align:0;"></span>${CASC_LABEL[k]||k}</td>
       <td style="width:1%;font-weight:800;white-space:nowrap;">${diaMin(h).toLocaleString('es-AR')}</td>
       <td>
         <div style="height:11px;border-radius:3px;background:var(--tr-hover);min-width:26px;">
-          <div style="height:11px;border-radius:3px;background:${CAT_COLORS[k]||'#B61858'};width:${h/cascMax*100}%;"></div>
+          <div style="height:11px;border-radius:3px;background:${CAT_COLORS[k]||'#B61858'};width:${Math.max(0, h)/cascMax*100}%;"></div>
         </div>
       </td>
-      <td style="width:1%;font-weight:800;white-space:nowrap;">${cascTot ? (h/cascTot*100).toFixed(1) : '0.0'}%</td>
-    </tr>`).join('') + `<tr style="background:var(--tr-hover);">
-      <td style="font-weight:800;white-space:nowrap;width:1%;">Tpo Efectivo</td>
-      <td style="font-weight:800;white-space:nowrap;width:1%;">${diaMin(cascTot).toLocaleString('es-AR')}</td>
-      <td style="font-size:9px;color:var(--muted);font-weight:600;white-space:nowrap;">${cascTot.toFixed(2)} h</td>
-      <td style="font-weight:800;width:1%;">100%</td>
+      <td style="width:1%;font-weight:800;white-space:nowrap;">${cascPct(h)}%</td>
     </tr>`;
+  const cascTotal = (label, h, nota) => `<tr style="background:var(--tr-hover);" ${nota ? `title="${label}: ${nota}"` : ''}>
+      <td style="font-weight:800;white-space:nowrap;width:1%;">${label}</td>
+      <td style="font-weight:800;white-space:nowrap;width:1%;">${diaMin(h).toLocaleString('es-AR')}</td>
+      <td style="font-size:9px;color:var(--muted);font-weight:600;white-space:nowrap;">${h.toFixed(2)} h${nota ? ` <span class="casc-nota">· ${nota}</span>` : ''}</td>
+      <td style="font-weight:800;width:1%;">${cascPct(h)}%</td>
+    </tr>`;
+  const cascRows = casc.map(cascFila).join('') + (Math.abs(cascNona) > 1e-9
+    ? cascTotal('Tpo Efectivo', m.tEfectivo, 'sin NoNa') + cascFila({ k: CATS.NONA, h: cascNona }) + cascTotal('Tpo c/Personal', cascTot, 'sin No Uso')
+    : cascTotal('Tpo Efectivo', m.tEfectivo, ''));
 
   // ── Pareto acumulado del mes (fallas de equipos) ──
   const parMes = {};
@@ -3538,7 +3560,7 @@ function renderDiario() {
 
   container.innerHTML = head + `
     <div class="diario-tight">
-    <div class="kpi-row" style="grid-template-columns:repeat(6,1fr);">
+    <div class="kpi-row" style="grid-template-columns:repeat(7,1fr);">
       <div class="kpi-card kpi-hero ${heroCls}" style="grid-column:span 2;">
         <div class="kpi-label">OPINONA DEL DÍA · ${diarioLinea === 'planta' ? 'PLANTA' : diarioLinea.toUpperCase()}</div>
         <div class="kpi-value ${kpiCls}">${m.opi.toFixed(1)}%</div>
@@ -3554,6 +3576,11 @@ function renderDiario() {
         <div class="kpi-value olive">${m.cajas.toLocaleString('es-AR')}</div>
         <div class="kpi-sub">${m.hlTotal.toFixed(0)} HL</div>
       </div>
+      <div class="kpi-card" onclick="openModalDiarioPNC()" style="cursor:pointer;" title="Ver las órdenes con producto no conforme del día">
+        <div class="kpi-label">PNC Retenido</div>
+        <div class="kpi-value ${m.pni > 0 && m.pctPNI > ncTargetDia ? 'nc-bad' : 'nc-ok'}">${Math.round(m.pni).toLocaleString('es-AR')} <span style="font-size:12px;opacity:.6">C9L</span></div>
+        <div class="kpi-sub">${fechaObj < FECHA_CORTE_PNC ? 'rechazo —' : 'rechazo ' + diaMin(m.tPNC).toLocaleString('es-AR') + ' min'} · ${m.pctPNI.toFixed(2)}%</div>
+      </div>
       <div class="kpi-card red">
         <div class="kpi-label">Fallas de Equipos</div>
         <div class="kpi-value red">${diaMin(m.tiempoPorClasif[CATS.FALLA]).toLocaleString('es-AR')} <span style="font-size:12px;opacity:.6">min</span></div>
@@ -3568,8 +3595,8 @@ function renderDiario() {
 
     <div class="diario-grid" id="diario-row1" style="${hRow}">
       <div class="chart-card" style="overflow:auto;">
-        <div class="chart-title">Composición del Tiempo Efectivo <span class="hint">min · clic = detalle · abajo: OPINONA 7 días</span></div>
-        <table class="table-obj" style="table-layout:auto;"><tbody>${cascRows}</tbody></table>
+        <div class="chart-title">Composición del Tiempo <span class="hint">sin No Uso · min · clic = detalle · abajo: OPINONA 7 días</span></div>
+        <table class="table-obj casc-tabla" style="table-layout:auto;"><tbody>${cascRows}</tbody></table>
         <div id="chart-diario-semana" style="margin-top:6px;"></div>
       </div>
       <div class="chart-card">
@@ -4251,6 +4278,9 @@ function openModalDiarioClasif(clasif, subcat, scope) {
   const catColor = CAT_COLORS[clasif] || 'var(--vspt-amber)';
   const isFalla = clasif === CATS.FALLA;
   const subLabel = isFalla ? 'Equipo' : clasif === CATS.EXTERNA ? 'Causa' : 'Descripción';
+  // NoNa, Rechazos y Mant. por Terceros: qué orden estaba en la línea y si fue llenado solo
+  const conOrden = clasif === CATS.NONA || CATS_RETRABAJO.includes(clasif);
+  const nCols = 6 + (isFalla ? 1 : 0) + (conOrden ? 4 : 0);
 
   let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
     <div>
@@ -4260,13 +4290,15 @@ function openModalDiarioClasif(clasif, subcat, scope) {
     </div>
     <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
   </div><div style="overflow:auto;max-height:62vh;"><table><thead><tr>
-    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Min</th><th>${subLabel}</th>
+    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Min</th>
+    ${conOrden ? '<th>OP</th><th>Formato</th><th>Tipo Etiq.</th><th>Cajas</th>' : ''}
+    <th>${subLabel}</th>
     ${isFalla ? '<th>MTO/OP</th>' : ''}
     <th style="width:36%;">Observaciones</th>
   </tr></thead><tbody>`;
 
   if (!rows.length) {
-    html += `<tr><td colspan="${isFalla ? 7 : 6}" style="text-align:center;padding:24px;opacity:.6;">Sin registros</td></tr>`;
+    html += `<tr><td colspan="${nCols}" style="text-align:center;padding:24px;opacity:.6;">Sin registros</td></tr>`;
   } else {
     rows.forEach(r => {
       const f = getFecha(r);
@@ -4275,9 +4307,62 @@ function openModalDiarioClasif(clasif, subcat, scope) {
         <td><strong>${getLinea(r)||'—'}</strong></td>
         <td>${get(r,'Turno','Turno ','turno')||getTurnoFromPlan(r)||'—'}</td>
         <td style="font-weight:700;color:${catColor};">${diaMin(getVarTiempo(r)).toLocaleString('es-AR')}</td>
+        ${conOrden ? `<td style="white-space:nowrap;">${get(r,'Id. Producción','Id. Produccion','id_produccion','OP')||'—'}</td>
+        <td>${get(r,'Formato_1','FORMATO_1','Formato','formato')||'—'}</td>
+        <td style="white-space:nowrap;${getTipoEti(r) === 'LLENADO' ? 'font-weight:800;color:var(--vspt-amber);' : ''}" title="${getTipoEti(r) === 'LLENADO' ? 'Llenado solo (semielaborado)' : ''}">${getTipoEti(r)||'—'}</td>
+        <td>${getCajas(r) ? getCajas(r).toLocaleString('es-AR') : '—'}</td>` : ''}
         <td>${getClasif2(r)||'—'}</td>
         ${isFalla ? `<td>${getMTO(r)||'—'}</td>` : ''}
         <td style="font-style:italic;opacity:.8;white-space:normal;">${get(r,'Observaciones','observaciones')||'—'}</td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+/* Producto no conforme del día — una fila por registro con cajas retenidas. */
+function openModalDiarioPNC() {
+  const fechaObj = new Date(diarioFecha + 'T12:00:00');
+  const lineaTxt = diarioLinea === 'planta' ? 'Planta' : diarioLinea.toUpperCase();
+  const conRechazo = fechaObj >= FECHA_CORTE_PNC;
+  const rows = rawData.filter(r => {
+    if (getPNI(r) <= 0) return false;
+    if (diarioLinea !== 'planta' && getLinea(r) !== diarioLinea.toUpperCase()) return false;
+    const f = getFecha(r);
+    return f && diaYMD(f) === diarioFecha;
+  }).map(r => {
+    const cajas = getCajas(r), pnc = getPNI(r);
+    return { r, cajas, pnc, c9l: cajas > 0 ? pnc * (getC9L(r) / cajas) : pnc, h: conRechazo ? horasPNC(r) : 0 };
+  }).sort((a, b) => b.c9l - a.c9l);
+  const tot = rows.reduce((t, x) => ({ pnc: t.pnc + x.pnc, c9l: t.c9l + x.c9l, h: t.h + x.h }), { pnc:0, c9l:0, h:0 });
+  const catColor = 'var(--vspt-crimson)';
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:${catColor};text-transform:uppercase;">Producto no conforme retenido</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;text-transform:capitalize;">${lineaTxt} · ${fechaObj.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' })}</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">Total: ${Math.round(tot.c9l).toLocaleString('es-AR')} C9L · ${tot.pnc.toLocaleString('es-AR')} cajas${conRechazo ? ' · rechazo ' + diaMin(tot.h).toLocaleString('es-AR') + ' min' : ''} · ${rows.length} registros</div>
+      <div style="color:var(--muted);font-size:11px;margin-top:4px;">Rechazo: horas de línea a velocidad nominal para producir las cajas retenidas${conRechazo ? '' : ' (se descuenta desde jul-2026)'}.</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div><div style="overflow:auto;max-height:62vh;"><table><thead><tr>
+    <th>Línea</th><th>Turno</th><th>OP</th><th>Formato</th><th>Cajas prod.</th><th>Cajas PNC</th><th>C9L PNC</th><th>Min rechazo</th>
+  </tr></thead><tbody>`;
+  if (!rows.length) {
+    html += `<tr><td colspan="8" style="text-align:center;padding:24px;opacity:.6;">Sin producto no conforme en el día</td></tr>`;
+  } else {
+    rows.forEach(({ r, cajas, pnc, c9l, h }) => {
+      html += `<tr>
+        <td><strong>${getLinea(r)||'—'}</strong></td>
+        <td>${get(r,'Turno','Turno ','turno')||getTurnoFromPlan(r)||'—'}</td>
+        <td style="white-space:nowrap;">${get(r,'Id. Producción','Id. Produccion','id_produccion','OP')||'—'}</td>
+        <td>${get(r,'Formato_1','FORMATO_1','Formato','formato')||'—'}</td>
+        <td>${cajas.toLocaleString('es-AR')}</td>
+        <td style="font-weight:700;color:${catColor};">${pnc.toLocaleString('es-AR')}</td>
+        <td style="font-weight:700;">${Math.round(c9l).toLocaleString('es-AR')}</td>
+        <td>${conRechazo ? diaMin(h).toLocaleString('es-AR') : '—'}</td>
       </tr>`;
     });
   }
