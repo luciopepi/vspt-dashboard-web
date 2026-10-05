@@ -115,6 +115,19 @@
   .tab-btn:hover { color:var(--text); background:var(--tr-hover); }
   .tab-btn.active { color:var(--tab-color,var(--vspt-crimson)); border-bottom-color:var(--tab-color,var(--vspt-crimson)); background:transparent; }
 
+  /* Reporte Diario (5-oct): el membrete se desliza hacia arriba y desaparece, las pestañas quedan
+     pegadas arriba y más chicas y no hay filtros al costado (el reporte tiene su fecha y su línea).
+     Al elegir otra pestaña todo vuelve. Igual que la Planta 3D del tablero de Google.
+     sin-membrete se pone y se saca después de dibujar la pestaña (membreteSegunPestana): dibujar
+     traba la transición. "body .header" le gana a la transición que agrega el tablero de Google. */
+  body .header { transition:height .35s ease, min-height .35s ease, padding .35s ease, opacity .3s ease; }
+  body.sin-membrete .header { height:0 !important; min-height:0 !important; padding-top:0 !important; padding-bottom:0 !important; opacity:0 !important; overflow:hidden; border-bottom:0 !important; }
+  /* las pestañas se achican de una vez: el reporte se mide al entrar (renderDiario) */
+  body.modo-diario .tab-btn { padding:9px 16px; font-size:10px; transition:color .25s, background .25s, border-color .25s; }
+  body.modo-diario .main { min-height:0; }
+  body.modo-diario .content { padding:12px 16px; }   /* más lugar para el reporte */
+  body.modo-diario #pruebaGoogle { display:none; }   /* recuadro de la prueba en Google: tapaba el reporte */
+
   .main { display:flex; min-height:calc(100vh - 110px); position:relative; }
   .sidebar { width:260px; min-width:260px; background:var(--card); border-right:1px solid var(--border); overflow-y:auto; overflow-x:visible; padding:18px; flex-shrink:0; transition:margin-left .3s ease; position:relative; }
   .sidebar.collapsed { margin-left:-260px; }
@@ -2048,7 +2061,12 @@ function procesarMetricas(data) {
 }
 
 function changeTab(id) {
+  // Reporte Diario: pestañas arriba y más chicas (modo-diario) y sin membrete (sin-membrete, al
+  // terminar de dibujar). Desde la Planta 3D del tablero de Google el membrete ya está oculto:
+  // sigue así hasta terminar de dibujar y recién ahí baja, deslizándose.
+  if (activeTab === 'planta3d') document.body.classList.add('sin-membrete');
   activeTab = id;
+  document.body.classList.toggle('modo-diario', id === 'diario');
   document.documentElement.style.setProperty('--tab-color', THEME_COLOR[id] || '#F9C13F');
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === id);
@@ -2065,9 +2083,10 @@ function changeTab(id) {
   };
   // Aplicaciones no es una página embebida: es una grilla de accesos directos.
   // Comparte con las embebidas que no usa los filtros, así que oculta el panel.
+  // El Reporte Diario tampoco los usa: tiene su propia fecha y línea.
   if (id === 'aplicaciones') renderApps();
 
-  if (EMBED[id] || id === 'aplicaciones') {
+  if (EMBED[id] || id === 'aplicaciones' || id === 'diario') {
   if (EMBED[id]) {
   const iframeId = EMBED[id].iframeId;
   const src = EMBED[id].src;
@@ -2087,13 +2106,21 @@ function changeTab(id) {
   // botella del general. En Aplicaciones no hay página embebida, así que la
   // botella del general sigue disponible.
   const _vb = document.getElementById('vsptBot'); if (_vb) _vb.style.display = EMBED[id] ? 'none' : '';
-  if (window.speechSynthesis) speechSynthesis.cancel();
+  if (window.speechSynthesis && id !== 'diario') speechSynthesis.cancel();   // en el Reporte Diario el asistente sigue
 } else {
   document.getElementById('sidebar').style.display = '';
   document.getElementById('sidebarToggle').style.display = '';
   const _vb2 = document.getElementById('vsptBot'); if (_vb2) _vb2.style.display = '';
 }
   render();
+  membreteSegunPestana();
+}
+
+// El membrete sube o baja recién después de dibujar la pestaña: dibujar tarda (~0,2 s el Reporte
+// Diario, casi 1 s una línea) y, si la transición arrancaba antes, no se veía deslizarse.
+function membreteSegunPestana() {
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    document.body.classList.toggle('sin-membrete', activeTab === 'diario' || activeTab === 'planta3d')));
 }
 
 function render() {
@@ -3539,7 +3566,10 @@ function renderDiario() {
           <button type="button" class="opi-view-btn" onclick="stepDiario(1)" title="Día siguiente con datos">›</button>
         </div>
         <span class="opi-view-switch" style="display:inline-flex;gap:5px;">${lineBtns}</span>
-        ${vivoHtml}
+        <span style="display:inline-flex;align-items:center;gap:8px;margin-left:auto;">
+          ${vivoHtml}
+          <button type="button" class="opi-view-btn" onclick="toggleTheme()" title="Claro u oscuro (el botón del membrete no se ve en el Reporte Diario)">◐</button>
+        </span>
       </div>
     </div>`;
 
@@ -3768,7 +3798,11 @@ function renderDiario() {
   const r1 = document.getElementById('diario-row1');
   const r2 = document.getElementById('diario-row2');
   if (unaPantalla && r1 && r2) {
-    const libre = window.innerHeight - r1.getBoundingClientRect().top - 22;
+    // Al entrar, el membrete todavía está (se va después de dibujar, membreteSegunPestana): se
+    // mide sin él, y como si la página estuviera arriba de todo.
+    const hd = document.querySelector('.header');
+    const hMembrete = document.body.classList.contains('modo-diario') && hd ? hd.getBoundingClientRect().height : 0;
+    const libre = window.innerHeight - (r1.getBoundingClientRect().top + window.scrollY - hMembrete) - 22;
     if (libre > 300) {
       DIARIO_H.row  = Math.round((libre - 8) * 0.47);
       DIARIO_H.row2 = libre - 8 - DIARIO_H.row;
