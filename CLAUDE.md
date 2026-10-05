@@ -86,3 +86,12 @@ Reglas para el HTML:
     - sin `DecompressionStream` pide `&gz=0` y no guarda nada.
     Si cambia el formato de lo guardado, cambiar la versión de las claves (`_v2`). Lo nuevo que
     se pida al abrir, también chico (hasta ~100 KB por respuesta).
+12. **Día en vivo desde AppSheet (4-oct, API 2026-10-04a o posterior).** El botón "Traer de
+    AppSheet" del Reporte Diario pide `?tabla=opinona_dia&fecha=AAAA-MM-DD` por `pedirJson` (a
+    demanda, nunca al abrir; ~30 KB) y el Reporte Diario —tabla, torta, KPI y sus detalles— se
+    dibuja con esos registros en lugar de los de la BD (`diarioBase()`). No escribe nada y las
+    demás pestañas siguen con la BD, que se pone al día con el ETL. Con una API anterior avisa
+    "hace falta publicar la API nueva". Sólo días desde el corte de AppSheet (7-jul-2026).
+13. **Los cambios del HTML se prueban primero en Google** (`…E3fK/exec?rama=<rama>`, ver el
+    `CLAUDE.md` del repo Dashboard): commits de la rama con `[skip netlify]`; el merge a `main` es
+    el deploy de Netlify.
