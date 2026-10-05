@@ -570,7 +570,7 @@ function p3Mezcla(a, b, t) {
 const p3Alfa = (c, a) => `rgba(${p3Rgb(c).join(',')},${a})`;
 // Sin posición guardada (o dentro de la zona "sin ubicar"): el equipo espera que lo ubiquen.
 const p3SinUbicar = id => { const e = IX.eq[id]; if (!e || P3_CINTAS[id]) return false; const p = p3Pos(e); return !p || p3EnEspera(p); };
-const p3Centrar = id => { if (p3Es2D()) p2Enfocar(id); else if (P3) p3Enfocar(id, 2.2); };
+const p3Centrar = id => p3Foco(id);   // centrar y acercar un poco, con la misma animación que al tocarlo
 
 // Pone en el cuadro el motor que corresponde: el plano 2D (celular en vista Planta, o sin 3D) o la escena 3D.
 function p3Motor() {
@@ -681,7 +681,7 @@ function p3Cuadro() {
   // contexto perdido: no se dibuja (three.js fallaría al compilar) y se pasa al plano 2D sin esperar el evento
   if (S.renderer.getContext().isContextLost()) { if (!p3SinGL) { p3SinGL = 'El 3D se interrumpió en este equipo.'; p3Motor(); } return; }
   if (S.anim) {
-    const a = S.anim, t = Math.min(1, (performance.now() - a.t0) / 550), k = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const a = S.anim, t = Math.min(1, (performance.now() - a.t0) / 850), k = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     S.cam.position.lerpVectors(a.de, a.a, k); S.controls.target.lerpVectors(a.tDe, a.tA, k);
     S.cam.zoom = a.z0 + (a.z1 - a.z0) * k; S.cam.updateProjectionMatrix();
     if (t >= 1) S.anim = null;
@@ -1729,14 +1729,98 @@ function p3Encaje(box, off, zMin) {
 }
 function p3Encuadre(animar = true) {
   const S = P3; if (!S) return;
-  const T = S.T, top = p3.vista === 'top', off = top ? new T.Vector3(0, 95, 0.001) : new T.Vector3(-46, 50, 46);
+  const T = S.T, top = p3.vista === 'top', vi = p3VistaInicio();
+  let off = top ? new T.Vector3(0, 95, 0.001) : new T.Vector3(-46, 50, 46);
+  if (vi) off = new T.Vector3(...vi.d).normalize().multiplyScalar(off.length());   // desde donde la fijaron
   S.controls.enableRotate = !top;
   S.controls.mouseButtons.LEFT = top ? T.MOUSE.PAN : T.MOUSE.ROTATE;
   S.controls.touches.ONE = top ? T.TOUCH.PAN : T.TOUCH.ROTATE;
   // toda la planta (la losa) o solo los equipos de la línea elegida
-  let box = new T.Box3(new T.Vector3(-2, 0, -56), new T.Vector3(58, 1, 2));
+  let box = p3Losa();
   if (p3.linea !== 'all') box = p3CajaDe([...S.maq.values()].filter(m => p3Visible(m.e)).map(m => m.id).concat(S.cintas.filter(b => p3Visible(b.e)).map(b => b.id))) || box;
+  else if (vi) {   // la vista fijada: el mismo punto y el mismo zoom, a la escala de esta pantalla
+    const tgt = new T.Vector3(...vi.t), zoom = Math.min(S.controls.maxZoom, Math.max(S.controls.minZoom, p3Encaje(box, off).zoom * vi.zr)), pos = tgt.clone().add(off);
+    if (!animar) { S.anim = null; S.cam.position.copy(pos); S.controls.target.copy(tgt); S.cam.zoom = zoom; S.cam.updateProjectionMatrix(); S.controls.update(); S.dirty = true; return; }
+    return p3Animar(pos, tgt, zoom);
+  }
   p3IrLibre(p3Encaje(box, off), off, animar);
+}
+const p3Losa = () => new P3.T.Box3(new P3.T.Vector3(-2, 0, -56), new P3.T.Vector3(58, 1, 2));
+// ── vista de inicio: la que se ve al abrir, al tocar fuera de los equipos y con Esc ──
+// La fija un editor para todos (MANT_CONFIG, clave p3_vista_inicio, con mant_editar) o cada uno en su
+// navegador. Se guarda hacia dónde mira la cámara, el punto del centro y el zoom relativo al de la planta
+// entera desde esa dirección: en otra pantalla se ve lo mismo, a su escala. Una por vista (3D y Planta).
+const P3_VISTA_KEY = 'vspt_p3_vista_v1';
+const p3VistaOk = v => !!v && Array.isArray(v.d) && v.d.length === 3 && Array.isArray(v.t) && v.t.length === 3 && [...v.d, ...v.t, v.zr].every(n => typeof n === 'number' && isFinite(n)) && v.zr > 0;
+function p3VistasGuardadas() {
+  let loc = null, glo = null;
+  try { loc = JSON.parse(localStorage.getItem(P3_VISTA_KEY)); } catch (e) {}
+  try { glo = D && D.config && D.config.p3_vista_inicio ? JSON.parse(D.config.p3_vista_inicio) : null; } catch (e) {}
+  return { loc: loc && typeof loc === 'object' ? loc : {}, glo: glo && typeof glo === 'object' ? glo : {} };
+}
+function p3VistaInicio() {
+  const v = p3VistasGuardadas(), k = p3.vista === 'top' ? 'top' : '3d';
+  return p3VistaOk(v.loc[k]) ? v.loc[k] : p3VistaOk(v.glo[k]) ? v.glo[k] : null;
+}
+// Guarda una clave de MANT_CONFIG con el mismo pedido que usa Mantenimiento (editores).
+async function p3GuardarConfig(clave, valor) {
+  const existe = !!D.config && Object.prototype.hasOwnProperty.call(D.config, clave);
+  await post({ accion: 'mant_editar', cambios: [existe ? { tabla: 'config', op: 'modificar', id: clave, campos: { valor } } : { tabla: 'config', op: 'alta', campos: { clave, valor } }] });
+  D.config = Object.assign({}, D.config, { [clave]: valor }); cacheSet({ t: Date.now(), data: D });
+}
+async function p3FijarInicio() {
+  const S = P3; if (!S || p3Es2D()) { toast('La vista de inicio se fija en el plano 3D.', true); return; }
+  const off = S.cam.position.clone().sub(S.controls.target), k = p3.vista === 'top' ? 'top' : '3d', r = n => Math.round(n * 1000) / 1000;
+  const v = { d: off.clone().normalize().toArray().map(r), t: S.controls.target.toArray().map(r), zr: r(S.cam.zoom / p3Encaje(p3Losa(), off).zoom) };
+  const g = p3VistasGuardadas(), local = () => { g.loc[k] = v; try { localStorage.setItem(P3_VISTA_KEY, JSON.stringify(g.loc)); } catch (e) {} };
+  if (D.editor) {
+    try {
+      g.glo[k] = v; await p3GuardarConfig('p3_vista_inicio', JSON.stringify(g.glo));
+      delete g.loc[k]; try { localStorage.setItem(P3_VISTA_KEY, JSON.stringify(g.loc)); } catch (e) {}
+      toast('Vista de inicio fijada para todos: se abre así y vuelve acá al tocar fuera o con Esc');
+    } catch (e) { local(); toast('No se pudo guardar para todos (' + e.message + '): queda en este navegador', true); }
+  } else { local(); toast('Vista de inicio fijada en este navegador'); }
+  p3BotonesVista();
+}
+async function p3OlvidarInicio() {
+  const k = p3.vista === 'top' ? 'top' : '3d', g = p3VistasGuardadas();
+  delete g.loc[k]; try { localStorage.setItem(P3_VISTA_KEY, JSON.stringify(g.loc)); } catch (e) {}
+  if (D.editor && g.glo[k]) {
+    try { delete g.glo[k]; await p3GuardarConfig('p3_vista_inicio', Object.keys(g.glo).length ? JSON.stringify(g.glo) : ''); }
+    catch (e) { toast('No se pudo borrar la vista de todos: ' + e.message, true); }
+  }
+  toast('Vuelve la vista original'); p3BotonesVista(); p3Inicio();
+}
+function p3BotonesVista() {
+  const b = $('#p3VisNo'); if (b) b.hidden = !p3VistaInicio();
+  const f = $('#p3VisFija'); if (f) f.hidden = p3Es2D();
+}
+// Un toque en un equipo: lo centra y lo acerca un poco (con lo que tiene alrededor); nunca aleja.
+function p3Foco(id) {
+  if (p3Es2D()) return p2Enfocar(id);
+  const S = P3, box = S && p3CajaDe([id]); if (!box) return;
+  box.expandByVector(new S.T.Vector3(3.5, 0, 3.5));
+  const off = S.cam.position.clone().sub(S.controls.target);
+  p3IrLibre(p3Encaje(box, off), off, true, S.cam.zoom);
+}
+// Un lugar del plano (x, y en m) con r m alrededor: un pin de tarjetas.
+function p3IrPunto(x, y, r) {
+  if (p3Es2D()) { const S = P2; if (!S || !S.z) return; const L = p3Libre(), z = p2Limite(Math.max(S.z, Math.min(L.w, L.h) / (2 * r + 4))); return p2Ir(x - L.dx / z, y + L.dy / z, z); }
+  const S = P3; if (!S) return;
+  const T = S.T, box = new T.Box3(new T.Vector3(x - r, 0, -y - r), new T.Vector3(x + r, 1, -y + r)), off = S.cam.position.clone().sub(S.controls.target);
+  p3IrLibre(p3Encaje(box, off), off, true, S.cam.zoom);
+}
+const p3Inicio = () => { if (p3Es2D()) p2Encuadre(); else if (P3) p3Encuadre(); };
+// Toque en el plano (3D o 2D). En Limpieza y Zonas manda la zona; si no, el equipo. Algo elegido: la cámara
+// va hacia ahí. Afuera de todo: nada elegido y vuelta a la vista de inicio. Ubicando equipos no se mueve.
+function p3TocarEn(id, pt) {
+  if (p3Es5S() && p3.capa !== 'tarjetas') {
+    const z = pt && p5ZonaEn(pt.x, pt.y);
+    if (z) { if (p3.zsel === z.zona) { p5ElegirZona(null); return p3Inicio(); } p5ElegirZona(z.zona); return p5EnfocarZona(z.zona); }
+  }
+  if (id) { p3Elegir(id); if (!p3.editar) p3Foco(id); return; }
+  p3Elegir(null);
+  if (!p3.editar) p3Inicio();
 }
 function p3Enfocar(id, zMin) {
   const S = P3, box = S && p3CajaDe([id]); if (!box) return;
@@ -1840,8 +1924,7 @@ function p3Punteros() {
     if (!abajo || Math.hypot(ev.clientX - abajo[0], ev.clientY - abajo[1]) > 6) return;
     const id = p3Tocar(ev), pt = p3PuntoPiso();
     if (p5ToquePiso(pt)) return;
-    if (p3Es5S() && p3.capa !== 'tarjetas') { const z = pt && p5ZonaEn(pt.x, pt.y); if (z) return p5ElegirZona(p3.zsel === z.zona ? null : z.zona); }
-    p3Elegir(id);
+    p3TocarEn(id, pt);
   });
   el.addEventListener('pointerleave', () => { if (p3.hover || p3.zhover) { p3.hover = null; p3.zhover = null; p3Resaltar(); p3ZonasColor(); } });
   el.addEventListener('dblclick', ev => { const id = p3Tocar(ev); if (id) p3Enfocar(id, 3); });
@@ -2121,8 +2204,7 @@ function p2Toque(h, tipo) {
   if (tipo !== 'mouse' && u && t - u.t < 330 && Math.hypot(u.x - h.x0, u.y - h.y0) < 30) { S.ultimo = null; if (h.id) p2Enfocar(h.id); else p2Zoom(2, h.x0, h.y0, true); return; }
   const [wx, wy] = p2Mundo(h.x0, h.y0);
   if (p5ToquePiso({ x: wx, y: wy })) return;
-  if (p3Es5S() && p3.capa !== 'tarjetas') { const z = p5ZonaEn(wx, wy); if (z) return p5ElegirZona(p3.zsel === z.zona ? null : z.zona); }
-  p3Elegir(h.id || null);
+  p3TocarEn(h.id || null, { x: wx, y: wy });
 }
 function p2Zoom(f, px, py, animar) {
   const S = P2, [wx, wy] = p2Mundo(px, py), z = p2Limite(S.z * f), cx = wx - (px - S.w / 2) / z, cy = wy + (py - S.h / 2) / z;
@@ -2195,7 +2277,14 @@ function p3CompletaBoton() {
   if (el && !p3.fija) el.classList.toggle('completa', !!fs && fs === el);
   p3CompletaBoton();
 }));
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && p3.fija) p3CompletaCss(false); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !D) return;
+  if (p3.ubicar || p3.dibujo) { p3.ubicar = null; p3.dibujo = null; p5Modo(); p2Pedir(); return; }
+  const habia = p3.sel || p3.zsel || p3.tsel;
+  if (habia) p3Elegir(null);
+  else if (p3.fija) { p3CompletaCss(false); return; }
+  p3Inicio();
+});
 // ───────────── OPINONA del tablero: OPI por línea y fallas por equipo ─────────────
 // Lo calcula v15 (procesarMetricas) sobre las filas del período: el OPI de cada línea es el de su pestaña.
 const OPI_META_DEF = { planta: 42, L1: 32, L2: 60, L3: 65 };   // las de v15 (Objetivos) mientras nadie las cambió
@@ -2401,10 +2490,11 @@ function renderPlanta() {
       <div class="p3-kpis" id="p3kpis"></div>
       <div class="p3-bar" id="p3bar"><div class="p3-edit glass p3-modo" id="p3edit" hidden></div></div>
       <div class="p3-ctrl glass" role="toolbar" aria-label="Vista del plano">
-        ${ico('mas', 'Acercar', 'p3Zin')}${ico('menos', 'Alejar', 'p3Zout')}${ico('casa', 'Ver toda la planta', 'p3Home')}<hr>
+        ${ico('mas', 'Acercar', 'p3Zin')}${ico('menos', 'Alejar', 'p3Zout')}${ico('casa', 'Vista de inicio (Esc)', 'p3Home')}
+        ${ico('fijar', D.editor ? 'Fijar esta vista como inicio (para todos)' : 'Fijar esta vista como inicio (en este navegador)', 'p3VisFija')}${ico('deshacer', 'Volver a la vista de inicio original', 'p3VisNo', 'hidden')}<hr>
         ${ico('vista', 'Vista Planta', 'p3Vista')}${ico('nombres', 'Nombres de los equipos', 'p3Nom', `aria-pressed="${p3.nombres}"`)}
         ${ico('marcha', 'En marcha: botellas, cajas, palets y autoelevadores en movimiento', 'p3Run', `aria-pressed="${p3.marcha}" ${p3Es2D() ? 'hidden' : ''}`)}<hr>
-        ${ico('vista', 'Pantalla completa', 'p3Full')}${ico('ayuda', 'Cómo se usa', 'p3Ayu')}
+        ${ico('vista', 'Pantalla completa', 'p3Full')}${ico('tema', 'Claro u oscuro', 'p3Tema', p3.modoTablero ? '' : 'hidden')}${ico('ayuda', 'Cómo se usa', 'p3Ayu')}
       </div>
       <div class="p3-legend glass" id="p3legend" hidden></div>
       <aside class="p3-side glass" id="p3side" aria-live="polite"></aside>
@@ -2419,7 +2509,11 @@ function renderPlanta() {
   });
   $('#p3Zin').onclick = () => p3Zoom(1.35);
   $('#p3Zout').onclick = () => p3Zoom(1 / 1.35);
-  $('#p3Home').onclick = () => { if (p3Es2D()) p2Encuadre(); else if (P3) p3Encuadre(); };
+  $('#p3Home').onclick = () => { p3Elegir(null); p3Inicio(); };
+  $('#p3VisFija').onclick = () => p3FijarInicio();
+  $('#p3VisNo').onclick = () => p3OlvidarInicio();
+  $('#p3Tema').onclick = () => { try { parent.postMessage({ type: 'vspt-planta3d-tema' }, '*'); } catch (e) {} };
+  p3BotonesVista();
   $('#p3Vista').onclick = () => p3CambiarVista(p3.vista === '3d' ? 'top' : '3d');
   p3BotonVista();
   $('#p3Nom').onclick = ev => { p3.nombres = !p3.nombres; ev.currentTarget.setAttribute('aria-pressed', String(p3.nombres)); if (P3) P3.dirty = true; p2Pedir(); };
@@ -2444,7 +2538,7 @@ function p3BotonVista() {
 }
 function p3CambiarVista(v) {
   const antes = p3Es2D();
-  p3.vista = v; p3BotonVista();
+  p3.vista = v; p3BotonVista(); p3BotonesVista();
   if (p3Es2D() !== antes) p3Motor(); else p3Aviso();
   if (!p3Es2D() && P3) p3Encuadre();
 }
@@ -2457,7 +2551,7 @@ const p3Ayuda = () => (p3Es2D()
   ? 'Desplazá con un dedo o el mouse y acercá con dos dedos o la rueda. Tocá un equipo para ver su detalle; doble toque para acercarte.'
   : (p3.vista === 'top'
     ? 'Desplazá con un dedo o el botón izquierdo y acercá con dos dedos o la rueda.'
-    : 'Girá con un dedo o el botón izquierdo, desplazá con dos dedos o el botón derecho y acercá con la rueda.') + (p3Es5S() ? ' Tocá una zona o un pin para ver su detalle.' : ' Tocá un equipo para ver su detalle; doble clic para acercarte.'));
+    : 'Girá con un dedo o el botón izquierdo, desplazá con dos dedos o el botón derecho y acercá con la rueda.') + (p3Es5S() ? ' Tocá una zona o un pin y la vista va hacia ahí.' : ' Tocá un equipo y la vista lo centra y lo acerca.') + ' Fuera de todo o con Esc, vuelve a la vista de inicio (📌 la fija).');
 
 function p3Leyenda() {
   const el = $('#p3legend'); if (!el || !D) return;
@@ -2617,7 +2711,7 @@ function p3Panel() {
     ${cuerpo}
     <div class="row">${!sinUb ? '<button class="btn sm" id="p3Centrar">Centrar</button>' : ''}<button class="btn sm" id="p3Cerrar">Cerrar</button></div>`;
   const bc = $('#p3Centrar'); if (bc) bc.onclick = () => p3Centrar(id);
-  $('#p3Cerrar').onclick = () => p3Elegir(null);
+  $('#p3Cerrar').onclick = () => { p3Elegir(null); p3Inicio(); };
 }
 
 // ───────────── Zonas 5S, limpieza (OTIF) y tarjetas 5S (10_PLANTA3D.gs de la API) ─────────────
@@ -2914,6 +3008,7 @@ function p5ToquePiso(pt) {
   if (p3.ubicar) { const n = p3.ubicar; p3.ubicar = null; p5Modo(); p5Marcar(n, pt); return true; }
   const d = p3.dibujo;
   if (!d.p0) { d.p0 = pt; p5Modo(); return true; }
+  if (Math.abs(pt.x - d.p0.x) < 0.5 || Math.abs(pt.y - d.p0.y) < 0.5) { toast('La zona tiene que medir al menos 0,5 m de lado: tocá otra vez la esquina opuesta.', true); return true; }
   p3.dibujo = null; p5Modo(); p5GuardarZona(d.zona, { rect: [d.p0.x, d.p0.y, pt.x, pt.y].map(v => Math.round(v * 100) / 100) });
   return true;
 }
@@ -3018,8 +3113,8 @@ function p5TocarEtiqueta(ev) {
   const el = ev.target.closest('[data-k]'); if (!el) return;
   ev.stopPropagation();
   const k = el.dataset.k;
-  if (k.startsWith('z:')) { const z = k.slice(2); p5ElegirZona(p3.zsel === z ? null : z); }
-  else if (k.startsWith('t:')) { const t = k.slice(2); p5ElegirPin(p3.tsel === t ? null : t); }
+  if (k.startsWith('z:')) { const z = k.slice(2); if (p3.zsel === z) { p5ElegirZona(null); p3Inicio(); } else { p5ElegirZona(z); p5EnfocarZona(z); } }
+  else if (k.startsWith('t:')) { const t = k.slice(2), g = p5Pin(t); if (p3.tsel === t || !g) { p5ElegirPin(null); p3Inicio(); } else { p5ElegirPin(t); p3IrPunto(g.x, g.y, 5); } }
 }
 
 // ── tarjetas de KPI (arriba a la izquierda) ──
@@ -3035,7 +3130,9 @@ const P3_SVG = {
   capas: '<path d="M12 2 2 7l10 5 10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>', mas: '<path d="M12 5v14M5 12h14"/>', menos: '<path d="M5 12h14"/>',
   casa: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>', vista: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
   vista3d: '<path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/>', nombres: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.5"/>',
-  marcha: '<polygon points="6 4 20 12 6 20 6 4"/>', ayuda: '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>'
+  marcha: '<polygon points="6 4 20 12 6 20 6 4"/>', fijar: '<path d="M12 17v5"/><path d="M9 10.8V4h6v6.8l3 3.2v2H6v-2z"/>',
+  deshacer: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/>',
+  tema: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>', ayuda: '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>'
 };
 function p3Kpis() {
   const el = $('#p3kpis'); if (!el || !D) return;
@@ -3187,7 +3284,7 @@ function p5PanelZona(el, z) {
   const bd = $('#p5Dib', el); if (bd) bd.onclick = () => { p3.dibujo = { zona: z.zona, p0: null }; p3.ubicar = null; p5Modo(); };
   const bq = $('#p5DibQ', el); if (bq) bq.onclick = () => p5GuardarZona(z.zona, { rect: null });
   const bc = $('#p5Cen', el); if (bc) bc.onclick = () => p5EnfocarZona(z.zona);
-  $('#p5Cerrar', el).onclick = () => p5ElegirZona(null);
+  $('#p5Cerrar', el).onclick = () => { p5ElegirZona(null); p3Inicio(); };
   p5CargarFotos(z.responsables);
 }
 function p5Panel(el) {
@@ -3199,7 +3296,7 @@ function p5Panel(el) {
         <h2>${esc(g.ts[0].pos.origen === 'marca' ? 'Marcadas en el plano' : g.ts[0].pos.donde)}</h2><div class="sub">${g.fdc} FDC · ${g.abiertas} abierta${g.abiertas === 1 ? '' : 's'}</div>
         ${g.ts.slice().sort((a, b) => (a.estado === 'cerrada') - (b.estado === 'cerrada') || String(b.inicio).localeCompare(String(a.inicio))).map(p5HtmlTarjeta).join('')}
         <div class="row"><button class="btn sm" id="p5Cerrar">Cerrar</button></div>`;
-      p5BotonesTarjetas(el); $('#p5Cerrar', el).onclick = () => p5ElegirPin(null);
+      p5BotonesTarjetas(el); $('#p5Cerrar', el).onclick = () => { p5ElegirPin(null); p3Inicio(); };
       return;
     }
     p3.tsel = null;
@@ -3249,8 +3346,8 @@ function p3Libre() {
   return { w, h, dx: (l + r) / 2 - (R.left + R.right) / 2, dy: (t + b) / 2 - (R.top + R.bottom) / 2, W: R.width, H: R.height };
 }
 // Lleva la cámara a f (de p3Encaje) con lo elegido en el centro del área libre.
-function p3IrLibre(f, off, animar = true) {
-  const S = P3, T = S.T, L = p3Libre(), zoom = Math.min(S.controls.maxZoom, Math.max(S.controls.minZoom, f.zoom * Math.min(L.w / L.W, L.h / L.H)));
+function p3IrLibre(f, off, animar = true, zMin = 0) {
+  const S = P3, T = S.T, L = p3Libre(), zoom = Math.min(S.controls.maxZoom, Math.max(S.controls.minZoom, zMin, f.zoom * Math.min(L.w / L.W, L.h / L.H)));
   const fwd = off.clone().negate().normalize(), right = new T.Vector3().crossVectors(fwd, S.cam.up).normalize(), up = new T.Vector3().crossVectors(right, fwd).normalize();
   const upp = (S.cam.right - S.cam.left) / zoom / L.W;   // metros por px con ese zoom
   const tgt = f.centro.clone().addScaledVector(right, -L.dx * upp).addScaledVector(up, L.dy * upp);
@@ -3259,6 +3356,15 @@ function p3IrLibre(f, off, animar = true) {
   if (!animar) { S.cam.position.copy(pos); S.controls.target.copy(tgt); S.cam.zoom = zoom; S.cam.updateProjectionMatrix(); S.controls.update(); S.dirty = true; return; }
   p3Animar(pos, tgt, zoom);
 }
+
+// ───────────── tablero en modo planta (09 v5) ─────────────
+// Con la pestaña abierta, el tablero de Google esconde su membrete (y con él el botón de modo oscuro): el
+// botón de tema de esta página lo reemplaza.
+window.addEventListener('message', e => {
+  if (!e.data || e.data.type !== 'vspt-planta3d-modo' || e.source !== window.parent) return;
+  p3.modoTablero = !!e.data.on;
+  const t = $('#p3Tema'); if (t) t.hidden = !p3.modoTablero;
+});
 
 // ───────────── tema (lo decide el tablero) ─────────────
 function applyTheme(dark) { document.body.classList.toggle('light', !dark); $('#btnTheme').textContent = dark ? 'Claro' : 'Oscuro'; if (P3) p3Tema(); if (P2) p2Tema(); if (D) p3Panel(); p5PMemo = null; }
