@@ -28,6 +28,8 @@
     --ramp-uso-lo:#3B3137; --ramp-uso-hi:#E88AC0;
     --s-ok:#1FE36A; --s-warn:#FFC81A; --s-crit:#FF2E48; --s-pend:#FF8A1F; --s-dark:#2B2927; --s-screen:#3FA9F5; --s-film:#E8EEF2; --s-inox:#AEB4BA; --s-inox2:#C4CAD0;
     --s-vacia:#3F9A4B; --s-frame:#2F3236; --s-handle:#F07A1A; --s-panel:#4B525C; --s-red:#C8202A; --s-blue:#2F6FD0; --s-white:#F2F1EC; --s-tape:#E6D6A8;
+    --glass:rgba(30,29,27,.74); --glass2:rgba(255,255,255,.05); --glass-b:rgba(255,255,255,.10); --glass-sh:0 10px 30px rgba(0,0,0,.38);
+    --z-ok:#1FE36A; --z-warn:#FFC81A; --z-crit:#FF2E48; --z-na:#9c8f9a;
   }
   body.light{ --bg:#F3F1EB; --card:#fff; --card2:#FAF7F0; --border:rgba(78,23,66,0.14);
     --text:#301030; --muted:#7a627a; --th-bg:#F3F1EB; --tr-hover:rgba(78,23,66,0.05);
@@ -39,7 +41,9 @@
     --s-body:#F6F1E8; --s-trim:#4E1742; --s-accent:#F8C040; --s-steel:#ADA59A; --s-wood:#C9A36E; --s-glass:#86A890; --s-card:#C7A57B;
     --ramp-uso-lo:#EFE3EA; --ramp-uso-hi:#701F52;
     --s-ok:#12C95A; --s-warn:#FFB800; --s-crit:#F0142F; --s-pend:#FF7A00; --s-dark:#3A3434; --s-screen:#2F8FE0; --s-film:#F4F7F9; --s-inox:#C8CDD2; --s-inox2:#D6DBDF;
-    --s-vacia:#3F9A4B; --s-frame:#3A3D42; --s-handle:#F07A1A; --s-panel:#59616B; --s-red:#C8202A; --s-blue:#2F6FD0; --s-white:#F2F1EC; --s-tape:#E6D6A8; }
+    --s-vacia:#3F9A4B; --s-frame:#3A3D42; --s-handle:#F07A1A; --s-panel:#59616B; --s-red:#C8202A; --s-blue:#2F6FD0; --s-white:#F2F1EC; --s-tape:#E6D6A8;
+    --glass:rgba(255,255,255,.80); --glass2:rgba(78,23,66,.04); --glass-b:rgba(78,23,66,.10); --glass-sh:0 10px 28px rgba(48,16,48,.16);
+    --z-ok:#12C95A; --z-warn:#F5A800; --z-crit:#F0142F; --z-na:#8C8088; }
   *{box-sizing:border-box;margin:0;padding:0}
   [hidden]{display:none!important}
   body{background:var(--bg);color:var(--text);font-family:'Montserrat',system-ui,sans-serif;font-size:14px;line-height:1.45}
@@ -138,15 +142,6 @@
   .p3-full:hover{border-color:var(--accent)}
   .p3-full svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   /* pantalla completa: la del navegador o, si no la permite (iPhone), la planta tapando la página */
-  .p3.completa{position:fixed;inset:0;z-index:70;width:100%;height:100%;max-width:none;margin:0;padding:10px;overflow:auto;align-content:start;background:var(--bg)}
-  .p3.completa .p3-hud{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
-  .p3.completa .p3-hud > *{flex:none}
-  .p3.completa .p3-hud .seg button{white-space:nowrap}
-  .p3.completa .p3-hud::-webkit-scrollbar{display:none}
-  .p3.completa .p3-stage{height:calc(100vh - 96px);height:calc(100dvh - 96px)}
-  .p3.completa #p3ayuda{display:none}
-  .p3.completa .p3-side{position:static;max-height:none}
-  @media (min-width:1001px){.p3.completa .p3-side{position:sticky;top:0;max-height:calc(100vh - 20px)}}
   .p3-side{position:sticky;top:10px;max-height:calc(100vh - 20px);overflow:auto}
   .p3-list{display:grid;gap:2px}
   .p3-item{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:12.5px;color:var(--text)}
@@ -154,6 +149,7 @@
   .p3-pts{display:grid}
   .p3-pt{border-top:1px solid var(--td-border);padding:7px 0;display:grid;gap:3px;font-size:12.5px}
   .dot.pend{background:var(--vspt-orange)}
+  .dot.l1{background:var(--l1)} .dot.l2{background:var(--l2)} .dot.l3{background:var(--l3)} .dot.sf{background:var(--sf)}
   .p3 .dot.vencido{background:var(--s-crit)} .p3 .dot.proximo{background:var(--s-warn)} .p3 .dot.ok{background:var(--s-ok)} .p3 .dot.pend{background:var(--s-pend)}
   .p3 .dot.vencido{box-shadow:0 0 6px var(--s-crit)} .p3 .dot.proximo{box-shadow:0 0 6px var(--s-warn)} .p3 .dot.ok{box-shadow:0 0 6px var(--s-ok)} .p3 .dot.pend{box-shadow:0 0 6px var(--s-pend)}
   @media (max-width:640px){.p3-legend{font-size:10.5px;padding:5px 8px;left:6px;bottom:6px}.p3-stage{height:clamp(380px,62vh,640px)}}
@@ -182,6 +178,136 @@
   .p3-hud .seg::-webkit-scrollbar{display:none}
   .p3-hud .seg button{white-space:nowrap;flex:none}
   body.embebida .content{padding-top:10px}
+  /* ── Planta 3D v2 (oct-2026): el plano ocupa todo el cuadro y la información flota encima en tarjetas ── */
+  .glass{background:var(--glass);border:1px solid var(--glass-b);border-radius:14px;box-shadow:var(--glass-sh);backdrop-filter:blur(14px) saturate(1.25);-webkit-backdrop-filter:blur(14px) saturate(1.25)}
+  .p3{position:relative;display:block;height:calc(100vh - 110px);min-height:540px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--s-bg)}
+  body.embebida .content{padding:0}
+  body.embebida .p3{height:100vh;height:100dvh;border:0;border-radius:0}
+  .p3 .p3-stage{position:absolute;inset:0;z-index:1;height:auto;border:0;border-radius:0}
+  .p3-labels.modo *{pointer-events:none!important}
+  .p3-ui{position:absolute;inset:0;z-index:2;pointer-events:none;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto minmax(0,1fr) auto;gap:10px;padding:12px}
+  .p3-ui > *{pointer-events:auto;min-width:0}
+  .p3-top{grid-column:1 / -1;display:flex;align-items:center;gap:8px;padding:6px 8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .p3-top::-webkit-scrollbar{display:none}
+  .p3-top > *{flex:none}
+  .p3-top .seg{border-color:var(--glass-b);background:var(--glass2)}
+  .p3-top .seg button{white-space:nowrap;padding:6px 10px}
+  .p3-top .btn{border-color:var(--glass-b);background:var(--glass2)}
+  .p3-top .ttl{display:flex;align-items:center;gap:8px;padding:0 6px 0 2px;font-weight:800;font-size:13px;letter-spacing:-.2px}
+  .p3-top .ttl i{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--vspt-wine);color:#fff;font-style:normal}
+  .p3-top .ttl i svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .p3-top .sep{width:1px;align-self:stretch;background:var(--glass-b);margin:2px 2px}
+  .p3-top .est{font-size:11px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .p3-top .est::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--s-ok);box-shadow:0 0 6px var(--s-ok)}
+  .p3-top .est.err::before{background:var(--s-crit);box-shadow:0 0 6px var(--s-crit)}
+  .p3-kpis{grid-column:1;grid-row:2;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;align-self:start;pointer-events:none}
+  .p3-kpis > *{pointer-events:auto}
+  .p3-kpi{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;align-items:center;min-width:150px;max-width:230px;padding:9px 13px 9px 10px;text-align:left;color:var(--text);font:inherit}
+  button.p3-kpi{cursor:pointer}
+  button.p3-kpi:hover,.p3-kpi[aria-pressed="true"]{border-color:var(--focus)}
+  .p3-kpi .ic{grid-row:1 / span 3;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--glass2);border:1px solid var(--glass-b);color:var(--accent)}
+  .p3-kpi .ic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .p3-kpi .ic.ok{color:var(--z-ok)} .p3-kpi .ic.vencido{color:var(--z-crit)} .p3-kpi .ic.proximo{color:var(--z-warn)}
+  .p3-kpi .l{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .p3-kpi .v{font-size:22px;font-weight:800;letter-spacing:-.5px;line-height:1.1;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:6px}
+  .p3-kpi .v small{font-size:11px;font-weight:700;letter-spacing:0}
+  .p3-kpi .v small.up{color:var(--ok)} .p3-kpi .v small.down{color:var(--crit)}
+  .p3-kpi .s{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .p3-kpi .v.ok{color:var(--ok)} .p3-kpi .v.vencido{color:var(--crit)} .p3-kpi .v.proximo{color:var(--warn)}
+  .p3 .p3-side{grid-column:2;grid-row:2 / 5;width:350px;max-height:100%;align-self:start;overflow:auto;position:static;padding:14px 16px;display:grid;gap:10px;scrollbar-width:thin}
+  .p3 .p3-side:empty{display:none}
+  .p3-side h2{font-size:16px;font-weight:800;letter-spacing:-.2px}
+  .p3-side .sub{font-size:12px;color:var(--muted);margin-top:-4px}
+  .p3-side .tag{font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .p3-ctrl{grid-column:1;grid-row:3;justify-self:end;align-self:start;display:grid;gap:2px;padding:4px}
+  .p3-ctrl button{width:32px;height:32px;border-radius:9px;border:0;background:none;color:var(--text);display:grid;place-items:center;cursor:pointer}
+  .p3-ctrl button:hover{background:var(--glass2);color:var(--accent)}
+  .p3-ctrl button[aria-pressed="true"]{color:var(--accent)}
+  .p3-ctrl svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .p3-ctrl hr{border:0;border-top:1px solid var(--glass-b);margin:2px 4px}
+  .p3 .p3-legend{position:static;grid-column:1;grid-row:4;justify-self:start;align-self:end;max-width:min(560px,100%);padding:9px 12px;opacity:1}
+  .p3 .p3-bar{grid-column:1;grid-row:3;align-self:start;justify-self:start;max-width:min(640px,calc(100% - 60px));position:static}
+  .p3 .p3-edit,.p3 .p3-aviso{position:static;left:auto;right:auto;top:auto}
+  .p3-ui .p3-bar:empty{display:none}
+  .p3-bar{display:grid;gap:8px}
+  .p3-modo{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;border-color:var(--vspt-orange)}
+  .p3 .p3-full{display:none}
+  /* etiquetas y marcas sobre el plano */
+  .mlabel{background:var(--glass);border-color:var(--glass-b);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .mlabel.zona{pointer-events:auto;cursor:pointer;gap:6px;padding:3px 8px 3px 4px;font-size:11.5px;border-radius:999px}
+  .mlabel.zona.compacta{padding:2px 7px 2px 3px}
+  .mlabel.zona .cod{display:inline-grid;place-items:center;min-width:24px;height:20px;padding:0 5px;border-radius:999px;font-size:10.5px;font-weight:800;background:var(--glass2);border:1px solid var(--glass-b)}
+  .mlabel.zona .cod.ok{background:var(--z-ok);color:#0b2a14;border-color:transparent} .mlabel.zona .cod.proximo{background:var(--z-warn);color:#2a2000;border-color:transparent}
+  .mlabel.zona .cod.vencido{background:var(--z-crit);color:#fff;border-color:transparent} .mlabel.zona .cod.na{background:var(--z-na);color:#fff;border-color:transparent}
+  .mlabel.zona.sel{border-color:var(--focus);box-shadow:0 0 0 2px var(--focus),0 6px 18px rgba(0,0,0,.3)}
+  .mlabel.zona::after{content:"";position:absolute;left:50%;top:100%;width:1.5px;height:14px;background:var(--glass-b);transform:translateX(-50%)}
+  .mlabel.zona{margin-top:-16px}
+  .pin{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;width:30px;height:38px;display:grid;justify-items:center;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35))}
+  .pin svg{width:30px;height:38px;display:block}
+  .pin b{position:absolute;top:5px;left:0;right:0;text-align:center;font-size:11px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+  .pin.cerrada{opacity:.55;filter:grayscale(.35) drop-shadow(0 2px 3px rgba(0,0,0,.3))}
+  .pin.abierta::after{content:"";position:absolute;left:50%;bottom:-5px;width:16px;height:6px;margin-left:-8px;border-radius:50%;background:currentColor;opacity:.45;animation:pulso 1.6s ease-out infinite}
+  .pin.sel{filter:drop-shadow(0 0 0 var(--focus)) drop-shadow(0 0 6px var(--focus))}
+  .pin.texto svg path.cab{stroke-dasharray:3 2}
+  @keyframes pulso{0%{transform:scale(.6);opacity:.6}100%{transform:scale(2.2);opacity:0}}
+  @media (prefers-reduced-motion: reduce){.pin.abierta::after{animation:none}}
+  /* caras de los responsables */
+  .avs{display:inline-flex;align-items:center}
+  .avs .av + .av{margin-left:-7px}
+  .av{position:relative;flex:none;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--vspt-wine) center/cover no-repeat;color:#fff;font-size:9px;font-weight:800;border:2px solid var(--card);overflow:hidden}
+  .av.g{width:44px;height:44px;font-size:14px;border-width:2px}
+  .av.mas{background:var(--glass2);color:var(--text);border-color:var(--glass-b)}
+  button.av{cursor:pointer;padding:0}
+  button.av.editable::after{content:"";position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z'/%3E%3Ccircle cx='12' cy='13' r='4'/%3E%3C/svg%3E") center/50% no-repeat;opacity:0;transition:opacity .15s}
+  button.av.editable:hover::after,button.av.editable:focus-visible::after{opacity:1}
+  .resp{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px}
+  .resp .p{display:grid;justify-items:center;gap:4px;text-align:center;font-size:11px;line-height:1.25}
+  /* panel: zona, meses y marcas por semana */
+  .p3-meses{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px;align-items:end;height:66px}
+  .p3-meses button{display:grid;grid-template-rows:minmax(0,1fr) auto;align-items:end;gap:2px;height:100%;background:none;border:0;padding:0;cursor:pointer;color:var(--muted);font-size:9px;font-weight:700}
+  .p3-meses button i{display:block;border-radius:3px 3px 0 0;min-height:2px}
+  .p3-meses button[aria-pressed="true"]{color:var(--text)}
+  .p3-meses button[aria-pressed="true"] i{outline:2px solid var(--focus);outline-offset:1px}
+  .p3-meses button:disabled{cursor:default;opacity:.4}
+  i.ok,.bar.ok{background:var(--z-ok)} i.proximo,.bar.proximo{background:var(--z-warn)} i.vencido,.bar.vencido{background:var(--z-crit)} i.na,.bar.na{background:var(--z-na)}
+  .p3-prog{height:7px;border-radius:4px;background:var(--glass2);border:1px solid var(--glass-b);overflow:hidden}
+  .p3-prog i{display:block;height:100%;border-radius:4px}
+  .p3-trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .p3-trio div{background:var(--glass2);border:1px solid var(--glass-b);border-radius:10px;padding:6px 8px;display:grid;gap:1px}
+  .p3-trio b{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+  .p3-trio span{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  table.marcas{border-collapse:collapse;width:100%;font-size:11.5px}
+  table.marcas td{padding:3px 2px;border-top:1px solid var(--td-border);vertical-align:middle}
+  table.marcas td:first-child{padding-right:6px}
+  table.marcas td.m{width:18px;text-align:center}
+  table.marcas th{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--muted);text-align:center;padding:2px}
+  .mk{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle}
+  .mk.m1{background:var(--z-ok)} .mk.m2{background:var(--z-warn)} .mk.m0{background:var(--z-crit)} .mk.mv{background:transparent;border:1px dashed var(--glass-b)} .mk.mq{background:var(--z-na)}
+  .tj{display:grid;gap:3px;border-top:1px solid var(--td-border);padding:8px 0;font-size:12px}
+  .tj .row{gap:6px}
+  .tj .prob{font-weight:600}
+  .p3-side .p3-item{border-radius:10px}
+  .p3-side .p3-lin{background:var(--glass2);border-color:var(--glass-b)}
+  .estado-chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:800;letter-spacing:.04em}
+  .estado-chip.abierta{background:var(--warn-bg);color:var(--warn)} .estado-chip.atrasada{background:var(--crit-bg);color:var(--crit)} .estado-chip.cerrada{background:var(--ok-bg);color:var(--ok)}
+  .estado-chip.fdc{background:var(--crit);color:#fff}
+  @media (max-width:820px){
+    .p3,body.embebida .p3{height:auto;min-height:0;display:flex;flex-direction:column;align-items:stretch;overflow:visible;background:none;border:0}
+    .p3 .p3-stage{position:relative;inset:auto;height:clamp(360px,60vh,620px);order:3;border-radius:14px;border:1px solid var(--border)}
+    .p3-ui{display:contents}
+    .p3-top{order:1;margin:8px 8px 0}
+    .p3-kpis{order:2;align-self:stretch;flex-wrap:nowrap;overflow-x:auto;padding:8px;scrollbar-width:none}
+    .p3-kpis::-webkit-scrollbar{display:none}
+    .p3-kpi{min-width:140px;flex:none}
+    .p3 .p3-bar{order:3;align-self:stretch;margin:0 8px 8px;max-width:none}
+    .p3-ctrl{order:4;display:flex;justify-self:auto;align-self:center;margin:8px auto 0}
+    .p3-ctrl hr{border-top:0;border-left:1px solid var(--glass-b);margin:4px 2px}
+    .p3 .p3-legend{order:5;align-self:stretch;margin:8px;max-width:none}
+    .p3 .p3-side{order:6;align-self:stretch;width:auto;max-height:none;margin:0 8px 16px}
+    body.embebida .p3 .p3-stage{border-radius:12px}
+  }
+  .p3.completa,body.embebida .p3.completa{position:fixed;inset:0;z-index:70;width:100%;height:100%;max-width:none;margin:0;padding:0;border-radius:0;display:block;overflow:hidden;background:var(--s-bg)}
+  @media (max-width:820px){.p3.completa{overflow:auto;display:flex}.p3.completa .p3-stage{height:calc(100dvh - 140px)}}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--vspt-plum);color:#fff;border:1px solid rgba(224,208,184,.3);padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:90;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.35)}
   .toast.err{background:#5a0f22}
   @media (max-width:640px){.header{padding:12px 16px}.content{padding:14px 16px 60px}.tbl .x{display:none}}
@@ -193,7 +319,7 @@
     <div class="logo"><img src="assets/marca-secundaria.jpg" alt="VSPT" onerror="this.parentNode.style.display='none'"></div>
     <div>
       <div class="header-title">VSPT <span>· Planta 3D</span></div>
-      <div class="header-sub" id="hdrSub">OPINONA, fallas y lubricación sobre el plano</div>
+      <div class="header-sub" id="hdrSub">OPINONA, fallas, limpieza, zonas 5S y tarjetas sobre el plano</div>
     </div>
   </div>
   <div class="header-right">
@@ -207,7 +333,11 @@
 <script>
 /* Planta 3D (oct-2026): el plano de Mantenimiento como tablero de la planta. Por ahora sólo en el
    tablero servido por Google (la pestaña la agrega 09_TABLERO_GOOGLE.gs, antes de "Planta").
-   Capas: OPINONA por línea, fallas por equipo (Pareto), lubricación, OT de la semana y horas de uso.
+   Capas: OPINONA por línea, fallas por equipo (Pareto), limpieza (OTIF por zona 5S), zonas 5S con sus
+   responsables, tarjetas 5S (FDC), lubricación, OT de la semana y horas de uso.
+   Diseño (v5, 5-oct): el plano ocupa todo el cuadro y la información flota encima en tarjetas.
+   - Limpieza, zonas y tarjetas: ?tabla=planta3d, planta3d_otif, planta3d_tarjetas y planta3d_fotos
+     (10_PLANTA3D.gs), recién al elegir una de esas capas. Nombres y fotos llegan sólo por la API.
    - Equipos, posiciones y puntos: ?tabla=mant, a demanda al abrir la pestaña (con la misma memoria del
      navegador que Mantenimiento, vspt_mant_cache_v1). No es un pedido nuevo de la API.
    - OPINONA: la que ya bajó el tablero (window.parent.VSPT_OPINONA, como Programas) y las funciones de
@@ -254,21 +384,23 @@ const cacheSet = v => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(v))
 // ───────────── datos de Mantenimiento ─────────────
 // Google a veces pierde la respuesta aunque el script contestó bien (la redirección "echo" termina en 404
 // con una página HTML): se reintenta con espera creciente. Un JSON de error no se reintenta; un POST, nunca.
-async function pedirMant() {
+async function pedirApi(params, etiqueta) {
+  const q = Object.entries(params).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
   const esperas = [1500, 4000, 9000];
   let error;
   for (let i = 0; i <= esperas.length; i++) {
     if (i) await new Promise(r => setTimeout(r, esperas[i - 1]));
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     try {
-      const r = await fetch(API_URL + '?tabla=mant', { signal: ctrl.signal });
+      const r = await fetch(API_URL + '?' + q, { signal: ctrl.signal });
       const texto = await r.text(); clearTimeout(to);
       try { return JSON.parse(texto); } catch (e) { error = new Error('la API no devolvió datos (HTTP ' + r.status + ')'); }
     } catch (e) { clearTimeout(to); error = e; if (e.name === 'AbortError') break; }
-    console.warn('[API] intento ' + (i + 1) + ' sin datos · mant · ' + error.message);
+    console.warn('[API] intento ' + (i + 1) + ' sin datos · ' + (etiqueta || params.tabla) + ' · ' + error.message);
   }
   throw error;
 }
+const pedirMant = () => pedirApi({ tabla: 'mant' });
 async function cargar() {
   setStatus('Cargando…');
   const c = cacheGet();
@@ -293,7 +425,7 @@ async function post(body) {
   return j;
 }
 function indexar() {
-  IX = { eq: {}, parte: {}, ptsEq: {}, regsOt: {} };
+  IX = { eq: {}, parte: {}, ptsEq: {}, regsOt: {}, _ver: (indexar.n = (indexar.n || 0) + 1) };
   D.equipos.forEach(e => { e.equipo_sap = String(e.equipo_sap); IX.eq[e.equipo_sap] = e; IX.ptsEq[e.equipo_sap] = []; });
   D.partes.forEach(p => { p.parte_id = String(p.parte_id); IX.parte[p.parte_id] = p; });
   D.puntos.forEach(p => { p.punto_id = String(p.punto_id); p.parte_id = String(p.parte_id); p.equipo_sap = String(p.equipo_sap); (IX.ptsEq[p.equipo_sap] = IX.ptsEq[p.equipo_sap] || []).push(p); });
@@ -370,7 +502,8 @@ const P3_CELU = matchMedia('(max-width: 700px)').matches || (matchMedia('(pointe
 // "En marcha" se recuerda por navegador; si nunca se tocó, arranca prendido en la computadora y apagado en el celular.
 let p3 = { capa: 'opi', periodo: 'mes', mto: 'todas', linea: 'all', vista: P3_CELU ? 'top' : '3d', nombres: false,
   marcha: (() => { try { const g = localStorage.getItem('vspt_p3_marcha'); return g ? g === '1' : !P3_CELU && !matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })(),
-  editar: false, sel: null, hover: null, mov: {}, fija: false };
+  editar: false, sel: null, hover: null, mov: {}, fija: false,
+  zsel: null, zhover: null, tsel: null, mes: null, tfiltro: 'todas', tfdc: false, ubicar: null, dibujo: null };   // capas 5S
 const p3Es2D = () => !!p3SinGL || (p3.vista === 'top' && P3_CELU);
 
 const p3Css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
@@ -419,6 +552,7 @@ function p3Clave(id, dat) {
   if (p3.capa === 'ot') { const o = dat.ot[id]; return !o ? 'na' : o.c >= o.n ? 'ok' : 'pend'; }
   if (p3.capa === 'opi') { const e = IX.eq[id], m = e && dat.opi && dat.opi.lin[eqLinea(e)]; return m && m.tEfectivo > 0 ? opiTono(m.opi, opiMeta(eqLinea(e))) : 'na'; }
   if (p3.capa === 'fallas') { const f = dat.opi && dat.opi.eqs[id]; return f ? P3_CLASE[f.clase] : 'na'; }
+  if (p3Es5S()) return 'na';   // limpieza, zonas y tarjetas: los equipos quedan neutros, mandan las zonas y los pines
   const s = peor(id); return P3_TONO[s] ? s : 'na';
 }
 // Color CSS de un equipo; en Horas de uso, la rampa (mezclada en luz lineal, como la del 3D).
@@ -443,12 +577,14 @@ function p3Motor() {
   const st = $('#p3stage'); if (!st) return;
   const dos = p3Es2D(), run = $('#p3Run');
   if (run) run.hidden = dos;
-  $('#p3ayuda').textContent = p3Ayuda();
+  const vb = $('#p3Vista'); if (vb) p3BotonVista();
   if (dos) {
     if (P3 && P3.renderer.domElement.isConnected) { P3.renderer.domElement.remove(); P3.etiq.forEach(el => el.remove()); P3.etiq.clear(); }
+    if (P3 && P3.etiq5) { P3.etiq5.forEach(el => el.remove()); P3.etiq5.clear(); }
     p2Montar();
   } else {
     if (P2 && P2.cv.isConnected) { P2.cv.remove(); P2.etiq.forEach(el => el.remove()); P2.etiq.clear(); }
+    if (P2 && P2.etiq5) { P2.etiq5.forEach(el => el.remove()); P2.etiq5.clear(); }
     if (P3) p3Montar(); else p3Iniciar();
   }
   p3Aviso();
@@ -460,7 +596,7 @@ function p3Aviso() {
   const ver = !!p3SinGL && !(p3.vista === 'top' && P3_CELU);
   st.classList.toggle('con-aviso', ver);
   if (!ver) { if (a) a.remove(); return; }
-  if (!a) { a = document.createElement('div'); a.id = 'p3aviso'; a.className = 'p3-aviso'; a.setAttribute('role', 'status'); st.appendChild(a); }
+  if (!a) { a = document.createElement('div'); a.id = 'p3aviso'; a.className = 'p3-aviso glass'; a.setAttribute('role', 'status'); ($('#p3bar') || st).appendChild(a); }
   a.innerHTML = `<span>${esc(p3SinGL)} Se muestra el plano 2D.</span><button class="btn sm" id="p3Re3d" type="button">Reintentar 3D</button>`;
   $('#p3Re3d').onclick = () => { p3SinGL = ''; if (P3 && P3.renderer.getContext().isContextLost()) p3Descartar(); p3Motor(); };
 }
@@ -1525,7 +1661,7 @@ function p3Aplicar() {
   const claveDe = id => p3Clave(id, dat);
   const colorDe = id => { if (p3.capa === 'uso') { const u = dat.uso[id]; return u == null ? col.na : lo.clone().lerp(hi, Math.sqrt(u / dat.maxUso)); } return col[claveDe(id)]; };
   const fade = (obj, on) => { obj.tenue = !on; obj.mats.forEach(m => { const b = m.userData.base ?? 1; m.opacity = on ? b : 0.12; m.depthWrite = on && b === 1; }); };
-  const baliza = (bz, id, cc) => { bz.b.visible = p3.capa !== 'uso'; p3Encender(bz, p3.capa === 'uso' ? -1 : (luz[claveDe(id)] ?? -1), cc); };
+  const baliza = (bz, id, cc) => { const ve = p3.capa !== 'uso' && !p3Es5S(); bz.b.visible = ve; p3Encender(bz, ve ? (luz[claveDe(id)] ?? -1) : -1, cc); };
   for (const mc of S.maq.values()) {
     const cc = colorDe(mc.id);
     mc.halo.material.color.copy(cc); baliza(mc.bz, mc.id, cc);
@@ -1539,7 +1675,8 @@ function p3Aplicar() {
     fade(b, p3Visible(b.e));
   }
   S.etiq.forEach(el => el.remove()); S.etiq.clear();   // se rehacen con el color de la capa
-  p3Resaltar(); p3Leyenda();
+  if (S.etiq5 && !p3Es5S() && !p3.zsel) { S.etiq5.forEach(el => el.remove()); S.etiq5.clear(); }   // sin esperar el próximo cuadro
+  p3ZonasSync(); p3Resaltar(); p3Leyenda();
 }
 function p3Resaltar() {
   const S = P3; if (!S) return;
@@ -1599,14 +1736,13 @@ function p3Encuadre(animar = true) {
   // toda la planta (la losa) o solo los equipos de la línea elegida
   let box = new T.Box3(new T.Vector3(-2, 0, -56), new T.Vector3(58, 1, 2));
   if (p3.linea !== 'all') box = p3CajaDe([...S.maq.values()].filter(m => p3Visible(m.e)).map(m => m.id).concat(S.cintas.filter(b => p3Visible(b.e)).map(b => b.id))) || box;
-  const f = p3Encaje(box, off), tgt = f.centro, zoom = f.zoom, pos = tgt.clone().add(off);
-  if (!animar) { S.cam.position.copy(pos); S.controls.target.copy(tgt); S.cam.zoom = zoom; S.cam.updateProjectionMatrix(); S.controls.update(); S.dirty = true; return; }
-  p3Animar(pos, tgt, zoom);
+  p3IrLibre(p3Encaje(box, off), off, animar);
 }
 function p3Enfocar(id, zMin) {
   const S = P3, box = S && p3CajaDe([id]); if (!box) return;
   const off = S.cam.position.clone().sub(S.controls.target), f = p3Encaje(box, off, zMin);
-  p3Animar(f.centro.clone().add(off), f.centro, Math.min(f.zoom, Math.max(zMin || 1, S.cam.zoom)));
+  f.zoom = Math.min(f.zoom, Math.max(zMin || 1, S.cam.zoom));
+  p3IrLibre(f, off);
 }
 
 // ── etiquetas ──
@@ -1636,6 +1772,8 @@ function p3Etiquetas() {
     if (lin) deLinea.push({ el, x, y }); else el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
   }
   p3Separar(deLinea);
+  const v5 = new S.T.Vector3();
+  p5Etiquetas(S.etiq5 || (S.etiq5 = new Map()), cont, (x, y, h) => { v5.set(x, h, -y).project(S.cam); return v5.z > 1 ? null : [(v5.x + 1) / 2 * W, (1 - v5.y) / 2 * H]; });
 }
 // Las etiquetas de línea no se tapan entre sí: la que choca con otra ya puesta sube por encima (px del cuadro;
 // el ancla de cada una es el centro de su borde de abajo). Las líneas corren cerca en el plano.
@@ -1655,6 +1793,8 @@ function p3Separar(lbls) {
 }
 
 // ── puntero: elegir, arrastrar (modo Ubicar equipos) y acercar ──
+// Punto del piso (m del plano) bajo el puntero; usa el rayo que dejó p3Tocar.
+function p3PuntoPiso() { const S = P3, hit = new S.T.Vector3(); return S.ray.ray.intersectPlane(S.piso, hit) ? { x: hit.x, y: -hit.z } : null; }
 function p3Tocar(ev) {
   const S = P3, r = S.renderer.domElement.getBoundingClientRect();
   S.ptr.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
@@ -1686,18 +1826,29 @@ function p3Punteros() {
     }
     if (ev.pointerType === 'touch') return;
     const id = p3Tocar(ev);
-    if (id !== p3.hover) { p3.hover = id; el.style.cursor = id ? (p3.editar && S.maq.has(id) ? 'grab' : 'pointer') : ''; p3Resaltar(); }
+    if (p3Es5S() && p3.capa !== 'tarjetas') {
+      const pt = p3PuntoPiso(), z = pt && p5ZonaEn(pt.x, pt.y), zk = z ? z.zona : null;
+      if (zk !== p3.zhover) { p3.zhover = zk; p3ZonasColor(); }
+      el.style.cursor = p3.ubicar || p3.dibujo ? 'crosshair' : (zk || id) ? 'pointer' : '';
+      if (id !== p3.hover) { p3.hover = id; p3Resaltar(); }
+      return;
+    }
+    if (id !== p3.hover) { p3.hover = id; el.style.cursor = p3.ubicar || p3.dibujo ? 'crosshair' : id ? (p3.editar && S.maq.has(id) ? 'grab' : 'pointer') : ''; p3Resaltar(); }
   });
   el.addEventListener('pointerup', ev => {
     if (arrastre) { const { mc, movio } = arrastre; arrastre = null; S.controls.enabled = true; el.style.cursor = 'grab'; if (movio) p3Movido(mc); return; }
     if (!abajo || Math.hypot(ev.clientX - abajo[0], ev.clientY - abajo[1]) > 6) return;
-    p3Elegir(p3Tocar(ev));
+    const id = p3Tocar(ev), pt = p3PuntoPiso();
+    if (p5ToquePiso(pt)) return;
+    if (p3Es5S() && p3.capa !== 'tarjetas') { const z = pt && p5ZonaEn(pt.x, pt.y); if (z) return p5ElegirZona(p3.zsel === z.zona ? null : z.zona); }
+    p3Elegir(id);
   });
-  el.addEventListener('pointerleave', () => { if (p3.hover) { p3.hover = null; p3Resaltar(); } });
+  el.addEventListener('pointerleave', () => { if (p3.hover || p3.zhover) { p3.hover = null; p3.zhover = null; p3Resaltar(); p3ZonasColor(); } });
   el.addEventListener('dblclick', ev => { const id = p3Tocar(ev); if (id) p3Enfocar(id, 3); });
 }
 function p3Elegir(id) {
-  p3.sel = id || null;
+  p3.sel = id || null; p3.zsel = null; p3.tsel = null;
+  p3ZonasColor();
   p3Resaltar(); p2Pedir(); p3Panel(); p3BarraEdicion();
 }
 
@@ -1814,6 +1965,7 @@ function p2Aplicar() {
     return { id, e: IX.eq[id], polys, ancla: p0[Math.min(1, p0.length - 1)], color, tira: rampa(id) ? color : S.tonos.cinta };
   });
   S.etiq.forEach(el => el.remove()); S.etiq.clear();   // se rehacen con el texto de la capa
+  if (S.etiq5 && !p3Es5S() && !p3.zsel) { S.etiq5.forEach(el => el.remove()); S.etiq5.clear(); }
   if (p3Es2D()) p3Leyenda();
   p2Pedir();
 }
@@ -1836,6 +1988,15 @@ function p2Dibujar() {
     c.strokeStyle = b.tira; c.lineWidth = Math.max(2, 0.26 * z); c.stroke();
     if (p3.capa !== 'uso') { const [sx, sy] = p2Pant(b.ancla[0], b.ancla[1]); c.beginPath(); c.arc(sx, sy, Math.max(4.5, 0.35 * z), 0, 2 * Math.PI); c.fillStyle = b.color; c.fill(); c.lineWidth = 1.5; c.strokeStyle = T.bg; c.stroke(); }
   }
+  // zonas 5S: losa translúcida y borde (debajo de los equipos)
+  if (p3Es5S() || p3.zsel) for (const zn of p5Zonas()) {
+    if (!zn.rect || (!p3Es5S() && zn.zona !== p3.zsel)) continue;
+    const [sx0, sy0] = p2Pant(zn.rect[0], zn.rect[3]), [sx1, sy1] = p2Pant(zn.rect[2], zn.rect[1]), col = p3Css(p5ColorZona(zn));
+    const vis = p5ZonaVisible(zn), sel = zn.zona === p3.zsel, k = p3.capa === 'tarjetas' ? 0.5 : 1;
+    c.globalAlpha = (vis ? (sel ? 0.42 : zn.zona === p3.zhover ? 0.33 : 0.22) : 0.04) * k; c.fillStyle = col; c.fillRect(sx0, sy0, sx1 - sx0, sy1 - sy0);
+    c.globalAlpha = (vis ? 1 : 0.15) * k; c.lineWidth = sel ? 3 : 1.6; c.strokeStyle = sel ? T.foco : col; c.strokeRect(sx0, sy0, sx1 - sx0, sy1 - sy0);
+  }
+  c.globalAlpha = 1;
   // equipos: la huella girada, pintada con el estado; el horno va pegado a su capsuladora
   for (const o of S.eqs) {
     const [sx, sy] = p2Pant(o.x, o.y), sel = o.id === p3.sel;
@@ -1867,6 +2028,7 @@ function p2Etiquetas() {
     if (lin) deLinea.push({ el, x: sx, y: sy - 4 }); else el.style.transform = `translate(${sx}px, ${sy - rad * S.z - 4}px) translate(-50%, -100%)`;
   }
   p3Separar(deLinea);
+  p5Etiquetas(S.etiq5 || (S.etiq5 = new Map()), cont, (x, y) => p2Pant(x, y));
 }
 // Qué equipo (o cinta) hay en un punto del cuadro; solo los de la línea elegida. Si el punto cae en varias
 // huellas gana la que lo tiene más cerca de su centro; si no cae en ninguna, la más cercana a menos de 10 px (el dedo).
@@ -1921,8 +2083,9 @@ function p2Punteros() {
   cv.addEventListener('pointermove', ev => {
     if (!dedos.has(ev.pointerId)) {   // mouse sin apretar: resalta lo que tiene debajo
       if (ev.pointerType !== 'mouse') return;
-      const id = p2Tocar(...aqui(ev));
-      if (id !== p3.hover) { p3.hover = id; cv.style.cursor = id ? (p3.editar && !P3_CINTAS[id] ? 'grab' : 'pointer') : ''; p2Pedir(); }
+      const [mx, my] = aqui(ev), id = p2Tocar(mx, my);
+      if (p3Es5S() && p3.capa !== 'tarjetas') { const [wx, wy] = p2Mundo(mx, my), z = p5ZonaEn(wx, wy), zk = z ? z.zona : null; if (zk !== p3.zhover) { p3.zhover = zk; p2Pedir(); } cv.style.cursor = p3.ubicar || p3.dibujo ? 'crosshair' : (zk || id) ? 'pointer' : ''; }
+      if (id !== p3.hover) { p3.hover = id; if (!p3Es5S() || p3.capa === 'tarjetas') cv.style.cursor = p3.ubicar || p3.dibujo ? 'crosshair' : id ? (p3.editar && !P3_CINTAS[id] ? 'grab' : 'pointer') : ''; p2Pedir(); }
       return;
     }
     const antes = dedos.get(ev.pointerId), ahora = aqui(ev); dedos.set(ev.pointerId, ahora);
@@ -1956,6 +2119,9 @@ function p2Toque(h, tipo) {
   const S = P2, t = performance.now(), u = S.ultimo; S.ultimo = { t, x: h.x0, y: h.y0 };
   // doble toque (en el celular no llega dblclick): acerca
   if (tipo !== 'mouse' && u && t - u.t < 330 && Math.hypot(u.x - h.x0, u.y - h.y0) < 30) { S.ultimo = null; if (h.id) p2Enfocar(h.id); else p2Zoom(2, h.x0, h.y0, true); return; }
+  const [wx, wy] = p2Mundo(h.x0, h.y0);
+  if (p5ToquePiso({ x: wx, y: wy })) return;
+  if (p3Es5S() && p3.capa !== 'tarjetas') { const z = p5ZonaEn(wx, wy); if (z) return p5ElegirZona(p3.zsel === z.zona ? null : z.zona); }
   p3Elegir(h.id || null);
 }
 function p2Zoom(f, px, py, animar) {
@@ -1985,7 +2151,7 @@ function p2Encuadre(animar = true) {
     if (pts.length) b = [Math.min(...pts.map(p => p[0])) - 1.5, Math.min(...pts.map(p => p[1])) - 1.5, Math.max(...pts.map(p => p[0])) + 1.5, Math.max(...pts.map(p => p[1])) + 1.5];
   }
   S.zMin = Math.min(S.w / 62, S.h / 60) * 0.7;
-  const z = p2Limite(Math.min(S.w / (b[2] - b[0]), S.h / (b[3] - b[1])) * 0.96), cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+  const L = p3Libre(), z = p2Limite(Math.min(L.w / (b[2] - b[0]), L.h / (b[3] - b[1])) * 0.96), cx = (b[0] + b[2]) / 2 - L.dx / z, cy = (b[1] + b[3]) / 2 + L.dy / z;
   if (animar) p2Ir(cx, cy, z); else { Object.assign(S, { cx, cy, z }); p2Pedir(); }
 }
 function p2Enfocar(id) {
@@ -2185,25 +2351,28 @@ function p3LineasEtiq() {
 }
 
 // ───────────── capas, panel y barra ─────────────
-const P3_CAPAS = [['opi', 'OPINONA'], ['fallas', 'Fallas'], ['lub', 'Lubricación'], ['ot', 'OT semana'], ['uso', 'Horas de uso']];
+const P3_CAPAS = [['opi', 'OPINONA'], ['fallas', 'Fallas'], ['limpieza', 'Limpieza'], ['zonas', 'Zonas 5S'], ['tarjetas', 'Tarjetas 5S'], ['lub', 'Lubricación'], ['ot', 'OT semana'], ['uso', 'Horas de uso']];
 const P3_MTO = [['todas', 'Todas'], ['MTO', 'MTO'], ['OP', 'OP']];
 const p3UsaOpinona = () => p3.capa === 'opi' || p3.capa === 'fallas';
-function guardarEstado() { try { localStorage.setItem(ESTADO_KEY, JSON.stringify({ capa: p3.capa, periodo: p3.periodo, mto: p3.mto })); } catch (e) {} }
+function guardarEstado() { try { localStorage.setItem(ESTADO_KEY, JSON.stringify({ capa: p3.capa, periodo: p3.periodo, mto: p3.mto, mes: p3.mes, tfiltro: p3.tfiltro, tfdc: p3.tfdc })); } catch (e) {} }
 (function leerEstado() {
   let g = null; try { g = JSON.parse(localStorage.getItem(ESTADO_KEY)); } catch (e) {}
   if (!g) return;
   if (P3_CAPAS.some(([k]) => k === g.capa)) p3.capa = g.capa;
   if (P3_PERIODOS.some(([k]) => k === g.periodo)) p3.periodo = g.periodo;
   if (P3_MTO.some(([k]) => k === g.mto)) p3.mto = g.mto;
+  if (/^\d{4}-\d{2}$/.test(g.mes || '')) p3.mes = g.mes;
+  if (g.tfiltro === 'abiertas' || g.tfiltro === 'todas') p3.tfiltro = g.tfiltro;
+  p3.tfdc = g.tfdc === true;
 })();
 const estadoTxt = () => `Equipos al ${fday(D && D.uso_hasta)}` + (OPI.estado === 'ok' ? ` · OPINONA al ${fday(OPI.ultimo)}` : '');
 // Cambió la capa, el período o el filtro: colores, leyenda, etiquetas y panel.
 function refrescarCapa() {
   if (!D || !$('#p3stage')) return;
-  const per = $('#p3Per'), mto = $('#p3Mto');
-  if (per) per.hidden = !p3UsaOpinona();
-  if (mto) mto.hidden = p3.capa !== 'fallas';
-  p3Aplicar(); p2Aplicar(); p3Panel();
+  p5Necesita();
+  if (P3) p3ZonasSync();
+  p3Aplicar(); p2Aplicar(); p3Panel(); p5Modo();
+  if (p3.capa === 'zonas' && P5.base) p5CargarFotos(P5.base.zonas.flatMap(z => z.responsables));
 }
 function p3PonerLinea(L) {
   p3.linea = L; $$('[data-p3l]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.p3l === L)));
@@ -2215,68 +2384,108 @@ function renderPlanta() {
   const seg = (k, v, lab, on) => `<button data-${k}="${v}" aria-pressed="${on}">${lab}</button>`;
   const lineas = ['all', ...LINEAS.filter(L => D.equipos.some(e => eqLinea(e) === L))];
   if (!lineas.includes(p3.linea)) p3.linea = 'all';
+  const ico = (n, t, id, extra = '') => `<button type="button" id="${id}" title="${t}" aria-label="${t}" ${extra}><svg viewBox="0 0 24 24" aria-hidden="true">${P3_SVG[n]}</svg></button>`;
   $('#main').innerHTML = `<div class="p3${p3.fija ? ' completa' : ''}">
-    <div class="card p3-card">
-      <div class="row p3-hud">
+    <div class="p3-stage" id="p3stage"><div class="p3-msg" id="p3msg">Cargando el plano…</div><div class="p3-labels" id="p3labels"></div></div>
+    <div class="p3-ui">
+      <div class="p3-top glass">
+        <span class="ttl"><i><svg viewBox="0 0 24 24" aria-hidden="true">${P3_SVG.cubo}</svg></i>Planta 3D</span>
         <div class="seg" role="group" aria-label="Línea">${lineas.map(L => seg('p3l', L, L === 'all' ? 'Todas' : L, p3.linea === L)).join('')}</div>
+        <span class="sep"></span>
         <div class="seg" role="group" aria-label="Qué muestra">${P3_CAPAS.map(([k, t]) => seg('p3c', k, t, p3.capa === k)).join('')}</div>
-        <div class="seg" role="group" aria-label="Período" id="p3Per" ${p3UsaOpinona() ? '' : 'hidden'}>${P3_PERIODOS.map(([k, t]) => seg('p3p', k, t, p3.periodo === k)).join('')}</div>
-        <div class="seg" role="group" aria-label="Fallas cargadas por" id="p3Mto" ${p3.capa === 'fallas' ? '' : 'hidden'}>${P3_MTO.map(([k, t]) => seg('p3m', k, t, p3.mto === k)).join('')}</div>
-        <div class="seg" role="group" aria-label="Vista">${seg('p3v', '3d', '3D', p3.vista === '3d')}${seg('p3v', 'top', 'Planta', p3.vista === 'top')}</div>
-        <button class="btn sm" id="p3Nom" aria-pressed="${p3.nombres}">Nombres</button>
-        <button class="btn sm" id="p3Run" aria-pressed="${p3.marcha}" title="Botellas, cajas, palets y autoelevadores en movimiento" ${p3Es2D() ? 'hidden' : ''}>En marcha</button>
         <span class="grow"></span>
         ${D.editor ? `<button class="btn sm" id="p3Ed" aria-pressed="${p3.editar}">Ubicar equipos</button>` : ''}
+        <span class="est" id="p3estado">${esc(estadoActual)}</span>
+        ${EMBEBIDA ? '<button class="btn sm" id="p3Act" title="Volver a leer los datos">Actualizar</button>' : ''}
       </div>
-      <div class="p3-stage" id="p3stage"><div class="p3-msg" id="p3msg">Cargando el plano…</div>
-        <div class="p3-labels" id="p3labels"></div><div class="p3-legend" id="p3legend" hidden></div><div class="p3-edit" id="p3edit" hidden></div>
-        <button class="p3-full" id="p3Full" type="button"></button></div>
-      <div class="row small muted p3-pie"><span class="grow" id="p3ayuda">${p3Ayuda()}</span>${EMBEBIDA ? `<span id="p3estado">${esc(estadoActual)}</span><button class="btn sm" id="p3Act" title="Volver a leer los datos de Mantenimiento">Actualizar</button>` : ''}</div>
-    </div>
-    <div class="card p3-side" id="p3side"></div></div>`;
+      <div class="p3-kpis" id="p3kpis"></div>
+      <div class="p3-bar" id="p3bar"><div class="p3-edit glass p3-modo" id="p3edit" hidden></div></div>
+      <div class="p3-ctrl glass" role="toolbar" aria-label="Vista del plano">
+        ${ico('mas', 'Acercar', 'p3Zin')}${ico('menos', 'Alejar', 'p3Zout')}${ico('casa', 'Ver toda la planta', 'p3Home')}<hr>
+        ${ico('vista', 'Vista Planta', 'p3Vista')}${ico('nombres', 'Nombres de los equipos', 'p3Nom', `aria-pressed="${p3.nombres}"`)}
+        ${ico('marcha', 'En marcha: botellas, cajas, palets y autoelevadores en movimiento', 'p3Run', `aria-pressed="${p3.marcha}" ${p3Es2D() ? 'hidden' : ''}`)}<hr>
+        ${ico('vista', 'Pantalla completa', 'p3Full')}${ico('ayuda', 'Cómo se usa', 'p3Ayu')}
+      </div>
+      <div class="p3-legend glass" id="p3legend" hidden></div>
+      <aside class="p3-side glass" id="p3side" aria-live="polite"></aside>
+    </div></div>`;
   $$('[data-p3l]').forEach(b => b.onclick = () => p3PonerLinea(b.dataset.p3l));
-  $$('[data-p3c]').forEach(b => b.onclick = () => { p3.capa = b.dataset.p3c; $$('[data-p3c]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); guardarEstado(); refrescarCapa(); });
-  $$('[data-p3p]').forEach(b => b.onclick = () => { p3.periodo = b.dataset.p3p; $$('[data-p3p]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); guardarEstado(); refrescarCapa(); });
-  $$('[data-p3m]').forEach(b => b.onclick = () => { p3.mto = b.dataset.p3m; $$('[data-p3m]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); guardarEstado(); refrescarCapa(); });
-  $$('[data-p3v]').forEach(b => b.onclick = () => {
-    const antes = p3Es2D();
-    p3.vista = b.dataset.p3v; $$('[data-p3v]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    if (p3Es2D() !== antes) p3Motor(); else { $('#p3ayuda').textContent = p3Ayuda(); p3Aviso(); }
-    if (!p3Es2D() && P3) p3Encuadre();
+  $$('[data-p3c]').forEach(b => b.onclick = () => {
+    p3.capa = b.dataset.p3c; $$('[data-p3c]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    if (!p3Es5S()) { p3.zsel = null; p3.tsel = null; p3.ubicar = null; p3.dibujo = null; }
+    if (p3.capa !== 'tarjetas') p3.tsel = null;
+    if (p3.capa === 'tarjetas') { p3.zsel = null; p3.dibujo = null; }
+    p3.zhover = null; guardarEstado(); refrescarCapa();
   });
+  $('#p3Zin').onclick = () => p3Zoom(1.35);
+  $('#p3Zout').onclick = () => p3Zoom(1 / 1.35);
+  $('#p3Home').onclick = () => { if (p3Es2D()) p2Encuadre(); else if (P3) p3Encuadre(); };
+  $('#p3Vista').onclick = () => p3CambiarVista(p3.vista === '3d' ? 'top' : '3d');
+  p3BotonVista();
   $('#p3Nom').onclick = ev => { p3.nombres = !p3.nombres; ev.currentTarget.setAttribute('aria-pressed', String(p3.nombres)); if (P3) P3.dirty = true; p2Pedir(); };
   $('#p3Full').onclick = () => p3Completa();
   p3CompletaBoton();
   $('#p3Run').onclick = ev => { p3.marcha = !p3.marcha; ev.currentTarget.setAttribute('aria-pressed', String(p3.marcha)); try { localStorage.setItem('vspt_p3_marcha', p3.marcha ? '1' : '0'); } catch (e) {} if (P3) P3.dirty = true; };
+  $('#p3Ayu').onclick = () => toast(p3Ayuda());
+  $('#p3labels').addEventListener('click', p5TocarEtiqueta);
   const be = $('#p3Ed');
   if (be) be.onclick = () => { p3.editar = !p3.editar; be.setAttribute('aria-pressed', String(p3.editar)); p3BarraEdicion(); };
-  const ba = $('#p3Act'); if (ba) ba.onclick = () => cargar();
-  p3Panel(); p3BarraEdicion();
+  const ba = $('#p3Act'); if (ba) ba.onclick = () => { cargar(); P5.base = P5.otif = P5.tarj = null; P5.tarjetas = []; p5Necesita(); };
+  p5Necesita();
+  p3Panel(); p3Leyenda(); p3BarraEdicion(); p5Modo();
   p3Motor();
+}
+// Botón de la vista: muestra la otra (3D ↔ Planta).
+function p3BotonVista() {
+  const b = $('#p3Vista'); if (!b) return;
+  const t = p3.vista === '3d' ? 'Vista Planta (desde arriba)' : 'Vista 3D';
+  b.title = t; b.setAttribute('aria-label', t);
+  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${P3_SVG[p3.vista === '3d' ? 'vista' : 'vista3d']}</svg>`;
+}
+function p3CambiarVista(v) {
+  const antes = p3Es2D();
+  p3.vista = v; p3BotonVista();
+  if (p3Es2D() !== antes) p3Motor(); else p3Aviso();
+  if (!p3Es2D() && P3) p3Encuadre();
+}
+function p3Zoom(f) {
+  if (p3Es2D()) { const S = P2; if (S && S.z) p2Zoom(f, S.w / 2, S.h / 2, true); return; }
+  const S = P3; if (!S) return;
+  S.anim = null; S.cam.zoom = Math.min(S.controls.maxZoom, Math.max(S.controls.minZoom, S.cam.zoom * f)); S.cam.updateProjectionMatrix(); S.dirty = true;
 }
 const p3Ayuda = () => (p3Es2D()
   ? 'Desplazá con un dedo o el mouse y acercá con dos dedos o la rueda. Tocá un equipo para ver su detalle; doble toque para acercarte.'
   : (p3.vista === 'top'
     ? 'Desplazá con un dedo o el botón izquierdo y acercá con dos dedos o la rueda.'
-    : 'Girá con un dedo o el botón izquierdo, desplazá con dos dedos o el botón derecho y acercá con la rueda.') + ' Tocá un equipo para ver su detalle; doble clic para acercarte.');
+    : 'Girá con un dedo o el botón izquierdo, desplazá con dos dedos o el botón derecho y acercá con la rueda.') + (p3Es5S() ? ' Tocá una zona o un pin para ver su detalle.' : ' Tocá un equipo para ver su detalle; doble clic para acercarte.'));
 
 function p3Leyenda() {
   const el = $('#p3legend'); if (!el || !D) return;
+  p3Kpis();
+  if (p3Es5S()) { el.hidden = false; return p5Leyenda(el); }
   // equipos a la vista (los inactivos no cuentan) y cintas de la línea elegida
   const dat = p3Dat(), ids = D.equipos.filter(e => p3Visible(e) && (P3_CINTAS[String(e.equipo_sap)] || si(e.activo))).map(e => String(e.equipo_sap));
   const it = (cls, txt, n) => `<span><span class="dot ${cls}"></span> ${txt} <b class="tnum">${n}</b></span>`;
   el.hidden = false;
   if (p3UsaOpinona()) {
-    const q = dat.opi;
-    if (!q) { el.innerHTML = `<b class="small">${esc(opiAviso() || 'Sin datos de OPINONA')}</b>`; return; }
+    const q = dat.opi, seg = (k, v, lab, on) => `<button data-${k}="${v}" aria-pressed="${on}">${lab}</button>`;
+    const ctl = `<div class="row" style="gap:8px"><div class="seg" role="group" aria-label="Período">${P3_PERIODOS.map(([k, t]) => seg('p3p', k, t, p3.periodo === k)).join('')}</div>${p3.capa === 'fallas' ? `<div class="seg" role="group" aria-label="Fallas cargadas por">${P3_MTO.map(([k, t]) => seg('p3m', k, t, p3.mto === k)).join('')}</div>` : ''}</div>`;
+    const conCtl = () => {
+      el.insertAdjacentHTML('afterbegin', ctl);
+      $$('[data-p3p]', el).forEach(b => b.onclick = () => { p3.periodo = b.dataset.p3p; guardarEstado(); refrescarCapa(); });
+      $$('[data-p3m]', el).forEach(b => b.onclick = () => { p3.mto = b.dataset.p3m; guardarEstado(); refrescarCapa(); });
+    };
+    if (!q) { el.innerHTML = `<b class="small">${esc(opiAviso() || 'Sin datos de OPINONA')}</b>`; return conCtl(); }
     if (p3.capa === 'opi') {
       const ls = ['L1', 'L2', 'L3'].filter(L => p3.linea === 'all' || p3.linea === L);
       el.innerHTML = `<b class="small">OPI de cada línea · ${esc(q.R.txt)}</b><div class="items">${ls.map(L => { const m = q.lin[L], ok = m && m.tEfectivo > 0;
         return it(ok ? opiTono(m.opi, opiMeta(L)) : 'na', L, ok ? fmt(m.opi, 1) + ' %' : '—'); }).join('')}</div>
         <div class="small muted">Verde: en meta · rojo: bajo meta (metas del tablero)</div>`;
+      conCtl();
     } else {
       const n = { vencido: 0, proximo: 0, ok: 0, na: 0 }; ids.forEach(id => { n[p3Clave(id, dat)]++; });
       el.innerHTML = `<b class="small">Fallas · ${esc(q.R.txt)}${p3.mto !== 'todas' ? ' · ' + p3.mto : ''} · ${fmtH(q.tot)}</b><div class="items">${it('vencido', P3_CLASE_TXT.A, n.vencido)}${it('proximo', P3_CLASE_TXT.B, n.proximo)}${it('ok', P3_CLASE_TXT.C, n.ok)}${it('na', 'Sin fallas', n.na)}</div>`;
+      conCtl();
     }
     return;
   }
@@ -2297,6 +2506,7 @@ function p3TextoEtiqueta(id) {
   if (p3.capa === 'lub') { const s = peor(id); dot = `<span class="dot ${s === 'sin_regla' ? 'na' : s}"></span>`; }
   else if (p3.capa === 'ot') { dot = `<span class="dot ${!o ? 'na' : o.c >= o.n ? 'ok' : 'pend'}"></span>`; if (o) extra = ` · ${o.c}/${o.n}`; }
   else if (p3.capa === 'uso') { if (u != null) extra = ` · ${fmt(u)} h`; }
+  else if (p3Es5S()) { /* sólo el nombre */ }
   else {
     dot = `<span class="dot ${p3Clave(id, dat)}"></span>`;
     const f = dat.opi && dat.opi.eqs[id]; if (f) extra = ` · ${fmtH(f.h)} de falla`;
@@ -2358,6 +2568,7 @@ function p3FallasEquipo(id, q) {
 function p3Panel() {
   const el = $('#p3side'); if (!el || !D) return;
   const dat = p3Dat(), id = p3.sel, e = id && IX.eq[id];
+  if (p3.zsel || p3.tsel || (p3Es5S() && !e)) return p5Panel(el);
   if (!e) {
     if (p3UsaOpinona()) {
       if (!dat.opi) { el.innerHTML = `<h2>${p3.capa === 'opi' ? 'OPINONA por línea' : 'Fallas de equipos'}</h2><div class="hint">${esc(opiAviso() || 'Sin datos de OPINONA.')}</div>`; return; }
@@ -2409,8 +2620,648 @@ function p3Panel() {
   $('#p3Cerrar').onclick = () => p3Elegir(null);
 }
 
+// ───────────── Zonas 5S, limpieza (OTIF) y tarjetas 5S (10_PLANTA3D.gs de la API) ─────────────
+// Se piden a demanda, la primera vez que se elige una de estas capas (nunca al abrir el tablero):
+//   ?tabla=planta3d           zonas (responsables y rectángulo), marcas de tarjetas, qué fotos hay, si sos editor
+//   ?tabla=planta3d_otif      OTIF por zona y por mes: la foto del registro de limpieza ("OTIF (Respuestas)")
+//   ?tabla=planta3d_tarjetas  tarjetas 5S de Envasado: la foto de la planilla del Pilar 5S
+//   ?tabla=planta3d_fotos     caras de los responsables, de a pocas; quedan guardadas en el navegador (96 px)
+// Los nombres y las fotos no están en este archivo (el repo es público): llegan por la API, con login.
+const P5 = { base: null, otif: null, tarj: null, tarjetas: [], pidiendo: {}, error: {}, fotos: {}, fotoV: {}, pidiendoFotos: false, baseVer: 0, tarjVer: 0 };
+const P5_CAPAS = new Set(['limpieza', 'zonas', 'tarjetas']);
+const p3Es5S = () => P5_CAPAS.has(p3.capa);
+const P5_FOTOS_KEY = 'vspt_p3_fotos_v1';      // {clave: [versión, dataURL de 96 px]}
+const p5Clave = n => normNombre(n);           // = p3Norm_ de la API
+async function cargar5S(pieza) {               // 'base' · 'otif' · 'tarj'
+  if (P5[pieza]) return P5[pieza];
+  if (P5.pidiendo[pieza]) return P5.pidiendo[pieza];
+  const tabla = { base: 'planta3d', otif: 'planta3d_otif', tarj: 'planta3d_tarjetas' }[pieza];
+  P5.pidiendo[pieza] = (async () => {
+    try {
+      const j = await pedirApi({ tabla });
+      if (j.status !== 'success') throw new Error(j.msg || j.reason || 'la API no trajo ' + tabla);
+      if (pieza === 'base') { P5.base = j.planta3d; P5.baseVer++; }
+      else if (pieza === 'otif') P5.otif = j;
+      else { P5.tarj = j; P5.tarjetas = j.r.map(r => { const o = {}; j.cols.forEach((k, i) => { o[k] = r[i]; }); return o; }); P5.tarjVer++; }
+      delete P5.error[pieza];
+    } catch (e) { P5.error[pieza] = (e && e.message) || String(e); }
+    finally { delete P5.pidiendo[pieza]; }
+    p5Refrescar();
+    return P5[pieza];
+  })();
+  return P5.pidiendo[pieza];
+}
+// Lo que necesita la capa elegida (o la zona elegida).
+function p5Necesita() {
+  if (!p3Es5S() && !p3.zsel) return;
+  cargar5S('base'); cargar5S('otif'); cargar5S('tarj');
+}
+// Llegaron datos, se guardó algo o cambió la capa: zonas, colores, etiquetas, panel y caras.
+function p5Refrescar() {
+  if (!D || !$('#p3stage')) return;
+  if (P3) { p3ZonasSync(); P3.dirty = true; }
+  p3Aplicar(); p2Aplicar(); p3Panel(); p5Modo();
+  if (p3.capa === 'zonas' && P5.base) p5CargarFotos(P5.base.zonas.flatMap(z => z.responsables));
+}
+const p5Cargando = pieza => !!P5.pidiendo[pieza];
+const p5Aviso = pieza => P5.error[pieza] ? 'No llegó de la API: ' + P5.error[pieza] : p5Cargando(pieza) || !P5[pieza] ? 'Cargando…' : '';
+
+// ── zonas en el plano ──
+// Rectángulo de una zona: el que dibujó un editor o, si no, el que encierra sus equipos ubicados (los de su línea
+// y sus sectores). Un equipo lejos de la cinta de su línea (más de 4 m) y de los demás equipos de la línea (más de
+// 8 m) está mal ubicado y no estira la zona (p. ej. la secadora de L2 en la otra punta de la planta).
+function p5RectDeEquipos(z) {
+  if (!z.sectores.length || !/^L[123]$/.test(z.linea)) return null;
+  const linea = D.equipos.filter(e => eqLinea(e) === z.linea && si(e.activo) && !P3_CINTAS[String(e.equipo_sap)])
+    .map(e => ({ e, p: p3Pos(e) })).filter(o => o.p && !p3EnEspera(o.p));
+  const cintas = Object.keys(P3_CINTAS).filter(id => IX.eq[id] && eqLinea(IX.eq[id]) === z.linea).flatMap(id => P3_CINTAS[id]);
+  const junto = o => cintas.some(pl => pl.slice(1).some((q, i) => p2Dist(o.p.x, o.p.y, pl[i], q) <= 4))
+    || linea.some(q => q !== o && Math.hypot(q.p.x - o.p.x, q.p.y - o.p.y) <= 8);
+  const pts = linea.filter(o => z.sectores.includes(String(o.e.sector || '').toUpperCase())).filter(junto)
+    .map(o => { const [, w, d] = p3Modelo(o.e); return { x: o.p.x, y: o.p.y, r: Math.max(w, d) / 2 }; });
+  if (!pts.length) return null;
+  const m = 0.8;
+  return [Math.min(...pts.map(q => q.x - q.r)) - m, Math.min(...pts.map(q => q.y - q.r)) - m,
+          Math.max(...pts.map(q => q.x + q.r)) + m, Math.max(...pts.map(q => q.y + q.r)) + m].map(v => Math.round(v * 100) / 100);
+}
+let p5ZMemo = null;
+function p5Zonas() {
+  if (!P5.base || !D) return [];
+  const clave = P5.baseVer + '|' + IX._ver + '|' + JSON.stringify(p3.mov);
+  if (p5ZMemo && p5ZMemo.clave === clave) return p5ZMemo.zs;
+  const zs = P5.base.zonas.map(z => {
+    const r = z.rect || p5RectDeEquipos(z);
+    return Object.assign({}, z, { rect: r, origen: z.rect ? 'editor' : r ? 'equipos' : null, cx: r ? (r[0] + r[2]) / 2 : null, cy: r ? (r[1] + r[3]) / 2 : null });
+  });
+  p5ZMemo = { clave, zs };
+  return zs;
+}
+const p5Zona = k => p5Zonas().find(z => z.zona === k) || null;
+const p5ZonaVisible = z => p3.linea === 'all' || !z.linea || z.linea === p3.linea;
+// Zona en un punto del plano (m): la más chica que lo contiene, de las que están a la vista.
+function p5ZonaEn(x, y) {
+  let mejor = null, area = Infinity;
+  p5Zonas().forEach(z => {
+    if (!z.rect || !p5ZonaVisible(z)) return;
+    const [x0, y0, x1, y1] = z.rect, a = (x1 - x0) * (y1 - y0);
+    if (x >= x0 && x <= x1 && y >= y0 && y <= y1 && a < area) { mejor = z; area = a; }
+  });
+  return mejor;
+}
+
+// ── limpieza: OTIF por zona y mes ──
+const p5Meta = () => (P5.otif && P5.otif.meta) || 0.75, p5Min = () => (P5.otif && P5.otif.minimo) || 0.5;
+const p5Tono = v => v == null ? 'na' : v >= p5Meta() ? 'ok' : v >= p5Min() ? 'proximo' : 'vencido';
+function p5MesesConDatos() {
+  const set = new Set(); if (!P5.otif) return [];
+  Object.values(P5.otif.zonas).forEach(Z => Z.meses.forEach(M => set.add(M.m)));
+  return [...set].sort();
+}
+const p5Mes = () => { if (!P5.otif) return null; const ms = p5MesesConDatos(); return p3.mes && ms.includes(p3.mes) ? p3.mes : (P5.otif.mes_inicial || ms[ms.length - 1] || null); };
+const p5MesTxt = m => { const x = String(m || '').match(/^(\d{4})-(\d{2})$/); return x ? `${MES_LARGO[+x[2] - 1]} ${x[1]}` : '—'; };
+const p5Otif = (z, mes) => { const Z = P5.otif && P5.otif.zonas[z]; return Z ? Z.meses.find(M => M.m === mes) || null : null; };
+const p5EnCurso = mes => !!P5.otif && mes === P5.otif.mes_en_curso;
+// Promedio de las zonas a la vista en un mes (las que tienen datos).
+function p5Planta(mes) {
+  const zs = p5Zonas().filter(p5ZonaVisible).map(z => p5Otif(z.zona, mes)).filter(Boolean);
+  if (!zs.length) return null;
+  const prom = k => zs.reduce((s, M) => s + M[k], 0) / zs.length;
+  return { n: zs.length, otif: prom('otif'), ot: prom('ot'), if: prom('if'), meta: zs.filter(M => M.otif >= p5Meta()).length,
+    bajo: zs.filter(M => M.otif < p5Min()).length, sinReg: zs.filter(M => M.reg === 0).length };
+}
+// Color de cada zona en la capa elegida.
+function p5ColorZona(z) {
+  if (p3.capa === 'limpieza') { const M = p5Otif(z.zona, p5Mes()); return '--z-' + ({ ok: 'ok', proximo: 'warn', vencido: 'crit', na: 'na' }[M ? p5Tono(M.otif) : 'na']); }
+  if (p3.capa === 'zonas') return { L1: '--l1', L2: '--l2', L3: '--l3' }[z.linea] || '--sf';
+  return '--z-na';
+}
+
+// ── tarjetas 5S: dónde van en el plano ──
+// La marca que puso alguien en el tablero; si no, lo que dice el problema: "… Capsuladora L1." → la capsuladora
+// de L1. Se lee de la última oración hacia atrás (ahí suele ir el lugar). Sin equipo y línea claros, sin ubicar.
+const P5_SECTOR_TXT = [
+  ['LEXT', /LAVA ?SECADORA|LAVADO EXTERIOR|LAVADORA EXTERIOR/], ['DESP', /DESPAL+ETIZ/], ['ENJI', /ENJUAG/], ['INER', /INERTIZ|SOPLADORA/],
+  ['LLEN', /LLENADORA|SALA DE LLENADO|\bLLENADO\b/], ['TROS', /ROSCA|ZALKIN|BERTOLA/], ['TAPA', /TAPADORA|TAPONADORA|CORCHADORA/],
+  ['ATAP', /CORCHOS?\b|TAPONES/], ['SECA', /SECADORA/], ['CAPS', /CAPSULADORA|CAPSULAS?\b|HORNO/],
+  ['ETIQ', /ETIQUETADORA|CODIFICADOR|INK ?JET|DOMINO|FOX ?JET|STICKEAD|MEDALLA/], ['ENCA', /ENCAJONADORA|ENCAJONADO/],
+  ['ACAJ', /ARMADORA|FORMADORA/], ['CCAJ', /CERRADORA/], ['ESTR', /ESTRICHADORA|ENVOLVEDORA|STRETCH|PAL+ETIZADORA|FINAL DE LINEA/],
+  ['TRAN', /CINTA|TRANSPORTADORA|RODILLOS|MAGAZIN|MESA GIRATORIA/]
+];
+const P5_ZONA_TXT = [['3G', /SET ?UP/], ['3H', /FILTRACI/], ['1H', /DESTAJO|NICHO/]];
+const P5_EQ_PRINCIPAL = { ETIQ: /^ETIQUETADORA F\d/, TAPA: /^TAPADORA F\d/, TRAN: /MAGAZIN|CINTA/ };
+function p5DondeTexto(t) {
+  const txt = normNombre(t.problema).toUpperCase(), lin = s => { const m = s.match(/\bL\s?([123])\b|LINEA\s?([123])\b/); return m ? 'L' + (m[1] || m[2]) : null; };
+  const frases = txt.split(/\.\s+|\.$|;/).filter(f => f.trim());
+  for (let i = frases.length - 1; i >= 0; i--) {
+    const f = frases[i];
+    let sec = null, k = Infinity;
+    P5_SECTOR_TXT.forEach(([s, re]) => { const m = f.match(re); if (m && m.index < k) { k = m.index; sec = s; } });
+    const zt = P5_ZONA_TXT.find(([, re]) => re.test(f));
+    if (zt && !sec) return { zona: zt[0] };
+    if (!sec) continue;
+    let L = lin(f) || lin(txt);
+    if (!L) { const ls = [...new Set(D.equipos.filter(e => String(e.sector || '').toUpperCase() === sec).map(eqLinea))].filter(x => /^L[123]$/.test(x)); if (ls.length === 1) L = ls[0]; }
+    if (!L) return null;
+    return { linea: L, sector: sec };
+  }
+  return null;
+}
+function p5EquipoDe(L, sec) {
+  const cand = D.equipos.filter(e => eqLinea(e) === L && String(e.sector || '').toUpperCase() === sec && si(e.activo))
+    .map(e => ({ e, p: p3Pos(e) })).filter(o => o.p && !p3EnEspera(o.p) || P3_CINTAS[String(o.e.equipo_sap)]);
+  const re = P5_EQ_PRINCIPAL[sec];
+  return (re && cand.find(o => re.test(String(o.e.nombre || '').toUpperCase()))) || cand[0] || null;
+}
+let p5TMemo = null;
+function p5Ubicadas() {
+  if (!D || !P5.tarjetas.length) return [];
+  const clave = P5.tarjVer + '|' + P5.baseVer + '|' + IX._ver;
+  if (p5TMemo && p5TMemo.clave === clave) return p5TMemo.ts;
+  const marcas = {}; ((P5.base && P5.base.marcas) || []).forEach(m => { marcas[String(m.tarjeta)] = m; });
+  const zs = p5Zonas();
+  const ts = P5.tarjetas.map(t => {
+    const m = marcas[String(t.n)], d = p5DondeTexto(t);
+    let pos = null, zona = null;
+    if (d && d.zona) { const z = zs.find(q => q.zona === d.zona); zona = d.zona; if (z && z.rect) pos = { x: z.cx, y: z.cy, origen: 'texto', donde: z.nombre }; }
+    else if (d) {
+      const o = p5EquipoDe(d.linea, d.sector), z = zs.find(q => q.linea === d.linea && q.sectores.includes(d.sector));
+      zona = z ? z.zona : null;
+      if (o) { const c = P3_CINTAS[String(o.e.equipo_sap)], p = c ? { x: c[0][0][0], y: c[0][0][1] } : o.p; pos = { x: p.x, y: p.y, origen: 'texto', donde: cap(sinF(o.e.nombre)) + ' ' + d.linea }; }
+    }
+    if (m) { pos = { x: m.x, y: m.y, origen: 'marca', quien: m.quien, cuando: m.cuando }; const z = p5ZonaEn(m.x, m.y); if (z) zona = z.zona; }
+    return Object.assign({}, t, { pos, zona });
+  });
+  p5TMemo = { clave, ts };
+  return ts;
+}
+const P5_ESTADO = { abierta: 'Abierta', atrasada: 'Atrasada', cerrada: 'Cerrada' };
+const p5TarjVisible = t => (p3.tfiltro === 'todas' || t.estado !== 'cerrada') && (!p3.tfdc || t.fdc) &&
+  (p3.linea === 'all' || !t.zona || (p5Zona(t.zona) || {}).linea === p3.linea || !(p5Zona(t.zona) || {}).linea);
+// Pines: las tarjetas a la vista agrupadas por lugar (las del mismo equipo, un pin con la cantidad).
+let p5PMemo = null;
+function p5Pines() {
+  const clave = [P5.tarjVer, P5.baseVer, IX._ver, p3.tfiltro, p3.tfdc, p3.linea].join('|');
+  if (p5PMemo && p5PMemo.clave === clave) return p5PMemo.ps;
+  const grupos = new Map();
+  p5Ubicadas().filter(p5TarjVisible).forEach(t => {
+    if (!t.pos) return;
+    const k = Math.round(t.pos.x * 2) / 2 + ',' + Math.round(t.pos.y * 2) / 2;
+    const g = grupos.get(k) || { key: k, x: 0, y: 0, ts: [] }; g.ts.push(t); grupos.set(k, g);
+  });
+  const ps = [...grupos.values()].map(g => {
+    g.x = g.ts.reduce((s, t) => s + t.pos.x, 0) / g.ts.length; g.y = g.ts.reduce((s, t) => s + t.pos.y, 0) / g.ts.length;
+    g.fdc = g.ts.filter(t => t.fdc).length; g.abiertas = g.ts.filter(t => t.estado !== 'cerrada').length;
+    g.marcadas = g.ts.filter(t => t.pos.origen === 'marca').length;
+    return g;
+  });
+  p5PMemo = { clave, ps };
+  return ps;
+}
+const p5Pin = k => p5Pines().find(p => p.key === k) || null;
+function p5HtmlPin(g, col) {
+  const color = g.fdc ? col.fdc : col.otra;
+  const cls = 'pin ' + (g.abiertas ? 'abierta' : 'cerrada') + (g.marcadas ? '' : ' texto');
+  return [cls, `<svg viewBox="0 0 30 38" aria-hidden="true" style="color:${color}"><path class="cab" d="M15 36.5C15 36.5 3 23.5 3 14.5A12 12 0 0 1 27 14.5C27 23.5 15 36.5 15 36.5Z" fill="${color}" stroke="#fff" stroke-width="2"/></svg><b>${g.ts.length}</b>`];
+}
+
+// ── caras de los responsables ──
+const p5Ini = n => String(n || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const p5ColorNombre = k => `hsl(${[...k].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7)} 38% 42%)`;
+function p5Av(nombre, grande, editable) {
+  const k = p5Clave(nombre), tag = editable ? 'button' : 'span';
+  return `<${tag} class="av${grande ? ' g' : ''}${editable ? ' editable' : ''}" data-av="${esc(k)}" ${editable ? `type="button" data-foto="${esc(nombre)}" title="Cambiar la foto de ${esc(nombre)}" aria-label="Cambiar la foto de ${esc(nombre)}"` : `title="${esc(nombre)}"`} style="background-color:${p5ColorNombre(k)}">${esc(p5Ini(nombre))}</${tag}>`;
+}
+function p5Avs(nombres, max) {
+  const vis = nombres.slice(0, max), resto = nombres.length - vis.length;
+  return `<span class="avs">${vis.map(n => p5Av(n)).join('')}${resto > 0 ? `<span class="av mas">+${resto}</span>` : ''}</span>`;
+}
+// Las fotos van en una hoja de estilos (una regla por persona): las etiquetas del plano no cargan la imagen cada vez.
+function p5EstilosFotos() {
+  let st = $('#p5fotos'); if (!st) { st = document.createElement('style'); st.id = 'p5fotos'; document.head.appendChild(st); }
+  st.textContent = Object.entries(P5.fotos).map(([k, url]) => `.av[data-av="${CSS.escape(k)}"]{background-image:url("${url}");color:transparent}`).join('\n');
+}
+const p5FotosGuardadas = () => { try { return JSON.parse(localStorage.getItem(P5_FOTOS_KEY)) || {}; } catch (e) { return {}; } };
+function p5GuardarFoto(k, v, url) { const g = p5FotosGuardadas(); g[k] = [v, url]; try { localStorage.setItem(P5_FOTOS_KEY, JSON.stringify(g)); } catch (e) {} }
+// Imagen → cuadrado de `lado` px recortado al centro, en JPEG.
+async function p5Achicar(src, lado) {
+  const img = new Image(); img.src = src; await img.decode();
+  const c = document.createElement('canvas'); c.width = c.height = lado;
+  const k = Math.max(lado / img.naturalWidth, lado / img.naturalHeight), w = img.naturalWidth * k, h = img.naturalHeight * k, ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, lado, lado); ctx.drawImage(img, (lado - w) / 2, (lado - h) / 2, w, h);
+  return c.toDataURL('image/jpeg', 0.86);
+}
+async function p5CargarFotos(nombres) {
+  if (!P5.base) return;
+  const idx = P5.base.fotos || {}, g = p5FotosGuardadas(), faltan = [];
+  [...new Set(nombres.map(p5Clave))].forEach(k => {
+    if (!idx[k] || (P5.fotos[k] && P5.fotoV[k] === idx[k])) return;
+    if (g[k] && g[k][0] === idx[k]) { P5.fotos[k] = g[k][1]; P5.fotoV[k] = idx[k]; return; }
+    faltan.push(k);
+  });
+  p5EstilosFotos();
+  if (!faltan.length || P5.pidiendoFotos) return;
+  P5.pidiendoFotos = true;
+  try {
+    let pend = faltan;
+    for (let vuelta = 0; pend.length && vuelta < 30; vuelta++) {
+      const j = await pedirApi({ tabla: 'planta3d_fotos', n: pend.slice(0, 6).join('|') }, 'fotos');
+      if (j.status !== 'success') break;
+      const llegaron = Object.entries(j.fotos || {});
+      for (const [k, url] of llegaron) {
+        let chica = url; try { chica = await p5Achicar(url, 96); } catch (e) {}
+        P5.fotos[k] = chica; P5.fotoV[k] = idx[k]; p5GuardarFoto(k, idx[k], chica);
+      }
+      const sin = new Set(j.sin || []);
+      pend = pend.filter(k => !P5.fotos[k] || P5.fotoV[k] !== idx[k]).filter(k => !sin.has(k));
+      p5EstilosFotos();
+      if (!llegaron.length) break;
+    }
+  } catch (e) { console.warn('[fotos] ' + e.message); }
+  finally { P5.pidiendoFotos = false; p5EstilosFotos(); }
+}
+// Foto nueva (editores): se elige un archivo, se recorta a 256 px y se manda a la API.
+function p5ElegirFoto(nombre) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async () => {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    try {
+      const url = URL.createObjectURL(f), foto = await p5Achicar(url, 256); URL.revokeObjectURL(url);
+      toast('Subiendo la foto de ' + nombre + '…');
+      const j = await post({ accion: 'planta3d_foto', nombre, foto });
+      const k = j.clave || p5Clave(nombre), chica = await p5Achicar(foto, 96);
+      P5.base.fotos[k] = j.v; P5.fotos[k] = chica; P5.fotoV[k] = j.v; p5GuardarFoto(k, j.v, chica); p5EstilosFotos();
+      toast('Foto de ' + nombre + ' actualizada');
+    } catch (e) { toast('No se pudo subir la foto: ' + e.message, true); }
+  };
+  inp.click();
+}
+
+// ── modos: ubicar una tarjeta o dibujar una zona tocando el plano ──
+function p5Modo() {
+  const bar = $('#p3bar'); if (!bar) return;
+  let el = $('#p3modo');
+  const m = p3.ubicar ? `<span class="small"><b>Ubicar la tarjeta N° ${esc(p3.ubicar)}.</b> Tocá el plano donde está.</span>`
+    : p3.dibujo ? `<span class="small"><b>Dibujar la zona ${esc(p3.dibujo.zona)}.</b> ${p3.dibujo.p0 ? 'Ahora tocá la esquina opuesta.' : 'Tocá una esquina en el plano.'}</span>` : '';
+  const lb = $('#p3labels'); if (lb) lb.classList.toggle('modo', !!m);
+  if (!m) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'p3modo'; el.className = 'p3-modo glass'; bar.appendChild(el); }
+  el.innerHTML = m + '<button class="btn sm" id="p3ModoNo">Cancelar</button>';
+  $('#p3ModoNo').onclick = () => { p3.ubicar = null; p3.dibujo = null; p5Modo(); p2Pedir(); };
+}
+// Un toque en el piso con un modo activo (x, y en m del plano). true si lo usó.
+function p5ToquePiso(pt) {
+  if (!pt || (!p3.ubicar && !p3.dibujo)) return false;
+  if (p3.ubicar) { const n = p3.ubicar; p3.ubicar = null; p5Modo(); p5Marcar(n, pt); return true; }
+  const d = p3.dibujo;
+  if (!d.p0) { d.p0 = pt; p5Modo(); return true; }
+  p3.dibujo = null; p5Modo(); p5GuardarZona(d.zona, { rect: [d.p0.x, d.p0.y, pt.x, pt.y].map(v => Math.round(v * 100) / 100) });
+  return true;
+}
+async function p5Marcar(n, pt) {
+  try {
+    const j = await post(pt ? { accion: 'planta3d_marca', tarjeta: n, x: Math.round(pt.x * 100) / 100, y: Math.round(pt.y * 100) / 100 } : { accion: 'planta3d_marca', tarjeta: n, quitar: true });
+    P5.base.marcas = j.marcas; P5.baseVer++;
+    toast(pt ? `Tarjeta N° ${n} ubicada en el plano` : `Se quitó la marca de la tarjeta N° ${n}`);
+  } catch (e) { toast(e.message, true); }
+  p5Refrescar();
+}
+async function p5GuardarZona(zona, cambios) {
+  try {
+    const j = await post(Object.assign({ accion: 'planta3d_zona', zona }, cambios));
+    P5.base.zonas = j.zonas; P5.baseVer++; toast('Zona ' + zona + ' guardada');
+  } catch (e) { toast(e.message, true); }
+  p5Refrescar();
+}
+
+// ── selección ──
+function p5ElegirZona(k) { p3.zsel = k || null; p3.tsel = null; p3.sel = null; p5Necesita(); p3Resaltar(); p3ZonasColor(); p2Pedir(); p3Panel(); }
+function p5ElegirPin(k) { p3.tsel = k || null; p3.zsel = null; p3.sel = null; p3Resaltar(); p2Pedir(); p3Panel(); }
+function p5EnfocarZona(k) {
+  const z = p5Zona(k); if (!z || !z.rect) return;
+  if (p3Es2D()) { const S = P2; if (S && S.z) { const L = p3Libre(), [x0, y0, x1, y1] = z.rect, zz = p2Limite(Math.min(L.w / (x1 - x0 + 6), L.h / (y1 - y0 + 6))); p2Ir(z.cx - L.dx / zz, z.cy + L.dy / zz, zz); } return; }
+  const S = P3; if (!S) return;
+  const T = S.T, box = new T.Box3(new T.Vector3(z.rect[0], 0, -z.rect[3]), new T.Vector3(z.rect[2], 1.5, -z.rect[1]));
+  const off = S.cam.position.clone().sub(S.controls.target), f = p3Encaje(box, off, 1.5);
+  p3IrLibre(f, off);
+}
+
+// ── zonas en el 3D: una losa translúcida y un borde por zona ──
+function p3ZonasSync() {
+  const S = P3; if (!S) return;
+  const T = S.T;
+  if (!S.zonasG) { S.zonasG = new T.Group(); S.scene.add(S.zonasG); S.zonaMesh = new Map(); }
+  const quiero = new Map();
+  if (p3Es5S() || p3.zsel) p5Zonas().forEach(z => { if (z.rect) quiero.set(z.zona, z); });
+  const tirar = m => { S.zonasG.remove(m.g); m.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); };
+  for (const [k, m] of S.zonaMesh) { const z = quiero.get(k); if (!z || m.firma !== z.rect.join(',')) { tirar(m); S.zonaMesh.delete(k); } }
+  quiero.forEach((z, k) => {
+    if (S.zonaMesh.has(k)) return;
+    const [x0, y0, x1, y1] = z.rect, w = x1 - x0, d = y1 - y0, b = Math.min(0.14, w / 6, d / 6), g = new T.Group();
+    const losa = new T.Mesh(new T.PlaneGeometry(w, d), new T.MeshBasicMaterial({ transparent: true, opacity: 0.25, depthWrite: false }));
+    losa.rotation.x = -Math.PI / 2; losa.position.set(x0 + w / 2, 0.03, -(y0 + d / 2)); losa.renderOrder = 2; losa.userData.zona = k;
+    const forma = new T.Shape([new T.Vector2(x0, y0), new T.Vector2(x1, y0), new T.Vector2(x1, y1), new T.Vector2(x0, y1)]);
+    forma.holes.push(new T.Path([new T.Vector2(x0 + b, y0 + b), new T.Vector2(x0 + b, y1 - b), new T.Vector2(x1 - b, y1 - b), new T.Vector2(x1 - b, y0 + b)]));
+    const borde = new T.Mesh(new T.ShapeGeometry(forma), new T.MeshBasicMaterial({ transparent: true, depthWrite: false }));
+    borde.rotation.x = -Math.PI / 2; borde.position.y = 0.05; borde.renderOrder = 3;
+    g.add(losa, borde); S.zonasG.add(g);
+    S.zonaMesh.set(k, { g, losa, borde, firma: z.rect.join(',') });
+  });
+  p3ZonasColor();
+}
+function p3ZonasColor() {
+  const S = P3; if (!S || !S.zonaMesh) return;
+  const foco = new S.T.Color(p3Css('--focus'));
+  for (const [k, m] of S.zonaMesh) {
+    const z = p5Zona(k); if (!z) continue;
+    const col = new S.T.Color(p3Css(p5ColorZona(z))), vis = p5ZonaVisible(z), sel = p3.zsel === k, hov = p3.zhover === k;
+    const t = p3.capa === 'tarjetas' ? 0.5 : 1;
+    m.losa.material.color.copy(col); m.losa.material.opacity = (!vis ? 0.04 : sel ? 0.46 : hov ? 0.36 : 0.24) * t;
+    m.borde.material.color.copy(sel ? foco : col); m.borde.material.opacity = (vis ? 0.95 : 0.15) * t;
+  }
+  S.dirty = true;
+}
+
+// ── etiquetas de zonas y pines de tarjetas (las usan el 3D y el 2D) ──
+function p5HtmlZona(z, grande) {
+  if (p3.capa === 'zonas') return `<span class="cod">${esc(z.zona)}</span>${grande ? `<span>${esc(z.nombre)}</span>` : ''}${p5Avs(z.responsables, grande ? 4 : 3)}`;
+  const M = p5Otif(z.zona, p5Mes()), t = M ? p5Tono(M.otif) : 'na';
+  return `<span class="cod ${t}">${esc(z.zona)}</span><b class="tnum">${M ? fmt(M.otif * 100) + ' %' : '—'}</b>${grande ? `<span class="muted">${esc(z.nombre)}</span>` : ''}`;
+}
+function p5Etiquetas(mapa, cont, proy) {
+  const quiero = new Map();
+  if (D && P5.base && (p3Es5S() || p3.zsel)) {
+    const col = { fdc: p3Css('--z-crit'), otra: p3Css('--z-warn') };
+    if (p3.capa === 'tarjetas') p5Pines().forEach(g => { const [cls, html] = p5HtmlPin(g, col); quiero.set('t:' + g.key, { x: g.x, y: g.y, h: 0.3, cls, html, sel: p3.tsel === g.key }); });
+    else p5Zonas().forEach(z => {
+      if (!z.rect || !p5ZonaVisible(z) || (!p3Es5S() && p3.zsel !== z.zona)) return;
+      const grande = p3.zsel === z.zona || p3.zhover === z.zona;
+      quiero.set('z:' + z.zona, { x: z.cx, y: z.cy, h: 0.2, cls: 'mlabel zona' + (grande ? '' : ' compacta'), html: p5HtmlZona(z, grande), sel: p3.zsel === z.zona });
+    });
+  }
+  for (const [k, el] of mapa) if (!quiero.has(k) || !el.isConnected) { el.remove(); mapa.delete(k); }
+  const zonas = [];
+  for (const [k, q] of quiero) {
+    let el = mapa.get(k);
+    if (!el) { el = document.createElement('div'); el.dataset.k = k; cont.appendChild(el); mapa.set(k, el); }
+    if (el._cls !== q.cls) { el.className = q.cls; el._cls = q.cls; }
+    if (el._html !== q.html) { el.innerHTML = q.html; el._html = q.html; }
+    el.classList.toggle('sel', !!q.sel);
+    const p = proy(q.x, q.y, q.h);
+    if (!p) { el.style.visibility = 'hidden'; continue; }
+    el.style.visibility = ''; el.style.zIndex = q.sel ? 7 : 5;
+    if (k[0] === 'z') zonas.push({ el, x: p[0], y: p[1] }); else el.style.transform = `translate(${p[0]}px, ${p[1]}px) translate(-50%, -100%)`;
+  }
+  p3Separar(zonas);
+}
+// Toque en una etiqueta de zona o en un pin (el contenedor de etiquetas no toma el puntero; ellas sí).
+function p5TocarEtiqueta(ev) {
+  const el = ev.target.closest('[data-k]'); if (!el) return;
+  ev.stopPropagation();
+  const k = el.dataset.k;
+  if (k.startsWith('z:')) { const z = k.slice(2); p5ElegirZona(p3.zsel === z ? null : z); }
+  else if (k.startsWith('t:')) { const t = k.slice(2); p5ElegirPin(p3.tsel === t ? null : t); }
+}
+
+// ── tarjetas de KPI (arriba a la izquierda) ──
+const P3_SVG = {
+  cubo: '<path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/>',
+  medidor: '<path d="M12 14l4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0"/>', linea: '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
+  alerta: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  ok: '<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4 12 14l-3-3"/>', gota: '<path d="M12 2.7 6.3 8.4a8 8 0 1 0 11.4 0z"/>',
+  escoba: '<path d="M19 3 9.5 12.5"/><path d="M11 11l2 2-5 8-6-6 8-5z"/>', grupo: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+  foto: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  pin: '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>', tarjeta: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/>',
+  reloj: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>', llave: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z"/>',
+  capas: '<path d="M12 2 2 7l10 5 10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>', mas: '<path d="M12 5v14M5 12h14"/>', menos: '<path d="M5 12h14"/>',
+  casa: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>', vista: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
+  vista3d: '<path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/>', nombres: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.5"/>',
+  marcha: '<polygon points="6 4 20 12 6 20 6 4"/>', ayuda: '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>'
+};
+function p3Kpis() {
+  const el = $('#p3kpis'); if (!el || !D) return;
+  const k = (ic, l, v, s, tono, attrs) => `<${attrs ? 'button type="button"' : 'div'} class="p3-kpi glass" ${attrs || ''}><span class="ic ${tono || ''}"><svg viewBox="0 0 24 24" aria-hidden="true">${P3_SVG[ic]}</svg></span>
+    <span class="l">${l}</span><span class="v ${tono || ''}">${v}</span>${s ? `<span class="s">${s}</span>` : ''}</${attrs ? 'button' : 'div'}>`;
+  const pct = v => fmt(v * 100) + '<small>%</small>';
+  let html = '';
+  if (p3UsaOpinona()) {
+    const q = opiDatos();
+    if (!q) html = k('medidor', p3.capa === 'opi' ? 'OPINONA' : 'Fallas', '—', esc(opiAviso() || 'Sin datos'));
+    else if (p3.capa === 'opi') {
+      const una = (L, m, meta, tit) => { const ok = m && m.tEfectivo > 0, d = ok ? m.opi - meta : 0;
+        return k(L ? 'linea' : 'medidor', tit, ok ? `${fmt(m.opi, 1)}<small>%</small><small class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '+' : ''}${fmt(d, 1)}</small>` : '—', `Meta ${fmt(meta)} % · ${esc(q.R.txt)}`, ok ? opiTono(m.opi, meta) : '',
+          L ? `data-p3lin="${L}" aria-pressed="${p3.linea === L}"` : ''); };
+      html = (p3.linea === 'all' ? una('', q.planta, opiMeta('planta'), 'OPI planta') : '') + ['L1', 'L2', 'L3'].filter(L => p3.linea === 'all' || p3.linea === L).map(L => una(L, q.lin[L], opiMeta(L), 'OPI ' + L)).join('');
+    } else {
+      const top = q.orden[0] && IX.eq[q.orden[0]], sinEq = q.sinEq.reduce((s, x) => s + x.h, 0);
+      html = k('reloj', 'Horas de falla', fmtH(q.tot), esc(q.R.txt), q.tot ? 'vencido' : '') + k('alerta', 'Equipos con fallas', fmt(q.orden.length), `${q.orden.filter(id => q.eqs[id].clase === 'A').length} suman el 80 %`)
+        + (top ? k('llave', 'El que más falló', esc(cap(sinF(top.nombre))), `${eqLinea(top)} · ${fmtH(q.eqs[q.orden[0]].h)}`) : '') + (sinEq ? k('pin', 'Sin equipo en el plano', fmtH(sinEq), `${q.sinEq.length} nombre${q.sinEq.length === 1 ? '' : 's'} de OPINONA`) : '');
+    }
+  } else if (p3.capa === 'limpieza') {
+    const mes = p5Mes(), P = P5.otif && p5Planta(mes);
+    if (!P) html = k('escoba', 'Limpieza (OTIF)', '—', esc(p5Aviso('otif') || 'Sin datos en el mes'));
+    else html = k('escoba', 'OTIF · promedio de zonas', pct(P.otif), `${esc(p5MesTxt(mes))}${p5EnCurso(mes) ? ' (en curso)' : ''} · meta ${fmt(p5Meta() * 100)} %`, p5Tono(P.otif))
+      + k('ok', 'Zonas en meta', `${P.meta}<small>de ${P.n}</small>`, `OTIF ≥ ${fmt(p5Meta() * 100)} %`, P.meta ? 'ok' : '')
+      + k('alerta', 'Zonas bajo el mínimo', `${P.bajo}<small>de ${P.n}</small>`, `OTIF < ${fmt(p5Min() * 100)} %${P.sinReg ? ` · ${P.sinReg} sin registro semanal` : ''}`, P.bajo ? 'vencido' : 'ok')
+      + k('medidor', '%OT · %IF', `${fmt(P.ot * 100)}<small>%</small> · ${fmt(P.if * 100)}<small>%</small>`, 'a tiempo · en estándar (auditoría)');
+  } else if (p3.capa === 'zonas') {
+    const zs = p5Zonas(); if (!zs.length) html = k('grupo', 'Zonas 5S', '—', esc(p5Aviso('base')));
+    else {
+      const resp = [...new Set(zs.flatMap(z => z.responsables.map(p5Clave)))], conFoto = resp.filter(r => (P5.base.fotos || {})[r]).length, mes = p5Mes(), P = P5.otif && p5Planta(mes);
+      html = k('capas', 'Zonas 5S de Envasado', `${zs.length}`, `${zs.filter(z => z.rect).length} dibujadas en el plano`) + k('grupo', 'Responsables', `${resp.length}`, 'operarios con zona a cargo')
+        + k('foto', 'Con foto', `${conFoto}<small>de ${resp.length}</small>`, P5.base.editor ? 'tocá una cara para cambiarla' : 'las cambia un editor') + (P ? k('escoba', 'Limpieza (OTIF)', pct(P.otif), esc(p5MesTxt(mes)), p5Tono(P.otif)) : '');
+    }
+  } else if (p3.capa === 'tarjetas') {
+    const ts = p5Ubicadas(); if (!ts.length) html = k('tarjeta', 'Tarjetas 5S', '—', esc(p5Aviso('tarj') || 'Sin tarjetas de Envasado'));
+    else {
+      const R = P5.tarj.resumen || {}, vis = ts.filter(p5TarjVisible), sinPos = vis.filter(t => !t.pos).length;
+      html = k('tarjeta', 'Abiertas', `${R.abiertas}`, `${R.atrasadas} atrasada${R.atrasadas === 1 ? '' : 's'} · de ${R.total} de Envasado`, R.atrasadas ? 'vencido' : R.abiertas ? 'proximo' : 'ok')
+        + k('gota', 'FDC abiertas', `${R.fdc_abiertas}`, `${R.fdc} fuentes de contaminación en la planilla`, R.fdc_abiertas ? 'vencido' : 'ok')
+        + k('pin', 'En el plano', `${vis.length - sinPos}<small>de ${vis.length}</small>`, `${vis.filter(t => t.pos && t.pos.origen === 'marca').length} marcadas · ${sinPos} sin ubicar`)
+        + k('reloj', 'Última tarjeta', fday(R.ultima), esc(P5.tarj.origen ? P5.tarj.origen.nombre.replace(/\.xls[xm]$/i, '') : ''));
+    }
+  } else {
+    const ids = D.equipos.filter(e => p3Visible(e) && si(e.activo)).map(e => String(e.equipo_sap)), dat = p3Dat();
+    if (p3.capa === 'lub') {
+      const n = { vencido: 0, proximo: 0, ok: 0, na: 0 }; ids.forEach(id => { const s = peor(id); n[n[s] === undefined ? 'na' : s]++; });
+      html = k('gota', 'Equipos con puntos vencidos', `${n.vencido}`, 'lubricación por horas de uso', n.vencido ? 'vencido' : 'ok') + k('reloj', 'Próximos a vencer', `${n.proximo}`, 'equipos', n.proximo ? 'proximo' : '') + k('ok', 'Al día', `${n.ok}`, 'equipos', 'ok');
+    } else if (p3.capa === 'ot') {
+      let t = 0, c = 0; Object.values(dat.ot).forEach(o => { t += o.n; c += o.c; });
+      html = k('llave', esc(dat.base || 'OT de la semana'), `${t}`, 'tareas de lubricación') + k('ok', 'Cargadas', `${c}`, t ? fmt(c / t * 100) + ' %' : '—', c >= t && t ? 'ok' : '') + k('alerta', 'Por cargar', `${t - c}`, 'tareas', t - c ? 'proximo' : 'ok');
+    } else {
+      const us = ids.map(id => [id, dat.uso[id]]).filter(x => x[1] != null).sort((a, b) => b[1] - a[1]);
+      html = k('reloj', 'Horas de uso · 28 días', us.length ? fmt(us[0][1]) + '<small>h máx.</small>' : '—', us.length ? esc(cap(sinF(IX.eq[us[0][0]].nombre))) : '') + k('medidor', 'Equipos con uso', `${us.length}`, 'con horas en los últimos 28 días');
+    }
+  }
+  el.innerHTML = html;
+  $$('[data-p3lin]', el).forEach(b => b.onclick = () => p3PonerLinea(p3.linea === b.dataset.p3lin ? 'all' : b.dataset.p3lin));
+}
+
+// ── leyenda de las capas 5S (abajo a la izquierda) ──
+function p5Leyenda(el) {
+  const it = (cls, txt, n) => `<span><span class="dot ${cls}"></span> ${txt} <b class="tnum">${n}</b></span>`;
+  if (p3.capa === 'limpieza') {
+    if (!P5.otif || !P5.base) { el.innerHTML = `<b class="small">Limpieza · OTIF por zona</b><div class="small muted">${esc(p5Aviso('otif') || p5Aviso('base'))}</div>`; return; }
+    const mes = p5Mes(), n = { ok: 0, proximo: 0, vencido: 0, na: 0 };
+    p5Zonas().filter(p5ZonaVisible).forEach(z => { const M = p5Otif(z.zona, mes); n[M ? p5Tono(M.otif) : 'na']++; });
+    const anio = (mes || '').slice(0, 4), meses = p5MesesConDatos();
+    const barras = MES.map((m, i) => {
+      const k2 = anio + '-' + String(i + 1).padStart(2, '0'), P = meses.includes(k2) ? p5Planta(k2) : null;
+      return `<button type="button" data-p5mes="${k2}" aria-pressed="${k2 === mes}" ${P ? '' : 'disabled'} title="${P ? `${p5MesTxt(k2)}: OTIF ${fmt(P.otif * 100)} %` : 'sin datos'}"><i class="${P ? p5Tono(P.otif) : 'na'}" style="height:${P ? Math.max(4, P.otif * 100) : 4}%"></i>${m[0].toUpperCase()}</button>`;
+    }).join('');
+    el.innerHTML = `<b class="small">Limpieza · OTIF de cada zona · ${esc(p5MesTxt(mes))}${p5EnCurso(mes) ? ' (en curso)' : ''}</b>
+      <div class="items">${it('ok', `En meta (≥ ${fmt(p5Meta() * 100)} %)`, n.ok)}${it('proximo', `${fmt(p5Min() * 100)} a ${fmt(p5Meta() * 100)} %`, n.proximo)}${it('vencido', `Bajo ${fmt(p5Min() * 100)} %`, n.vencido)}${it('na', 'Sin datos', n.na)}</div>
+      <div class="p3-meses" role="group" aria-label="Mes">${barras}</div>
+      <div class="small muted">Promedio de las zonas por mes · tocá un mes para pintarlo. Registro: ${esc((P5.otif.origen && P5.otif.origen.nombre) || 'OTIF')}</div>`;
+    $$('[data-p5mes]', el).forEach(b => b.onclick = () => { p3.mes = b.dataset.p5mes; guardarEstado(); p5Refrescar(); });
+  } else if (p3.capa === 'zonas') {
+    const zs = p5Zonas();
+    if (!zs.length) { el.innerHTML = `<b class="small">Zonas 5S de Envasado</b><div class="small muted">${esc(p5Aviso('base'))}</div>`; return; }
+    el.innerHTML = `<b class="small">Zonas 5S de Envasado · responsables de cada zona</b><div class="items">${it('l1', 'Línea 1', zs.filter(z => z.linea === 'L1').length)}${it('l2', 'Línea 2', zs.filter(z => z.linea === 'L2').length)}${it('l3', 'Línea 3', zs.filter(z => z.linea === 'L3').length)}${it('sf', 'Set up y filtración', zs.filter(z => !z.linea).length)}</div>
+      <div class="small muted">${zs.filter(z => !z.rect).length ? `Sin dibujar en el plano: ${esc(zs.filter(z => !z.rect).map(z => z.zona).join(', '))}${P5.base.editor ? ' (un editor la dibuja desde su panel)' : ''}` : 'Todas dibujadas en el plano'}</div>`;
+  } else {
+    if (!P5.tarj || !P5.base) { el.innerHTML = `<b class="small">Tarjetas 5S</b><div class="small muted">${esc(p5Aviso('tarj') || p5Aviso('base'))}</div>`; return; }
+    const ps = p5Pines(), ts = p5Ubicadas().filter(p5TarjVisible);
+    el.innerHTML = `<b class="small">Tarjetas 5S de Envasado · cada pin, las de un lugar</b>
+      <div class="row" style="gap:8px"><div class="seg" role="group" aria-label="Qué tarjetas">${[['abiertas', 'Abiertas'], ['todas', 'Todas']].map(([k2, t]) => `<button data-p5tf="${k2}" aria-pressed="${p3.tfiltro === k2}">${t}</button>`).join('')}</div>
+        <button class="btn sm" id="p5Fdc" aria-pressed="${p3.tfdc}">Sólo FDC</button></div>
+      <div class="items">${it('vencido', 'Con FDC', ps.filter(g => g.fdc).length)}${it('proximo', 'Otras anomalías', ps.filter(g => !g.fdc).length)}<span class="small muted">${ts.length} tarjeta${ts.length === 1 ? '' : 's'} · pin tenue: cerradas · borde punteado: ubicada por el texto</span></div>`;
+    $$('[data-p5tf]', el).forEach(b => b.onclick = () => { p3.tfiltro = b.dataset.p5tf; guardarEstado(); p5Refrescar(); });
+    $('#p5Fdc', el).onclick = () => { p3.tfdc = !p3.tfdc; guardarEstado(); p5Refrescar(); };
+  }
+}
+
+// ── panel (a la derecha) de las capas 5S ──
+function p5HtmlTarjeta(t) {
+  const fecha = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') ? fday(s) + ' ' + s.slice(2, 4) : esc(s || '—');
+  const marca = t.pos && t.pos.origen === 'marca';
+  return `<div class="tj"><div class="row"><b class="tnum">N° ${esc(t.n)}</b><span class="estado-chip ${t.estado}">${P5_ESTADO[t.estado] || esc(t.estado)}</span>${t.fdc ? '<span class="estado-chip fdc">FDC</span>' : ''}${t.zona ? `<span class="chip">${esc(t.zona)}</span>` : ''}<span class="grow"></span><span class="small muted">${fecha(t.inicio)}</span></div>
+    <div class="prob">${esc(t.problema)}</div>
+    <div class="small muted">${esc(t.anomalia)}${t.accion ? ' · ' + esc(t.accion) : ''}</div>
+    <div class="small muted">Emitió ${esc(t.emisor || '—')} · resuelve ${esc(t.responsable || '—')}${t.compromiso ? ' · compromiso ' + fecha(t.compromiso) : ''}${t.cierre ? ' · cerrada ' + fecha(t.cierre) : ''}</div>
+    <div class="row"><span class="small muted grow">${t.pos ? (marca ? `Marcada en el plano${t.pos.quien ? ' por ' + esc(t.pos.quien.split('@')[0]) : ''}` : 'Ubicada por el texto: ' + esc(t.pos.donde)) : 'Sin ubicar en el plano'}</span>
+      <button class="btn sm" data-ubicar="${esc(t.n)}">${marca ? 'Mover' : 'Ubicar'}</button>${marca ? `<button class="btn sm" data-quitar="${esc(t.n)}">Quitar</button>` : ''}</div></div>`;
+}
+function p5BotonesTarjetas(el) {
+  $$('[data-ubicar]', el).forEach(b => b.onclick = () => { p3.ubicar = b.dataset.ubicar; p3.dibujo = null; p5Modo(); toast('Tocá el plano donde está la tarjeta N° ' + b.dataset.ubicar); });
+  $$('[data-quitar]', el).forEach(b => b.onclick = () => p5Marcar(b.dataset.quitar, null));
+}
+function p5MesesZona(Z) {
+  if (!Z) return '';
+  const mes = p5Mes(), anio = (mes || '').slice(0, 4);
+  return `<div class="p3-meses" role="group" aria-label="OTIF de la zona por mes">${MES.map((m, i) => {
+    const k = anio + '-' + String(i + 1).padStart(2, '0'), M = Z.meses.find(x => x.m === k);
+    return `<button type="button" data-p5mes="${k}" aria-pressed="${k === mes}" ${M ? '' : 'disabled'} title="${M ? `${p5MesTxt(k)}: OTIF ${fmt(M.otif * 100)} %` : 'sin datos'}"><i class="${M ? p5Tono(M.otif) : 'na'}" style="height:${M ? Math.max(4, M.otif * 100) : 4}%"></i>${m[0].toUpperCase()}</button>`;
+  }).join('')}</div>`;
+}
+function p5TablaMarcas(Z, M) {
+  if (!Z || !M) return '';
+  const mk = c => `<span class="mk ${{ 1: 'm1', 2: 'm2', 0: 'm0', '.': 'mv' }[c] || 'mq'}" title="${{ 1: 'hecho según estándar', 2: 'hecho fuera de estándar', 0: 'no hecho', '.': 'no programado o sin cargar' }[c] || 'otro valor'}"></span>`;
+  return `<table class="marcas"><thead><tr><th></th>${Array.from({ length: M.sem }, (_, i) => `<th>S${i + 1}</th>`).join('')}<th>Aud.</th></tr></thead><tbody>${Z.puntos.map((p, i) => {
+    const s = M.p[i] || '', [sem, aud] = s.split('|');
+    return `<tr><td>${esc(cap(p))}</td>${[...(sem || '')].map(c => `<td class="m">${mk(c)}</td>`).join('')}<td class="m">${mk(aud || '.')}</td></tr>`;
+  }).join('')}</tbody></table>
+  <div class="small muted"><span class="mk m1"></span> según estándar · <span class="mk m2"></span> fuera de estándar · <span class="mk m0"></span> no hecho · <span class="mk mv"></span> sin programar</div>`;
+}
+function p5PanelZona(el, z) {
+  const mes = p5Mes(), M = p5Otif(z.zona, mes), Z = P5.otif && P5.otif.zonas[z.zona], ed = !!(P5.base && P5.base.editor), tono = M ? p5Tono(M.otif) : 'na';
+  const ts = p5Ubicadas().filter(t => t.zona === z.zona), abiertas = ts.filter(t => t.estado !== 'cerrada');
+  el.innerHTML = `<div class="row"><span class="tag">Zona 5S${z.linea ? ' · ' + esc(z.linea) : ''}</span><span class="grow"></span>${M ? `<span class="pill ${tono === 'na' ? 'sin_regla' : tono}">OTIF ${fmt(M.otif * 100)} %</span>` : ''}</div>
+    <h2>${esc(z.zona)} · ${esc(z.nombre)}</h2>
+    <div class="sub">${z.origen === 'editor' ? 'Dibujada a mano en el plano' : z.origen === 'equipos' ? 'Abarca sus equipos (' + esc(z.sectores.join(', ')) + ')' : 'Todavía no está dibujada en el plano'}</div>
+    <div class="p3-sec">Responsables</div>
+    <div class="resp">${z.responsables.map(n => `<div class="p">${p5Av(n, true, ed)}<span>${esc(n)}</span></div>`).join('') || '<span class="small muted">Sin responsables cargados.</span>'}</div>
+    ${ed ? '<div class="small muted">Tocá una cara para cambiar la foto (como la de perfil).</div>' : ''}
+    <div class="p3-sec">Limpieza · ${esc(p5MesTxt(mes))}${p5EnCurso(mes) ? ' (en curso)' : ''}</div>
+    ${M ? `<div class="p3-trio"><div><span>%OTIF</span><b>${fmt(M.otif * 100)} %</b></div><div><span>%OT</span><b>${fmt(M.ot * 100)} %</b></div><div><span>%IF</span><b>${fmt(M.if * 100)} %</b></div></div>
+      <div class="p3-prog" title="Meta ${fmt(p5Meta() * 100)} %"><i class="bar ${tono}" style="width:${Math.min(100, M.otif * 100)}%"></i></div>
+      <div class="small muted">${M.hechas} de ${M.tgt || M.reg} tareas hechas (${M.fuera} fuera de estándar) · auditoría: ${M.aud_ok} de ${M.aud} puntos bien${M.reg === 0 ? ' · <b>sin registros semanales cargados</b>' : ''}</div>
+      ${p5MesesZona(Z)}${p5TablaMarcas(Z, M)}`
+      : `<div class="small muted">${P5.otif ? 'Sin datos de limpieza de la zona en ' + esc(p5MesTxt(mes)) + '.' : esc(p5Aviso('otif'))}</div>${Z ? p5MesesZona(Z) : ''}`}
+    <div class="p3-sec">Tarjetas 5S de la zona</div>
+    ${P5.tarj ? `<div class="small">${ts.length} tarjeta${ts.length === 1 ? '' : 's'} · ${ts.filter(t => t.fdc).length} FDC · ${abiertas.length} abierta${abiertas.length === 1 ? '' : 's'}</div>${abiertas.slice(0, 6).map(p5HtmlTarjeta).join('')}` : `<div class="small muted">${esc(p5Aviso('tarj'))}</div>`}
+    ${ed ? `<div class="row"><button class="btn sm" id="p5Dib">${z.origen === 'editor' ? 'Volver a dibujar' : 'Dibujar a mano'}</button>${z.origen === 'editor' ? '<button class="btn sm" id="p5DibQ">Usar la de los equipos</button>' : ''}</div>` : ''}
+    <div class="row">${z.rect ? '<button class="btn sm" id="p5Cen">Centrar</button>' : ''}<button class="btn sm" id="p5Cerrar">Cerrar</button></div>`;
+  $$('[data-p5mes]', el).forEach(b => b.onclick = () => { p3.mes = b.dataset.p5mes; guardarEstado(); p5Refrescar(); });
+  $$('[data-foto]', el).forEach(b => b.onclick = () => p5ElegirFoto(b.dataset.foto));
+  p5BotonesTarjetas(el);
+  const bd = $('#p5Dib', el); if (bd) bd.onclick = () => { p3.dibujo = { zona: z.zona, p0: null }; p3.ubicar = null; p5Modo(); };
+  const bq = $('#p5DibQ', el); if (bq) bq.onclick = () => p5GuardarZona(z.zona, { rect: null });
+  const bc = $('#p5Cen', el); if (bc) bc.onclick = () => p5EnfocarZona(z.zona);
+  $('#p5Cerrar', el).onclick = () => p5ElegirZona(null);
+  p5CargarFotos(z.responsables);
+}
+function p5Panel(el) {
+  if (p3.zsel) { const z = p5Zona(p3.zsel); if (z) return p5PanelZona(el, z); p3.zsel = null; }
+  if (p3.tsel) {
+    const g = p5Pin(p3.tsel);
+    if (g) {
+      el.innerHTML = `<div class="row"><span class="tag">Tarjetas 5S · ${g.ts.length} en este lugar</span></div>
+        <h2>${esc(g.ts[0].pos.origen === 'marca' ? 'Marcadas en el plano' : g.ts[0].pos.donde)}</h2><div class="sub">${g.fdc} FDC · ${g.abiertas} abierta${g.abiertas === 1 ? '' : 's'}</div>
+        ${g.ts.slice().sort((a, b) => (a.estado === 'cerrada') - (b.estado === 'cerrada') || String(b.inicio).localeCompare(String(a.inicio))).map(p5HtmlTarjeta).join('')}
+        <div class="row"><button class="btn sm" id="p5Cerrar">Cerrar</button></div>`;
+      p5BotonesTarjetas(el); $('#p5Cerrar', el).onclick = () => p5ElegirPin(null);
+      return;
+    }
+    p3.tsel = null;
+  }
+  if (p3.capa === 'tarjetas') {
+    if (!P5.tarj) { el.innerHTML = `<h2>Tarjetas 5S</h2><div class="hint">${esc(p5Aviso('tarj'))}</div>`; return; }
+    const ts = p5Ubicadas().filter(p5TarjVisible), abiertas = ts.filter(t => t.estado !== 'cerrada'), sinPos = ts.filter(t => !t.pos);
+    el.innerHTML = `<div class="row"><span class="tag">Tarjetas 5S · Envasado</span></div><h2>${abiertas.length ? 'Tarjetas abiertas' : 'Tarjetas'}</h2>
+      <div class="sub">${esc((P5.tarj.origen && P5.tarj.origen.nombre) || '')} · leída el ${fday((P5.tarj.generada || '').slice(0, 10))}</div>
+      ${abiertas.length ? abiertas.map(p5HtmlTarjeta).join('') : '<div class="small muted">No hay tarjetas abiertas.</div>'}
+      ${sinPos.length ? `<div class="p3-sec">Sin ubicar en el plano (${sinPos.length})</div><div class="small muted">El problema no dice el equipo y la línea. Ubicalas tocando "Ubicar".</div>${sinPos.slice(0, 12).map(p5HtmlTarjeta).join('')}${sinPos.length > 12 ? `<div class="small muted">y ${sinPos.length - 12} más</div>` : ''}` : ''}
+      <div class="small muted">Tocá un pin para ver sus tarjetas.</div>`;
+    p5BotonesTarjetas(el);
+    return;
+  }
+  const zs = p5Zonas().filter(p5ZonaVisible);
+  if (!zs.length) { el.innerHTML = `<h2>${p3.capa === 'limpieza' ? 'Limpieza por zona' : 'Zonas 5S'}</h2><div class="hint">${esc(p5Aviso('base') || 'Sin zonas.')}</div>`; return; }
+  if (p3.capa === 'limpieza') {
+    const mes = p5Mes(), filas = zs.map(z => ({ z, M: p5Otif(z.zona, mes) })).sort((a, b) => (a.M ? a.M.otif : 2) - (b.M ? b.M.otif : 2));
+    el.innerHTML = `<div class="row"><span class="tag">Limpieza · ${esc(p5MesTxt(mes))}</span></div><h2>Zonas por OTIF</h2><div class="sub">De la más baja a la más alta · meta ${fmt(p5Meta() * 100)} %</div>
+      <div class="p3-list">${filas.map(({ z, M }) => `<button class="p3-item" data-p5z="${esc(z.zona)}"><span class="dot ${M ? p5Tono(M.otif) : 'na'}"></span><span class="grow"><b>${esc(z.zona)}</b> ${esc(z.nombre)}</span><span class="small nw tnum">${M ? fmt(M.otif * 100) + ' %' : '—'}</span></button>`).join('')}</div>
+      <div class="small muted">Tocá una zona para ver sus puntos de limpieza semana por semana.</div>`;
+  } else {
+    el.innerHTML = `<div class="row"><span class="tag">Zonas 5S · Envasado</span></div><h2>Responsables por zona</h2><div class="sub">Tocá una zona para ver a su equipo, su limpieza y sus tarjetas.</div>
+      <div class="p3-list">${zs.map(z => `<button class="p3-item" data-p5z="${esc(z.zona)}"><span class="chip ${esc(z.linea || 'SF')}">${esc(z.zona)}</span><span class="grow">${esc(z.nombre)}</span>${p5Avs(z.responsables, 4)}</button>`).join('')}</div>`;
+    p5CargarFotos(zs.flatMap(z => z.responsables));
+  }
+  $$('[data-p5z]', el).forEach(b => b.onclick = () => { p5ElegirZona(b.dataset.p5z); p5EnfocarZona(b.dataset.p5z); });
+}
+
+// ── cámara: encuadrar en lo que dejan libre las tarjetas que flotan sobre el plano ──
+// En la computadora el panel, las tarjetas de arriba y la leyenda tapan parte del plano: la planta (o lo elegido)
+// se centra y se escala en el resto. En el celular no flota nada encima.
+function p3Libre() {
+  const st = $('#p3stage'), R = st && st.getBoundingClientRect();
+  if (!R || !R.width) return { w: 800, h: 500, dx: 0, dy: 0, W: 800, H: 500 };
+  const ui = $('.p3-ui'), base = { w: R.width, h: R.height, dx: 0, dy: 0, W: R.width, H: R.height };
+  if (!ui || getComputedStyle(ui).display === 'contents') return base;
+  const caja = el => { if (!el || el.hidden) return null; const r = el.getBoundingClientRect(); return r.width > 4 && r.height > 4 ? r : null; };
+  let t = R.top, b = R.bottom, l = R.left, r = R.right;
+  const top = caja($('.p3-top')), kp = caja($('#p3kpis')), side = caja($('#p3side')), leg = caja($('#p3legend'));
+  if (top) t = Math.max(t, top.bottom);
+  if (kp) t = Math.max(t, kp.top + kp.height * 0.55);   // las tarjetas pueden tapar un poco el borde, como en un juego
+  if (side) r = Math.min(r, side.left);
+  if (leg) b = Math.min(b, R.bottom - leg.height * 0.45);
+  const w = Math.max(160, r - l - 16), h = Math.max(140, b - t - 16);
+  return { w, h, dx: (l + r) / 2 - (R.left + R.right) / 2, dy: (t + b) / 2 - (R.top + R.bottom) / 2, W: R.width, H: R.height };
+}
+// Lleva la cámara a f (de p3Encaje) con lo elegido en el centro del área libre.
+function p3IrLibre(f, off, animar = true) {
+  const S = P3, T = S.T, L = p3Libre(), zoom = Math.min(S.controls.maxZoom, Math.max(S.controls.minZoom, f.zoom * Math.min(L.w / L.W, L.h / L.H)));
+  const fwd = off.clone().negate().normalize(), right = new T.Vector3().crossVectors(fwd, S.cam.up).normalize(), up = new T.Vector3().crossVectors(right, fwd).normalize();
+  const upp = (S.cam.right - S.cam.left) / zoom / L.W;   // metros por px con ese zoom
+  const tgt = f.centro.clone().addScaledVector(right, -L.dx * upp).addScaledVector(up, L.dy * upp);
+  if (Math.abs(fwd.y) > 1e-6) tgt.addScaledVector(fwd, -tgt.y / fwd.y);   // de vuelta al piso, sin mover lo que se ve
+  const pos = tgt.clone().add(off);
+  if (!animar) { S.cam.position.copy(pos); S.controls.target.copy(tgt); S.cam.zoom = zoom; S.cam.updateProjectionMatrix(); S.controls.update(); S.dirty = true; return; }
+  p3Animar(pos, tgt, zoom);
+}
+
 // ───────────── tema (lo decide el tablero) ─────────────
-function applyTheme(dark) { document.body.classList.toggle('light', !dark); $('#btnTheme').textContent = dark ? 'Claro' : 'Oscuro'; if (P3) p3Tema(); if (P2) p2Tema(); if (D) p3Panel(); }
+function applyTheme(dark) { document.body.classList.toggle('light', !dark); $('#btnTheme').textContent = dark ? 'Claro' : 'Oscuro'; if (P3) p3Tema(); if (P2) p2Tema(); if (D) p3Panel(); p5PMemo = null; }
 window.addEventListener('message', e => { if (e.data && e.data.type === 'vspt-theme') applyTheme(!!e.data.dark); });
 if (window.self === window.top) { $('#btnTheme').hidden = false; $('#btnTheme').onclick = () => applyTheme(document.body.classList.contains('light')); }
 $('#btnReload').onclick = () => cargar();

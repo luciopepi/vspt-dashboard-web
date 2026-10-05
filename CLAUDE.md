@@ -55,8 +55,12 @@ Reglas para el HTML:
    HTML depende de una API nueva, tiene que andar también con la anterior y se mergea después
    de publicar y comprobar la API (un solo deploy).
 8. **Todo GET a la API pasa por `pedirJson`** (en v15, Programas, Calidad y Personal; en
-   Mantenimiento, `pedirMant`). Si Google pierde la respuesta (404 con HTML, texto que no es
-   JSON o corte de red), reintenta 3 veces con espera creciente. Nunca `fetch(...)` +
+   Mantenimiento, `pedirMant`; en Planta 3D, `pedirApi`). Planta 3D (sólo en el tablero de
+   Google) pide `?tabla=mant` al abrir la pestaña y `planta3d`, `planta3d_otif`,
+   `planta3d_tarjetas` y `planta3d_fotos` recién al elegir Limpieza, Zonas 5S o Tarjetas 5S.
+   Los nombres y fotos de los responsables nunca van en este repo (es público): llegan por la API.
+   Si Google pierde la respuesta (404 con HTML, texto que no es JSON o corte de red), reintenta
+   3 veces con espera creciente. Nunca `fetch(...)` +
    `res.json()` directo. Los POST (guardar, asistente) no se reintentan: podrían duplicar
    una acción.
 9. Visto el 29-sep-2026: aun con cada `doGet` respondiendo en 1-2 s, Google redirigía el `echo`
