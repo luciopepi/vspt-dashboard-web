@@ -3356,6 +3356,48 @@ const DIARIO_H = { donut:260, pareto:240, row:300, row2:300 };
 const diaYMD = d => { const p = n => String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); };
 const diaMin = h => Math.round(h * 60) || 0;   // || 0: sin "-0"
 
+// Composición del día (tabla y torta): todo menos No Uso, de mayor a menor y con el mismo
+// orden en las dos. Las 5 categorías OPINONA siempre (si dan 0, quedan al final); NoNa,
+// Rechazos y Reprocesos, Mant. por Terceros y otras, cuando hubo.
+const DIARIO_CATS_BASE = [CATS.PRODUCCION, CATS.PLANEADO, CATS.FALLA, CATS.EXTERNA, CATS.CAMBIO];
+function diarioOrdenParos(paros) {
+  const ks = new Set(DIARIO_CATS_BASE);
+  Object.keys(paros).forEach(k => { if (k !== CATS.NO_USO && Math.abs(paros[k]) > 1e-9) ks.add(k); });
+  const ix = k => { const i = DIARIO_CATS_BASE.indexOf(k); return i < 0 ? 99 : i; };
+  return [...ks].map(k => [k, paros[k] || 0])
+    .sort((a, b) => b[1] - a[1] || ix(a[0]) - ix(b[0]) || a[0].localeCompare(b[0]));
+}
+
+// Motivo de un registro NoNa. Clasificación_2 dice siempre "Sin Programa": el llenado sale de
+// la orden (Tipo Etiquetado LLENADO: botellas semielaboradas, que se cargan como NoNa) y los
+// demás motivos, de lo escrito en Observaciones. Sin uno de esos motivos queda "Sin programa"
+// (en el detalle se ve lo que hicieron en la línea: limpieza, set up, destajo…).
+const NONA_LLENADO = 'Llenado (semielaborado)', NONA_SIN_PROGRAMA = 'Sin programa';
+const NONA_MOTIVOS = [
+  ['Inventario',             /inventario/],
+  ['Capacitación',           /capacitaci|\bcurso\b|\binduccion\b/],
+  ['Simulacro / evacuación', /simulacro|evacuaci/],
+  ['Reunión / evento',       /reunion|evento|jornada|presentacion|semana de calidad|charla/]
+];
+function nonaMotivo(r) {
+  const obs = String(get(r,'Observaciones','observaciones') || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (getTipoEti(r) === 'LLENADO' || /\bllenado\b/.test(obs)) return NONA_LLENADO;
+  for (const [motivo, re] of NONA_MOTIVOS) if (re.test(obs)) return motivo;
+  return NONA_SIN_PROGRAMA;
+}
+// Registros NoNa agrupados por motivo, de mayor a menor tiempo
+function nonaPorMotivo(rows) {
+  const g = {};
+  rows.forEach(r => {
+    const m = nonaMotivo(r);
+    if (!g[m]) g[m] = { motivo: m, h: 0, rows: [] };
+    g[m].h += getVarTiempo(r);
+    g[m].rows.push(r);
+  });
+  return Object.values(g).sort((a, b) => b.h - a.h);
+}
+
 function diarioFechas() {
   const s = new Set();
   rawData.forEach(r => { const f = getFecha(r); if (f) s.add(diaYMD(f)); });
@@ -3587,29 +3629,29 @@ function renderDiario() {
       <td style="color:var(--muted);">${Math.round(diaMin(x.h)/x.n).toLocaleString('es-AR')}</td>
     </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);font-weight:400;">Sin cambios de orden en el día</td></tr>';
 
-  // ── Composición del tiempo del día: todo menos No Uso ──
-  // Las 5 categorías OPINONA siempre; Rechazos y Reprocesos, Mant. por Terceros, otras y NoNa
-  // cuando hubo. Suman el T. con Personal (la misma base que la torta). El subtotal T. Efectivo
-  // (sin NoNa) es el de la tarjeta de arriba y el del OPINONA. Clic → detalle del día.
-  const CASC_BASE = [CATS.PRODUCCION, CATS.PLANEADO, CATS.FALLA, CATS.EXTERNA, CATS.CAMBIO];
-  const ordenExtra = k => { const i = CATS_RETRABAJO.indexOf(k); return i < 0 ? 99 : i; };
-  const cascExtra = Object.keys(m.paros)
-    .filter(k => !CASC_BASE.includes(k) && k !== CATS.NONA && Math.abs(m.paros[k]) > 1e-9)
-    .sort((a, b) => ordenExtra(a) - ordenExtra(b) || m.paros[b] - m.paros[a]);
-  const casc = [...CASC_BASE, ...cascExtra].map(k => ({ k, h: m.paros[k] || 0 }));
+  // ── Composición del tiempo del día: todo menos No Uso, de mayor a menor ──
+  // Mismo orden y colores que la torta (diarioOrdenParos), NoNa incluida. Las filas suman el
+  // T. con Personal; abajo, ese total y el T. Efectivo (sin NoNa), que es el de la tarjeta de
+  // arriba y el del OPINONA. Clic → detalle del día (NoNa, separado por motivo).
+  const casc = diarioOrdenParos(m.paros).map(([k, h]) => ({ k, h }));
   const cascNona = m.paros[CATS.NONA] || 0;
-  // Filas sin Clasificación_1: entran al T. Efectivo pero no a ninguna categoría
-  const cascSinClasif = m.tEfectivo - casc.reduce((s,x) => s + x.h, 0);
+  // Filas sin Clasificación_1: entran al T. con Personal pero no a ninguna categoría
+  const cascSinClasif = m.tConPersonal - casc.reduce((s,x) => s + x.h, 0);
   if (Math.abs(cascSinClasif) > 1e-6) casc.push({ k: 'Sin clasificar', h: cascSinClasif, sinClic: true });
   const cascTot = m.tConPersonal;
-  const cascMax = Math.max(...casc.map(x => x.h), cascNona, 0.001);
+  const cascMax = Math.max(...casc.map(x => x.h), 0.001);
+  // NoNa: el desglose por motivo va en el globo de la fila
+  const nonaTxt = Math.abs(cascNona) > 1e-9
+    ? 'NoNa: ' + nonaPorMotivo(dayRows.filter(r => getClasif1(r) === CATS.NONA))
+        .map(g => g.motivo + ' ' + diaMin(g.h).toLocaleString('es-AR') + ' min').join(' · ') + ' — clic = detalle por motivo'
+    : '';
   const CASC_LABEL = {
     [CATS.PRODUCCION]:'Tpo de Producción', [CATS.PLANEADO]:'Tpo Planeado', [CATS.FALLA]:'Falla Equipos',
     [CATS.EXTERNA]:'Pdas Externas', [CATS.CAMBIO]:'Tpos de Cambio', [CATS.NONA]:'NoNa',
     'Rechazos y Reprocesos':'Rechazos y Reproc.', 'Mantención por Terceros':'Mant. Terceros'
   };
   const cascPct = h => cascTot ? (h/cascTot*100).toFixed(1) : '0.0';
-  const cascFila = ({k, h, sinClic}) => `<tr ${sinClic ? 'title="Registros sin Clasificación_1"' : `onclick="openModalDiarioClasif('${k.replace(/'/g,"\\'")}')" style="cursor:pointer;" title="${k} — ver registros del día"`}>
+  const cascFila = ({k, h, sinClic}) => `<tr ${sinClic ? 'title="Registros sin Clasificación_1"' : `onclick="openModalDiarioClasif('${k.replace(/'/g,"\\'")}')" style="cursor:pointer;" title="${k === CATS.NONA ? escTxt(nonaTxt) : k + ' — ver registros del día'}"`}>
       <td style="font-weight:700;white-space:nowrap;width:1%;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${CAT_COLORS[k]||'#B61858'};margin-right:6px;vertical-align:0;"></span>${CASC_LABEL[k]||k}</td>
       <td style="width:1%;font-weight:800;white-space:nowrap;">${diaMin(h).toLocaleString('es-AR')}</td>
       <td>
@@ -3626,7 +3668,7 @@ function renderDiario() {
       <td style="font-weight:800;width:1%;">${cascPct(h)}%</td>
     </tr>`;
   const cascRows = casc.map(cascFila).join('') + (Math.abs(cascNona) > 1e-9
-    ? cascTotal('Tpo Efectivo', m.tEfectivo, 'sin NoNa') + cascFila({ k: CATS.NONA, h: cascNona }) + cascTotal('Tpo c/Personal', cascTot, 'sin No Uso')
+    ? cascTotal('Tpo c/Personal', cascTot, 'sin No Uso') + cascTotal('Tpo Efectivo', m.tEfectivo, 'sin NoNa')
     : cascTotal('Tpo Efectivo', m.tEfectivo, ''));
 
   // ── Pareto acumulado del mes (fallas de equipos) ──
@@ -3794,8 +3836,8 @@ function drawDiarioSemana(id, serie, target, color) {
 }
 
 function drawDiarioDonut(id, parosObj) {
-  const entries = Object.entries(parosObj).filter(([,v]) => v > 0)
-    .sort(([ka,va],[kb,vb]) => ka === CATS.PRODUCCION ? -1 : kb === CATS.PRODUCCION ? 1 : vb - va);
+  // Mismo orden que la tabla Composición del Tiempo: de mayor a menor
+  const entries = diarioOrdenParos(parosObj).filter(([,v]) => v > 0);
   const el = document.querySelector('#'+id);
   if (!entries.length) { if (el) el.innerHTML = '<div class="no-data">Sin datos en el día</div>'; return; }
   const total = entries.reduce((a,[,v]) => a+v, 0);
@@ -4352,12 +4394,17 @@ function openModalDiarioClasif(clasif, subcat, scope) {
     });
     return;
   }
+  // NoNa: separado por motivo (llenado, inventario, capacitación, sin programa…)
+  if (clasif === CATS.NONA && !subcat) {
+    openModalDiarioNona(rows, lineaTxt + ' · ' + periodo, scope === 'mes');
+    return;
+  }
 
   const totalH = rows.reduce((a, r) => a + getVarTiempo(r), 0);
   const catColor = CAT_COLORS[clasif] || 'var(--vspt-amber)';
   const isFalla = clasif === CATS.FALLA;
   const subLabel = isFalla ? 'Equipo' : clasif === CATS.EXTERNA ? 'Causa' : 'Descripción';
-  // NoNa, Rechazos y Mant. por Terceros: qué orden estaba en la línea y si fue llenado solo
+  // Rechazos y Mant. por Terceros: qué orden estaba en la línea y si fue llenado solo
   const conOrden = clasif === CATS.NONA || CATS_RETRABAJO.includes(clasif);
   const nCols = 6 + (isFalla ? 1 : 0) + (conOrden ? 4 : 0);
 
@@ -4399,6 +4446,81 @@ function openModalDiarioClasif(clasif, subcat, scope) {
   html += `</tbody></table></div>`;
   document.getElementById('modal-body').innerHTML = html;
   document.getElementById('detail-modal').style.display = 'flex';
+}
+
+/* NoNa del día separado por motivo (nonaMotivo): arriba el resumen por motivo, de mayor a
+   menor; abajo los registros de cada motivo con su subtotal. Clic en un motivo = sus registros. */
+function openModalDiarioNona(rows, subtitulo, conFecha) {
+  const catColor = CAT_COLORS[CATS.NONA];
+  const txtColor = isDark ? '#E39BC9' : catColor;   // el bordó de NoNa no se lee sobre fondo oscuro
+  const grupos = nonaPorMotivo(rows);
+  const totalH = rows.reduce((a, r) => a + getVarTiempo(r), 0);
+  const maxH = Math.max(...grupos.map(g => g.h), 0.001);
+  const pct = h => totalH > 0 ? (h / totalH * 100).toFixed(1) + '%' : '—';
+  const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const nCols = 7 + (conFecha ? 1 : 0);
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:${txtColor};text-transform:uppercase;">NoNa</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;text-transform:capitalize;">${subtitulo}</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">Total: ${diaMin(totalH).toLocaleString('es-AR')} min · ${totalH.toFixed(2)} h · ${rows.length} registros</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div>`;
+
+  if (!rows.length) {
+    html += `<div style="text-align:center;padding:24px;opacity:.6;">Sin registros</div>`;
+  } else {
+    html += `<table class="nona-motivos" style="margin-bottom:6px;"><thead><tr>
+        <th>Motivo</th><th style="text-align:right;">Min</th><th style="width:44%;"></th><th style="text-align:right;">%</th><th style="text-align:right;">Reg.</th>
+      </tr></thead><tbody>` +
+      grupos.map((g, i) => `<tr onclick="nonaIrMotivo(${i})" style="cursor:pointer;" title="Ver los registros de ${esc(g.motivo)}">
+        <td style="font-weight:700;white-space:nowrap;">${g.motivo}</td>
+        <td style="font-weight:800;text-align:right;white-space:nowrap;">${diaMin(g.h).toLocaleString('es-AR')}</td>
+        <td><div style="height:11px;border-radius:3px;background:var(--tr-hover);"><div style="height:11px;border-radius:3px;background:${catColor};width:${Math.max(0, g.h) / maxH * 100}%;"></div></div></td>
+        <td style="font-weight:800;text-align:right;white-space:nowrap;">${pct(g.h)}</td>
+        <td style="color:var(--muted);text-align:right;">${g.rows.length}</td>
+      </tr>`).join('') + `</tbody></table>
+      <div style="color:var(--muted);font-size:11px;margin-bottom:12px;">Llenado: órdenes de llenado solo (Tipo Etiquetado LLENADO), que se cargan como NoNa. Inventario, capacitación, simulacro y reunión o evento: según lo escrito en Observaciones. El resto queda como Sin programa (la Clasificación_2 de NoNa).</div>
+      <div id="nona-detalle" style="overflow:auto;max-height:46vh;"><table><thead><tr>
+        ${conFecha ? '<th>Fecha</th>' : ''}<th>Línea</th><th>Turno</th><th>Min</th><th>OP</th><th>Formato</th><th>Cajas</th><th style="width:40%;">Observaciones</th>
+      </tr></thead><tbody>`;
+    grupos.forEach((g, i) => {
+      html += `<tr id="nona-g${i}"><td colspan="${nCols}" style="background:var(--tr-hover);font-weight:800;color:${txtColor};text-transform:uppercase;font-size:11px;letter-spacing:.4px;">
+          ${g.motivo} · ${diaMin(g.h).toLocaleString('es-AR')} min · ${pct(g.h)} · ${g.rows.length} ${g.rows.length === 1 ? 'registro' : 'registros'}</td></tr>`;
+      g.rows.forEach(r => {
+        const f = getFecha(r);
+        html += `<tr>
+          ${conFecha ? `<td>${f ? f.toLocaleDateString('es-AR') : '—'}</td>` : ''}
+          <td><strong>${getLinea(r)||'—'}</strong></td>
+          <td>${get(r,'Turno','Turno ','turno')||getTurnoFromPlan(r)||'—'}</td>
+          <td style="font-weight:700;color:${txtColor};">${diaMin(getVarTiempo(r)).toLocaleString('es-AR')}</td>
+          <td style="white-space:nowrap;">${get(r,'Id. Producción','Id. Produccion','id_produccion','OP')||'—'}</td>
+          <td>${get(r,'Formato_1','FORMATO_1','Formato','formato')||'—'}</td>
+          <td>${getCajas(r) ? getCajas(r).toLocaleString('es-AR') : '—'}</td>
+          <td style="font-style:italic;opacity:.8;white-space:normal;">${esc(get(r,'Observaciones','observaciones')||'—')}</td>
+        </tr>`;
+      });
+    });
+    html += `</tbody></table></div>`;
+  }
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('detail-modal').style.display = 'flex';
+  // El detalle usa el alto que queda en el cuadro (el resumen va fijo arriba)
+  const cont = document.getElementById('nona-detalle');
+  const mc = cont && cont.closest('.modal-content');
+  if (cont && mc) {
+    const css = getComputedStyle(mc);
+    const libre = window.innerHeight * 0.85 - parseFloat(css.paddingBottom || 0) - (cont.getBoundingClientRect().top - mc.getBoundingClientRect().top) - 2;
+    cont.style.maxHeight = Math.max(160, Math.floor(libre)) + 'px';
+  }
+}
+function nonaIrMotivo(i) {
+  const fila = document.getElementById('nona-g' + i), cont = document.getElementById('nona-detalle');
+  if (!fila || !cont) return;
+  const th = cont.querySelector('thead');
+  cont.scrollTo({ top: cont.scrollTop + fila.getBoundingClientRect().top - cont.getBoundingClientRect().top - (th ? th.offsetHeight : 0), behavior: 'smooth' });
 }
 
 /* Producto no conforme del día — una fila por registro con cajas retenidas. */
