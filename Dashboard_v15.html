@@ -115,6 +115,19 @@
   .tab-btn:hover { color:var(--text); background:var(--tr-hover); }
   .tab-btn.active { color:var(--tab-color,var(--vspt-crimson)); border-bottom-color:var(--tab-color,var(--vspt-crimson)); background:transparent; }
 
+  /* Reporte Diario (5-oct): el membrete se desliza hacia arriba y desaparece, las pestañas quedan
+     pegadas arriba y más chicas y no hay filtros al costado (el reporte tiene su fecha y su línea).
+     Al elegir otra pestaña todo vuelve. Igual que la Planta 3D del tablero de Google.
+     sin-membrete se pone y se saca después de dibujar la pestaña (membreteSegunPestana): dibujar
+     traba la transición. "body .header" le gana a la transición que agrega el tablero de Google. */
+  body .header { transition:height .35s ease, min-height .35s ease, padding .35s ease, opacity .3s ease; }
+  body.sin-membrete .header { height:0 !important; min-height:0 !important; padding-top:0 !important; padding-bottom:0 !important; opacity:0 !important; overflow:hidden; border-bottom:0 !important; }
+  /* las pestañas se achican de una vez: el reporte se mide al entrar (renderDiario) */
+  body.modo-diario .tab-btn { padding:9px 16px; font-size:10px; transition:color .25s, background .25s, border-color .25s; }
+  body.modo-diario .main { min-height:0; }
+  body.modo-diario .content { padding:12px 16px; }   /* más lugar para el reporte */
+  body.modo-diario #pruebaGoogle { display:none; }   /* recuadro de la prueba en Google: tapaba el reporte */
+
   .main { display:flex; min-height:calc(100vh - 110px); position:relative; }
   .sidebar { width:260px; min-width:260px; background:var(--card); border-right:1px solid var(--border); overflow-y:auto; overflow-x:visible; padding:18px; flex-shrink:0; transition:margin-left .3s ease; position:relative; }
   .sidebar.collapsed { margin-left:-260px; }
@@ -231,6 +244,15 @@
   .diario-tight .table-obj th { padding:4px 6px; font-size:8.5px; letter-spacing:0.4px; }
   .diario-tight .table-obj td { padding:4px 6px; }
   .diario-tight .table-obj tr[onclick]:hover { background:var(--tr-hover); }
+  /* Día en vivo desde AppSheet: botón y estado en la cabecera del Reporte Diario */
+  .diario-vivo { display:inline-flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap; }
+  .diario-vivo .dv-txt { font-size:10px; font-weight:700; color:var(--muted); letter-spacing:0.02em; }
+  .diario-vivo .dv-ok  { color:var(--vspt-olive); }
+  .diario-vivo .dv-err { color:var(--vspt-crimson); max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .diario-vivo .dv-x { background:none; border:none; padding:0; font:inherit; font-size:10px; font-weight:600; color:var(--muted); text-decoration:underline; cursor:pointer; }
+  /* Composición del tiempo: hasta 9 filas (con NoNa y retrabajo) en el alto de la tarjeta */
+  .diario-tight .casc-tabla td { padding:2.5px 6px; }
+  @media (max-width:1500px) { .diario-tight .casc-nota { display:none; } }
   .diario-grid   { display:grid; grid-template-columns:1.18fr 1fr 1.02fr; gap:8px; margin-bottom:8px; }
   .diario-grid-2 { display:grid; grid-template-columns:1.35fr 1fr; gap:8px; }
   @media (max-width:1100px) {
@@ -783,7 +805,9 @@ const CAT_COLORS = {
   'Tiempos de Cambio':    '#F08808',
   'Tiempos Planeados':    '#F8C040',
   'NoNa':                 '#701F52',
-  'Tiempos de No Uso':    '#4E1742'
+  'Tiempos de No Uso':    '#4E1742',
+  'Rechazos y Reprocesos':   '#9C4F96',
+  'Mantención por Terceros': '#7A627A'
 };
 const THEME_COLOR = { planta:'#D81840', l1:'#701F52', l2:'#5DC7D1', l3:'#F08808', diario:'#4E1742', objetivos:'#D81840', calidad:'#4E1742', programas:'#F08808', aplicaciones:'#98A040', mantenimiento:'#4E1742' };
 
@@ -2037,7 +2061,12 @@ function procesarMetricas(data) {
 }
 
 function changeTab(id) {
+  // Reporte Diario: pestañas arriba y más chicas (modo-diario) y sin membrete (sin-membrete, al
+  // terminar de dibujar). Desde la Planta 3D del tablero de Google el membrete ya está oculto:
+  // sigue así hasta terminar de dibujar y recién ahí baja, deslizándose.
+  if (activeTab === 'planta3d') document.body.classList.add('sin-membrete');
   activeTab = id;
+  document.body.classList.toggle('modo-diario', id === 'diario');
   document.documentElement.style.setProperty('--tab-color', THEME_COLOR[id] || '#F9C13F');
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === id);
@@ -2054,9 +2083,10 @@ function changeTab(id) {
   };
   // Aplicaciones no es una página embebida: es una grilla de accesos directos.
   // Comparte con las embebidas que no usa los filtros, así que oculta el panel.
+  // El Reporte Diario tampoco los usa: tiene su propia fecha y línea.
   if (id === 'aplicaciones') renderApps();
 
-  if (EMBED[id] || id === 'aplicaciones') {
+  if (EMBED[id] || id === 'aplicaciones' || id === 'diario') {
   if (EMBED[id]) {
   const iframeId = EMBED[id].iframeId;
   const src = EMBED[id].src;
@@ -2076,13 +2106,21 @@ function changeTab(id) {
   // botella del general. En Aplicaciones no hay página embebida, así que la
   // botella del general sigue disponible.
   const _vb = document.getElementById('vsptBot'); if (_vb) _vb.style.display = EMBED[id] ? 'none' : '';
-  if (window.speechSynthesis) speechSynthesis.cancel();
+  if (window.speechSynthesis && id !== 'diario') speechSynthesis.cancel();   // en el Reporte Diario el asistente sigue
 } else {
   document.getElementById('sidebar').style.display = '';
   document.getElementById('sidebarToggle').style.display = '';
   const _vb2 = document.getElementById('vsptBot'); if (_vb2) _vb2.style.display = '';
 }
   render();
+  membreteSegunPestana();
+}
+
+// El membrete sube o baja recién después de dibujar la pestaña: dibujar tarda (~0,2 s el Reporte
+// Diario, casi 1 s una línea) y, si la transición arrancaba antes, no se veía deslizarse.
+function membreteSegunPestana() {
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    document.body.classList.toggle('sin-membrete', activeTab === 'diario' || activeTab === 'planta3d')));
 }
 
 function render() {
@@ -3343,7 +3381,49 @@ let diarioLinea = 'planta';
 const DIARIO_H = { donut:260, pareto:240, row:300, row2:300 };
 
 const diaYMD = d => { const p = n => String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); };
-const diaMin = h => Math.round(h * 60);
+const diaMin = h => Math.round(h * 60) || 0;   // || 0: sin "-0"
+
+// Composición del día (tabla y torta): todo menos No Uso, de mayor a menor y con el mismo
+// orden en las dos. Las 5 categorías OPINONA siempre (si dan 0, quedan al final); NoNa,
+// Rechazos y Reprocesos, Mant. por Terceros y otras, cuando hubo.
+const DIARIO_CATS_BASE = [CATS.PRODUCCION, CATS.PLANEADO, CATS.FALLA, CATS.EXTERNA, CATS.CAMBIO];
+function diarioOrdenParos(paros) {
+  const ks = new Set(DIARIO_CATS_BASE);
+  Object.keys(paros).forEach(k => { if (k !== CATS.NO_USO && Math.abs(paros[k]) > 1e-9) ks.add(k); });
+  const ix = k => { const i = DIARIO_CATS_BASE.indexOf(k); return i < 0 ? 99 : i; };
+  return [...ks].map(k => [k, paros[k] || 0])
+    .sort((a, b) => b[1] - a[1] || ix(a[0]) - ix(b[0]) || a[0].localeCompare(b[0]));
+}
+
+// Motivo de un registro NoNa. Clasificación_2 dice siempre "Sin Programa": el llenado sale de
+// la orden (Tipo Etiquetado LLENADO: botellas semielaboradas, que se cargan como NoNa) y los
+// demás motivos, de lo escrito en Observaciones. Sin uno de esos motivos queda "Sin programa"
+// (en el detalle se ve lo que hicieron en la línea: limpieza, set up, destajo…).
+const NONA_LLENADO = 'Llenado (semielaborado)', NONA_SIN_PROGRAMA = 'Sin programa';
+const NONA_MOTIVOS = [
+  ['Inventario',             /inventario/],
+  ['Capacitación',           /capacitaci|\bcurso\b|\binduccion\b/],
+  ['Simulacro / evacuación', /simulacro|evacuaci/],
+  ['Reunión / evento',       /reunion|evento|jornada|presentacion|semana de calidad|charla/]
+];
+function nonaMotivo(r) {
+  const obs = String(get(r,'Observaciones','observaciones') || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (getTipoEti(r) === 'LLENADO' || /\bllenado\b/.test(obs)) return NONA_LLENADO;
+  for (const [motivo, re] of NONA_MOTIVOS) if (re.test(obs)) return motivo;
+  return NONA_SIN_PROGRAMA;
+}
+// Registros NoNa agrupados por motivo, de mayor a menor tiempo
+function nonaPorMotivo(rows) {
+  const g = {};
+  rows.forEach(r => {
+    const m = nonaMotivo(r);
+    if (!g[m]) g[m] = { motivo: m, h: 0, rows: [] };
+    g[m].h += getVarTiempo(r);
+    g[m].rows.push(r);
+  });
+  return Object.values(g).sort((a, b) => b.h - a.h);
+}
 
 function diarioFechas() {
   const s = new Set();
@@ -3357,6 +3437,63 @@ function stepDiario(delta) {
   if (fs[ni]) setDiarioFecha(fs[ni]);
 }
 function setDiarioLinea(l) { diarioLinea = l; renderDiario(); }
+
+/* ── Día en vivo desde AppSheet (4-oct-2026) ──
+   A la mañana se corrigen en la app los registros del día anterior y se presentan en la
+   reunión. "Traer de AppSheet" pide ese día leído en vivo de la planilla de la app
+   (?tabla=opinona_dia, API 2026-10-04a o posterior: sólo lectura, ~30 KB) y el Reporte
+   Diario se dibuja con esos registros en lugar de los de la BD. No cambia la BD ni las
+   otras pestañas: la BD se pone al día sola con el temporizador del ETL. */
+const diarioVivo = {};          // 'AAAA-MM-DD' → { filas, leida }
+let diarioVivoEstado = null;    // { fecha, cargando } | { fecha, error }
+const FECHA_CORTE_APPSHEET = '2026-07-07';   // antes, los datos vienen del Excel histórico
+
+// Datos del Reporte Diario: los de la BD, con el día leído en vivo (si se pidió) en lugar del de la BD.
+function diarioBase() {
+  const v = diarioVivo[diarioFecha];
+  if (!v) return rawData;
+  return rawData.filter(r => { const f = getFecha(r); return !(f && diaYMD(f) === diarioFecha); }).concat(v.filas);
+}
+
+// Lo que el ETL agrega a cada registro y AppSheet no tiene: las columnas del PLAN (por orden)
+// y PT A/B de los cambios. Se toman de la BD, del mismo registro o de la misma orden.
+function completarDiaDesdeBD(filas, fecha) {
+  const PLAN = ['turno_plan', 'codigo_vino', 'tipo_vino', 'semielaborado', 'codigo_botella'];
+  const op = r => String(get(r, 'Id. Producción') || '').trim();
+  const clave = r => [getLinea(r), get(r, 'Hora Inicio') || '', getClasif2(r), op(r)].join('|');
+  const porOp = {}, porClave = {};
+  rawData.forEach(r => {
+    const o = op(r);
+    if (o && !porOp[o] && PLAN.some(c => r[c])) porOp[o] = r;
+    const f = getFecha(r);
+    if (f && diaYMD(f) === fecha && getClasif1(r) === CATS.CAMBIO) porClave[clave(r)] = r;
+  });
+  filas.forEach(r => {
+    const b = porOp[op(r)];
+    if (b) PLAN.forEach(c => { if (!r[c]) r[c] = b[c]; });
+    const c = getClasif1(r) === CATS.CAMBIO && porClave[clave(r)];
+    if (c) ['Cambio Formato PT A', 'Cambio Formato PT B'].forEach(k => { if (!r[k]) r[k] = c[k]; });
+  });
+  return filas;
+}
+
+async function traerDiaEnVivo() {
+  const fecha = diarioFecha;
+  if (!fecha || (diarioVivoEstado && diarioVivoEstado.cargando)) return;
+  diarioVivoEstado = { fecha, cargando: true };
+  renderDiario();
+  try {
+    const j = await pedirJson(API_URL + '?tabla=opinona_dia&fecha=' + fecha, 45000);
+    if (!j || j.status !== 'success') throw new Error((j && (j.msg || j.reason || j.error)) || 'la API no respondió');
+    if (!Array.isArray(j.r)) throw new Error('hace falta publicar la API nueva (opinona_dia)');
+    diarioVivo[fecha] = { filas: completarDiaDesdeBD(rehidratarOpinona({ h: j.h, r: j.r }), fecha), leida: new Date(j.leida || Date.now()) };
+    diarioVivoEstado = null;
+  } catch (e) {
+    diarioVivoEstado = { fecha, error: (e && e.message) || String(e) };
+  }
+  if (activeTab === 'diario' && diarioFecha === fecha) renderDiario();
+}
+function soltarDiaEnVivo() { delete diarioVivo[diarioFecha]; diarioVivoEstado = null; renderDiario(); }
 
 // Recalcula alturas al cambiar el tamaño de ventana (y al cruzar el corte de 1100px)
 let _diarioResize;
@@ -3376,7 +3513,8 @@ function renderDiario() {
   if (!diarioFecha || !fechas.includes(diarioFecha)) diarioFecha = fechas[fechas.length - 1];
 
   const lineFilter = r => diarioLinea === 'planta' ? true : getLinea(r) === diarioLinea.toUpperCase();
-  const dayRows = rawData.filter(r => { const f = getFecha(r); return f && diaYMD(f) === diarioFecha && lineFilter(r); });
+  const base = diarioBase();   // la BD, con el día traído en vivo de AppSheet si se pidió
+  const dayRows = base.filter(r => { const f = getFecha(r); return f && diaYMD(f) === diarioFecha && lineFilter(r); });
 
   const fechaObj = new Date(diarioFecha + 'T12:00:00');
   const fechaTxt = fechaObj.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
@@ -3398,9 +3536,24 @@ function renderDiario() {
   const btnDiario = document.querySelector('.tab-btn[data-tab="diario"]');
   if (btnDiario) btnDiario.style.setProperty('--tab-color', themeColor);
   const target = targets[diarioLinea === 'planta' ? 'planta' : diarioLinea]?.anual ?? 40;
+  const ncTargetDia = targets[diarioLinea === 'planta' ? 'planta' : diarioLinea]?.noConf ?? NO_CONF_DEFAULT;
 
   const lineBtns = [['planta','Planta'],['l1','L1'],['l2','L2'],['l3','L3']]
     .map(([k,l]) => `<button type="button" class="opi-view-btn ${diarioLinea===k?'on':''}" onclick="setDiarioLinea('${k}')"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${THEME_COLOR[k]};margin-right:6px;vertical-align:-1px;box-shadow:0 0 0 1px rgba(0,0,0,.18);"></span>${l}</button>`).join('');
+
+  // Botón "Traer de AppSheet" y estado del día en vivo
+  const vivo = diarioVivo[diarioFecha];
+  const est = diarioVivoEstado && diarioVivoEstado.fecha === diarioFecha ? diarioVivoEstado : null;
+  const hhmm = d => d.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', hour12:false });
+  const escTxt = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const vivoHtml = diarioFecha < FECHA_CORTE_APPSHEET ? '' : `<span class="diario-vivo">
+      <button type="button" class="opi-view-btn" onclick="traerDiaEnVivo()" ${est && est.cargando ? 'disabled' : ''}
+        title="${vivo ? 'Volver a traer de AppSheet' : 'Lee ahora de la app (AppSheet) los registros de este día, con las correcciones, y redibuja el reporte. No cambia la base: se pone al día sola con el temporizador.'}">⟳${vivo ? '' : ' Traer de AppSheet'}</button>
+      ${est && est.cargando ? '<span class="dv-txt">Leyendo AppSheet…</span>'
+        : est && est.error ? `<span class="dv-txt dv-err" title="${escTxt(est.error)}">No se pudo traer el día: ${escTxt(est.error)}</span>`
+        : vivo ? `<span class="dv-txt dv-ok" title="${vivo.filas.length} registros de este día leídos de AppSheet a las ${hhmm(vivo.leida)}. La base todavía puede no tenerlos: se actualiza sola con el temporizador.">● En vivo de AppSheet · ${hhmm(vivo.leida)}</span>
+          <button type="button" class="dv-x" onclick="soltarDiaEnVivo()" title="Volver a los datos de la base">usar la base</button>` : ''}
+    </span>`;
 
   const head = `
     <div class="chart-card full" style="margin-bottom:8px;padding:7px 12px;">
@@ -3413,6 +3566,10 @@ function renderDiario() {
           <button type="button" class="opi-view-btn" onclick="stepDiario(1)" title="Día siguiente con datos">›</button>
         </div>
         <span class="opi-view-switch" style="display:inline-flex;gap:5px;">${lineBtns}</span>
+        <span style="display:inline-flex;align-items:center;gap:8px;margin-left:auto;">
+          ${vivoHtml}
+          <button type="button" class="opi-view-btn" onclick="toggleTheme()" title="Claro u oscuro (el botón del membrete no se ve en el Reporte Diario)">◐</button>
+        </span>
       </div>
     </div>`;
 
@@ -3423,7 +3580,7 @@ function renderDiario() {
   const heroCls = m.opi >= target ? '' : 'below';
 
   // OPINONA del mes a la fecha, misma línea — referencia para el día
-  const mesRows = rawData.filter(r => {
+  const mesRows = base.filter(r => {
     const f = getFecha(r);
     return f && lineFilter(r) && f.getFullYear() === fechaObj.getFullYear() && f.getMonth() === fechaObj.getMonth() && diaYMD(f) <= diarioFecha;
   });
@@ -3502,31 +3659,47 @@ function renderDiario() {
       <td style="color:var(--muted);">${Math.round(diaMin(x.h)/x.n).toLocaleString('es-AR')}</td>
     </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);font-weight:400;">Sin cambios de orden en el día</td></tr>';
 
-  // ── Composición del tiempo del día: las 5 categorías OPINONA ──
-  // Base: Tiempo Efectivo de Trabajo (excluye No Uso). Clic → detalle del día.
-  const casc = [CATS.PRODUCCION, CATS.PLANEADO, CATS.FALLA, CATS.EXTERNA, CATS.CAMBIO]
-    .map(k => ({ k, h: m.tiempoPorClasif[k] || 0 }));
-  const cascTot = casc.reduce((s,x) => s + x.h, 0);
+  // ── Composición del tiempo del día: todo menos No Uso, de mayor a menor ──
+  // Mismo orden y colores que la torta (diarioOrdenParos), NoNa incluida. Las filas suman el
+  // T. con Personal; abajo, ese total y el T. Efectivo (sin NoNa), que es el de la tarjeta de
+  // arriba y el del OPINONA. Clic → detalle del día (NoNa, separado por motivo).
+  const casc = diarioOrdenParos(m.paros).map(([k, h]) => ({ k, h }));
+  const cascNona = m.paros[CATS.NONA] || 0;
+  // Filas sin Clasificación_1: entran al T. con Personal pero no a ninguna categoría
+  const cascSinClasif = m.tConPersonal - casc.reduce((s,x) => s + x.h, 0);
+  if (Math.abs(cascSinClasif) > 1e-6) casc.push({ k: 'Sin clasificar', h: cascSinClasif, sinClic: true });
+  const cascTot = m.tConPersonal;
   const cascMax = Math.max(...casc.map(x => x.h), 0.001);
+  // NoNa: el desglose por motivo va en el globo de la fila
+  const nonaTxt = Math.abs(cascNona) > 1e-9
+    ? 'NoNa: ' + nonaPorMotivo(dayRows.filter(r => getClasif1(r) === CATS.NONA))
+        .map(g => g.motivo + ' ' + diaMin(g.h).toLocaleString('es-AR') + ' min').join(' · ') + ' — clic = detalle por motivo'
+    : '';
   const CASC_LABEL = {
     [CATS.PRODUCCION]:'Tpo de Producción', [CATS.PLANEADO]:'Tpo Planeado', [CATS.FALLA]:'Falla Equipos',
-    [CATS.EXTERNA]:'Pdas Externas', [CATS.CAMBIO]:'Tpos de Cambio'
+    [CATS.EXTERNA]:'Pdas Externas', [CATS.CAMBIO]:'Tpos de Cambio', [CATS.NONA]:'NoNa',
+    'Rechazos y Reprocesos':'Rechazos y Reproc.', 'Mantención por Terceros':'Mant. Terceros'
   };
-  const cascRows = casc.map(({k, h}) => `<tr onclick="openModalDiarioClasif('${k.replace(/'/g,"\\'")}')" style="cursor:pointer;" title="${k} — ver registros del día">
+  const cascPct = h => cascTot ? (h/cascTot*100).toFixed(1) : '0.0';
+  const cascFila = ({k, h, sinClic}) => `<tr ${sinClic ? 'title="Registros sin Clasificación_1"' : `onclick="openModalDiarioClasif('${k.replace(/'/g,"\\'")}')" style="cursor:pointer;" title="${k === CATS.NONA ? escTxt(nonaTxt) : k + ' — ver registros del día'}"`}>
       <td style="font-weight:700;white-space:nowrap;width:1%;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${CAT_COLORS[k]||'#B61858'};margin-right:6px;vertical-align:0;"></span>${CASC_LABEL[k]||k}</td>
       <td style="width:1%;font-weight:800;white-space:nowrap;">${diaMin(h).toLocaleString('es-AR')}</td>
       <td>
         <div style="height:11px;border-radius:3px;background:var(--tr-hover);min-width:26px;">
-          <div style="height:11px;border-radius:3px;background:${CAT_COLORS[k]||'#B61858'};width:${h/cascMax*100}%;"></div>
+          <div style="height:11px;border-radius:3px;background:${CAT_COLORS[k]||'#B61858'};width:${Math.max(0, h)/cascMax*100}%;"></div>
         </div>
       </td>
-      <td style="width:1%;font-weight:800;white-space:nowrap;">${cascTot ? (h/cascTot*100).toFixed(1) : '0.0'}%</td>
-    </tr>`).join('') + `<tr style="background:var(--tr-hover);">
-      <td style="font-weight:800;white-space:nowrap;width:1%;">Tpo Efectivo</td>
-      <td style="font-weight:800;white-space:nowrap;width:1%;">${diaMin(cascTot).toLocaleString('es-AR')}</td>
-      <td style="font-size:9px;color:var(--muted);font-weight:600;white-space:nowrap;">${cascTot.toFixed(2)} h</td>
-      <td style="font-weight:800;width:1%;">100%</td>
+      <td style="width:1%;font-weight:800;white-space:nowrap;">${cascPct(h)}%</td>
     </tr>`;
+  const cascTotal = (label, h, nota) => `<tr style="background:var(--tr-hover);" ${nota ? `title="${label}: ${nota}"` : ''}>
+      <td style="font-weight:800;white-space:nowrap;width:1%;">${label}</td>
+      <td style="font-weight:800;white-space:nowrap;width:1%;">${diaMin(h).toLocaleString('es-AR')}</td>
+      <td style="font-size:9px;color:var(--muted);font-weight:600;white-space:nowrap;">${h.toFixed(2)} h${nota ? ` <span class="casc-nota">· ${nota}</span>` : ''}</td>
+      <td style="font-weight:800;width:1%;">${cascPct(h)}%</td>
+    </tr>`;
+  const cascRows = casc.map(cascFila).join('') + (Math.abs(cascNona) > 1e-9
+    ? cascTotal('Tpo c/Personal', cascTot, 'sin No Uso') + cascTotal('Tpo Efectivo', m.tEfectivo, 'sin NoNa')
+    : cascTotal('Tpo Efectivo', m.tEfectivo, ''));
 
   // ── Pareto acumulado del mes (fallas de equipos) ──
   const parMes = {};
@@ -3538,7 +3711,7 @@ function renderDiario() {
 
   container.innerHTML = head + `
     <div class="diario-tight">
-    <div class="kpi-row" style="grid-template-columns:repeat(6,1fr);">
+    <div class="kpi-row" style="grid-template-columns:repeat(7,1fr);">
       <div class="kpi-card kpi-hero ${heroCls}" style="grid-column:span 2;">
         <div class="kpi-label">OPINONA DEL DÍA · ${diarioLinea === 'planta' ? 'PLANTA' : diarioLinea.toUpperCase()}</div>
         <div class="kpi-value ${kpiCls}">${m.opi.toFixed(1)}%</div>
@@ -3554,6 +3727,11 @@ function renderDiario() {
         <div class="kpi-value olive">${m.cajas.toLocaleString('es-AR')}</div>
         <div class="kpi-sub">${m.hlTotal.toFixed(0)} HL</div>
       </div>
+      <div class="kpi-card" onclick="openModalDiarioPNC()" style="cursor:pointer;" title="Ver las órdenes con producto no conforme del día">
+        <div class="kpi-label">PNC Retenido</div>
+        <div class="kpi-value ${m.pni > 0 && m.pctPNI > ncTargetDia ? 'nc-bad' : 'nc-ok'}">${Math.round(m.pni).toLocaleString('es-AR')} <span style="font-size:12px;opacity:.6">C9L</span></div>
+        <div class="kpi-sub">${fechaObj < FECHA_CORTE_PNC ? 'rechazo —' : 'rechazo ' + diaMin(m.tPNC).toLocaleString('es-AR') + ' min'} · ${m.pctPNI.toFixed(2)}%</div>
+      </div>
       <div class="kpi-card red">
         <div class="kpi-label">Fallas de Equipos</div>
         <div class="kpi-value red">${diaMin(m.tiempoPorClasif[CATS.FALLA]).toLocaleString('es-AR')} <span style="font-size:12px;opacity:.6">min</span></div>
@@ -3568,8 +3746,8 @@ function renderDiario() {
 
     <div class="diario-grid" id="diario-row1" style="${hRow}">
       <div class="chart-card" style="overflow:auto;">
-        <div class="chart-title">Composición del Tiempo Efectivo <span class="hint">min · clic = detalle · abajo: OPINONA 7 días</span></div>
-        <table class="table-obj" style="table-layout:auto;"><tbody>${cascRows}</tbody></table>
+        <div class="chart-title">Composición del Tiempo <span class="hint">sin No Uso · min · clic = detalle · abajo: OPINONA 7 días</span></div>
+        <table class="table-obj casc-tabla" style="table-layout:auto;"><tbody>${cascRows}</tbody></table>
         <div id="chart-diario-semana" style="margin-top:6px;"></div>
       </div>
       <div class="chart-card">
@@ -3620,7 +3798,11 @@ function renderDiario() {
   const r1 = document.getElementById('diario-row1');
   const r2 = document.getElementById('diario-row2');
   if (unaPantalla && r1 && r2) {
-    const libre = window.innerHeight - r1.getBoundingClientRect().top - 22;
+    // Al entrar, el membrete todavía está (se va después de dibujar, membreteSegunPestana): se
+    // mide sin él, y como si la página estuviera arriba de todo.
+    const hd = document.querySelector('.header');
+    const hMembrete = document.body.classList.contains('modo-diario') && hd ? hd.getBoundingClientRect().height : 0;
+    const libre = window.innerHeight - (r1.getBoundingClientRect().top + window.scrollY - hMembrete) - 22;
     if (libre > 300) {
       DIARIO_H.row  = Math.round((libre - 8) * 0.47);
       DIARIO_H.row2 = libre - 8 - DIARIO_H.row;
@@ -3636,7 +3818,7 @@ function renderDiario() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date(fechaObj); d.setDate(d.getDate() - i);
     const ymd = diaYMD(d);
-    const rs = rawData.filter(r => { const f = getFecha(r); return f && diaYMD(f) === ymd && lineFilter(r); });
+    const rs = base.filter(r => { const f = getFecha(r); return f && diaYMD(f) === ymd && lineFilter(r); });
     const opi = rs.length ? procesarMetricas(rs).opi : null;
     semanaSerie.push({ ymd, label: d.toLocaleDateString('es-AR', { weekday:'short' }).replace('.','') + ' ' + d.getDate(), opi: (opi && opi > 0) ? Number(opi.toFixed(1)) : null });
   }
@@ -3688,8 +3870,8 @@ function drawDiarioSemana(id, serie, target, color) {
 }
 
 function drawDiarioDonut(id, parosObj) {
-  const entries = Object.entries(parosObj).filter(([,v]) => v > 0)
-    .sort(([ka,va],[kb,vb]) => ka === CATS.PRODUCCION ? -1 : kb === CATS.PRODUCCION ? 1 : vb - va);
+  // Mismo orden que la tabla Composición del Tiempo: de mayor a menor
+  const entries = diarioOrdenParos(parosObj).filter(([,v]) => v > 0);
   const el = document.querySelector('#'+id);
   if (!entries.length) { if (el) el.innerHTML = '<div class="no-data">Sin datos en el día</div>'; return; }
   const total = entries.reduce((a,[,v]) => a+v, 0);
@@ -4221,7 +4403,7 @@ function openModalDiarioClasif(clasif, subcat, scope) {
     ? 'del 1 al ' + fechaObj.getDate() + ' de ' + fechaObj.toLocaleDateString('es-AR', { month:'long' })
     : fechaObj.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' });
   const lineaTxt = diarioLinea === 'planta' ? 'Planta' : diarioLinea.toUpperCase();
-  const rows = rawData.filter(r => {
+  const rows = diarioBase().filter(r => {
     if (getClasif1(r) !== clasif) return false;
     if (diarioLinea !== 'planta' && getLinea(r) !== diarioLinea.toUpperCase()) return false;
     if (subcat && (getClasif2(r) || 'Sin clasificar') !== subcat) return false;
@@ -4246,11 +4428,19 @@ function openModalDiarioClasif(clasif, subcat, scope) {
     });
     return;
   }
+  // NoNa: separado por motivo (llenado, inventario, capacitación, sin programa…)
+  if (clasif === CATS.NONA && !subcat) {
+    openModalDiarioNona(rows, lineaTxt + ' · ' + periodo, scope === 'mes');
+    return;
+  }
 
   const totalH = rows.reduce((a, r) => a + getVarTiempo(r), 0);
   const catColor = CAT_COLORS[clasif] || 'var(--vspt-amber)';
   const isFalla = clasif === CATS.FALLA;
   const subLabel = isFalla ? 'Equipo' : clasif === CATS.EXTERNA ? 'Causa' : 'Descripción';
+  // Rechazos y Mant. por Terceros: qué orden estaba en la línea y si fue llenado solo
+  const conOrden = clasif === CATS.NONA || CATS_RETRABAJO.includes(clasif);
+  const nCols = 6 + (isFalla ? 1 : 0) + (conOrden ? 4 : 0);
 
   let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
     <div>
@@ -4260,13 +4450,15 @@ function openModalDiarioClasif(clasif, subcat, scope) {
     </div>
     <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
   </div><div style="overflow:auto;max-height:62vh;"><table><thead><tr>
-    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Min</th><th>${subLabel}</th>
+    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Min</th>
+    ${conOrden ? '<th>OP</th><th>Formato</th><th>Tipo Etiq.</th><th>Cajas</th>' : ''}
+    <th>${subLabel}</th>
     ${isFalla ? '<th>MTO/OP</th>' : ''}
     <th style="width:36%;">Observaciones</th>
   </tr></thead><tbody>`;
 
   if (!rows.length) {
-    html += `<tr><td colspan="${isFalla ? 7 : 6}" style="text-align:center;padding:24px;opacity:.6;">Sin registros</td></tr>`;
+    html += `<tr><td colspan="${nCols}" style="text-align:center;padding:24px;opacity:.6;">Sin registros</td></tr>`;
   } else {
     rows.forEach(r => {
       const f = getFecha(r);
@@ -4275,6 +4467,10 @@ function openModalDiarioClasif(clasif, subcat, scope) {
         <td><strong>${getLinea(r)||'—'}</strong></td>
         <td>${get(r,'Turno','Turno ','turno')||getTurnoFromPlan(r)||'—'}</td>
         <td style="font-weight:700;color:${catColor};">${diaMin(getVarTiempo(r)).toLocaleString('es-AR')}</td>
+        ${conOrden ? `<td style="white-space:nowrap;">${get(r,'Id. Producción','Id. Produccion','id_produccion','OP')||'—'}</td>
+        <td>${get(r,'Formato_1','FORMATO_1','Formato','formato')||'—'}</td>
+        <td style="white-space:nowrap;${getTipoEti(r) === 'LLENADO' ? 'font-weight:800;color:var(--vspt-amber);' : ''}" title="${getTipoEti(r) === 'LLENADO' ? 'Llenado solo (semielaborado)' : ''}">${getTipoEti(r)||'—'}</td>
+        <td>${getCajas(r) ? getCajas(r).toLocaleString('es-AR') : '—'}</td>` : ''}
         <td>${getClasif2(r)||'—'}</td>
         ${isFalla ? `<td>${getMTO(r)||'—'}</td>` : ''}
         <td style="font-style:italic;opacity:.8;white-space:normal;">${get(r,'Observaciones','observaciones')||'—'}</td>
@@ -4286,10 +4482,134 @@ function openModalDiarioClasif(clasif, subcat, scope) {
   document.getElementById('detail-modal').style.display = 'flex';
 }
 
+/* NoNa del día separado por motivo (nonaMotivo): arriba el resumen por motivo, de mayor a
+   menor; abajo los registros de cada motivo con su subtotal. Clic en un motivo = sus registros. */
+function openModalDiarioNona(rows, subtitulo, conFecha) {
+  const catColor = CAT_COLORS[CATS.NONA];
+  const txtColor = isDark ? '#E39BC9' : catColor;   // el bordó de NoNa no se lee sobre fondo oscuro
+  const grupos = nonaPorMotivo(rows);
+  const totalH = rows.reduce((a, r) => a + getVarTiempo(r), 0);
+  const maxH = Math.max(...grupos.map(g => g.h), 0.001);
+  const pct = h => totalH > 0 ? (h / totalH * 100).toFixed(1) + '%' : '—';
+  const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const nCols = 7 + (conFecha ? 1 : 0);
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:${txtColor};text-transform:uppercase;">NoNa</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;text-transform:capitalize;">${subtitulo}</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">Total: ${diaMin(totalH).toLocaleString('es-AR')} min · ${totalH.toFixed(2)} h · ${rows.length} registros</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div>`;
+
+  if (!rows.length) {
+    html += `<div style="text-align:center;padding:24px;opacity:.6;">Sin registros</div>`;
+  } else {
+    html += `<table class="nona-motivos" style="margin-bottom:6px;"><thead><tr>
+        <th>Motivo</th><th style="text-align:right;">Min</th><th style="width:44%;"></th><th style="text-align:right;">%</th><th style="text-align:right;">Reg.</th>
+      </tr></thead><tbody>` +
+      grupos.map((g, i) => `<tr onclick="nonaIrMotivo(${i})" style="cursor:pointer;" title="Ver los registros de ${esc(g.motivo)}">
+        <td style="font-weight:700;white-space:nowrap;">${g.motivo}</td>
+        <td style="font-weight:800;text-align:right;white-space:nowrap;">${diaMin(g.h).toLocaleString('es-AR')}</td>
+        <td><div style="height:11px;border-radius:3px;background:var(--tr-hover);"><div style="height:11px;border-radius:3px;background:${catColor};width:${Math.max(0, g.h) / maxH * 100}%;"></div></div></td>
+        <td style="font-weight:800;text-align:right;white-space:nowrap;">${pct(g.h)}</td>
+        <td style="color:var(--muted);text-align:right;">${g.rows.length}</td>
+      </tr>`).join('') + `</tbody></table>
+      <div style="color:var(--muted);font-size:11px;margin-bottom:12px;">Llenado: órdenes de llenado solo (Tipo Etiquetado LLENADO), que se cargan como NoNa. Inventario, capacitación, simulacro y reunión o evento: según lo escrito en Observaciones. El resto queda como Sin programa (la Clasificación_2 de NoNa).</div>
+      <div id="nona-detalle" style="overflow:auto;max-height:46vh;"><table><thead><tr>
+        ${conFecha ? '<th>Fecha</th>' : ''}<th>Línea</th><th>Turno</th><th>Min</th><th>OP</th><th>Formato</th><th>Cajas</th><th style="width:40%;">Observaciones</th>
+      </tr></thead><tbody>`;
+    grupos.forEach((g, i) => {
+      html += `<tr id="nona-g${i}"><td colspan="${nCols}" style="background:var(--tr-hover);font-weight:800;color:${txtColor};text-transform:uppercase;font-size:11px;letter-spacing:.4px;">
+          ${g.motivo} · ${diaMin(g.h).toLocaleString('es-AR')} min · ${pct(g.h)} · ${g.rows.length} ${g.rows.length === 1 ? 'registro' : 'registros'}</td></tr>`;
+      g.rows.forEach(r => {
+        const f = getFecha(r);
+        html += `<tr>
+          ${conFecha ? `<td>${f ? f.toLocaleDateString('es-AR') : '—'}</td>` : ''}
+          <td><strong>${getLinea(r)||'—'}</strong></td>
+          <td>${get(r,'Turno','Turno ','turno')||getTurnoFromPlan(r)||'—'}</td>
+          <td style="font-weight:700;color:${txtColor};">${diaMin(getVarTiempo(r)).toLocaleString('es-AR')}</td>
+          <td style="white-space:nowrap;">${get(r,'Id. Producción','Id. Produccion','id_produccion','OP')||'—'}</td>
+          <td>${get(r,'Formato_1','FORMATO_1','Formato','formato')||'—'}</td>
+          <td>${getCajas(r) ? getCajas(r).toLocaleString('es-AR') : '—'}</td>
+          <td style="font-style:italic;opacity:.8;white-space:normal;">${esc(get(r,'Observaciones','observaciones')||'—')}</td>
+        </tr>`;
+      });
+    });
+    html += `</tbody></table></div>`;
+  }
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('detail-modal').style.display = 'flex';
+  // El detalle usa el alto que queda en el cuadro (el resumen va fijo arriba)
+  const cont = document.getElementById('nona-detalle');
+  const mc = cont && cont.closest('.modal-content');
+  if (cont && mc) {
+    const css = getComputedStyle(mc);
+    const libre = window.innerHeight * 0.85 - parseFloat(css.paddingBottom || 0) - (cont.getBoundingClientRect().top - mc.getBoundingClientRect().top) - 2;
+    cont.style.maxHeight = Math.max(160, Math.floor(libre)) + 'px';
+  }
+}
+function nonaIrMotivo(i) {
+  const fila = document.getElementById('nona-g' + i), cont = document.getElementById('nona-detalle');
+  if (!fila || !cont) return;
+  const th = cont.querySelector('thead');
+  cont.scrollTo({ top: cont.scrollTop + fila.getBoundingClientRect().top - cont.getBoundingClientRect().top - (th ? th.offsetHeight : 0), behavior: 'smooth' });
+}
+
+/* Producto no conforme del día — una fila por registro con cajas retenidas. */
+function openModalDiarioPNC() {
+  const fechaObj = new Date(diarioFecha + 'T12:00:00');
+  const lineaTxt = diarioLinea === 'planta' ? 'Planta' : diarioLinea.toUpperCase();
+  const conRechazo = fechaObj >= FECHA_CORTE_PNC;
+  const rows = diarioBase().filter(r => {
+    if (getPNI(r) <= 0) return false;
+    if (diarioLinea !== 'planta' && getLinea(r) !== diarioLinea.toUpperCase()) return false;
+    const f = getFecha(r);
+    return f && diaYMD(f) === diarioFecha;
+  }).map(r => {
+    const cajas = getCajas(r), pnc = getPNI(r);
+    return { r, cajas, pnc, c9l: cajas > 0 ? pnc * (getC9L(r) / cajas) : pnc, h: conRechazo ? horasPNC(r) : 0 };
+  }).sort((a, b) => b.c9l - a.c9l);
+  const tot = rows.reduce((t, x) => ({ pnc: t.pnc + x.pnc, c9l: t.c9l + x.c9l, h: t.h + x.h }), { pnc:0, c9l:0, h:0 });
+  const catColor = 'var(--vspt-crimson)';
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:${catColor};text-transform:uppercase;">Producto no conforme retenido</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:4px;text-transform:capitalize;">${lineaTxt} · ${fechaObj.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' })}</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">Total: ${Math.round(tot.c9l).toLocaleString('es-AR')} C9L · ${tot.pnc.toLocaleString('es-AR')} cajas${conRechazo ? ' · rechazo ' + diaMin(tot.h).toLocaleString('es-AR') + ' min' : ''} · ${rows.length} registros</div>
+      <div style="color:var(--muted);font-size:11px;margin-top:4px;">Rechazo: horas de línea a velocidad nominal para producir las cajas retenidas${conRechazo ? '' : ' (se descuenta desde jul-2026)'}.</div>
+    </div>
+    <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
+  </div><div style="overflow:auto;max-height:62vh;"><table><thead><tr>
+    <th>Línea</th><th>Turno</th><th>OP</th><th>Formato</th><th>Cajas prod.</th><th>Cajas PNC</th><th>C9L PNC</th><th>Min rechazo</th>
+  </tr></thead><tbody>`;
+  if (!rows.length) {
+    html += `<tr><td colspan="8" style="text-align:center;padding:24px;opacity:.6;">Sin producto no conforme en el día</td></tr>`;
+  } else {
+    rows.forEach(({ r, cajas, pnc, c9l, h }) => {
+      html += `<tr>
+        <td><strong>${getLinea(r)||'—'}</strong></td>
+        <td>${get(r,'Turno','Turno ','turno')||getTurnoFromPlan(r)||'—'}</td>
+        <td style="white-space:nowrap;">${get(r,'Id. Producción','Id. Produccion','id_produccion','OP')||'—'}</td>
+        <td>${get(r,'Formato_1','FORMATO_1','Formato','formato')||'—'}</td>
+        <td>${cajas.toLocaleString('es-AR')}</td>
+        <td style="font-weight:700;color:${catColor};">${pnc.toLocaleString('es-AR')}</td>
+        <td style="font-weight:700;">${Math.round(c9l).toLocaleString('es-AR')}</td>
+        <td>${conRechazo ? diaMin(h).toLocaleString('es-AR') : '—'}</td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
 /* Pérdidas de velocidad del día — una fila por orden de producción. */
 function openModalDiarioVel() {
   const fechaObj = new Date(diarioFecha + 'T12:00:00');
-  const rows = rawData.filter(r => {
+  const rows = diarioBase().filter(r => {
     if (getClasif1(r) !== CATS.PRODUCCION) return false;
     if (diarioLinea !== 'planta' && getLinea(r) !== diarioLinea.toUpperCase()) return false;
     const f = getFecha(r);
