@@ -127,6 +127,16 @@
   body.modo-diario .main { min-height:0; }
   body.modo-diario .content { padding:12px 16px; }   /* más lugar para el reporte */
   body.modo-diario #pruebaGoogle { display:none; }   /* recuadro de la prueba en Google: tapaba el reporte */
+  /* Planta 3D (6-oct, también en Netlify): el plano ocupa todo lo que queda bajo las pestañas, sin
+     márgenes, y el membrete se va. En el tablero de Google el 09 agrega las mismas reglas. */
+  body.modo-planta3d { overflow:hidden; }
+  body.modo-planta3d .header { height:0 !important; min-height:0 !important; padding-top:0 !important; padding-bottom:0 !important; opacity:0 !important; overflow:hidden; border-bottom:0 !important; }
+  body.modo-planta3d .tab-btn { padding:9px 16px; font-size:10px; }
+  body.modo-planta3d .main { min-height:0; }
+  body.modo-planta3d .content { padding:0 !important; overflow:hidden; }
+  body.modo-planta3d #iframePlanta3d { display:block; height:calc(100vh - var(--p3-tabs,37px)) !important; height:calc(100dvh - var(--p3-tabs,37px)) !important; border-radius:0 !important; }
+  body.modo-planta3d #pruebaGoogle { display:none; }
+  #iframePlanta3d.iframe-completa { position:fixed; inset:0; width:100vw !important; height:100vh !important; height:100dvh !important; z-index:5000; border-radius:0 !important; }
 
   .main { display:flex; min-height:calc(100vh - 110px); position:relative; }
   .sidebar { width:260px; min-width:260px; background:var(--card); border-right:1px solid var(--border); overflow-y:auto; overflow-x:visible; padding:18px; flex-shrink:0; transition:margin-left .3s ease; position:relative; }
@@ -571,6 +581,37 @@
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbx8alYmoiwb5-z1nyvXfyCSLfELACGZ4qGGtIoS3j6lF1yS6SmFH0wYRbKfQPrq5P6N/exec";
+
+/* ── Planta 3D (6-oct): pestaña antes de "Planta" con Dashboard_planta3d.html (se carga al abrirla,
+   no se precarga). En el tablero de Google la arma el 09 (window.PRUEBA_SERVIDOR, del servidor):
+   ahí v15 no la crea y deja que el 09 atienda sus mensajes. ── */
+const P3_PROPIA = !window.PRUEBA_SERVIDOR;
+(function () {
+  if (!P3_PROPIA) return;
+  const bPlanta = document.querySelector('.tab-btn[data-tab="planta"]'), pPlanta = document.getElementById('tab-planta');
+  if (!bPlanta || !pPlanta) return;
+  const b = document.createElement('button');
+  b.className = 'tab-btn'; b.dataset.tab = 'planta3d'; b.textContent = 'Planta 3D';
+  b.setAttribute('onclick', "changeTab('planta3d')");
+  bPlanta.parentNode.insertBefore(b, bPlanta);
+  const p = document.createElement('div');
+  p.id = 'tab-planta3d'; p.className = 'tab-panel'; p.style.display = 'none';
+  p.innerHTML = '<iframe id="iframePlanta3d" src="about:blank" title="Planta 3D" allow="fullscreen" style="width:100%; height:calc(100vh - 170px); border:none; border-radius:10px; background:var(--card);"></iframe>';
+  pPlanta.parentNode.insertBefore(p, pPlanta);
+  // la página escucha el modo desde el principio (muestra su botón de tema)
+  p.firstChild.addEventListener('load', () => { if (document.body.classList.contains('modo-planta3d')) p3AvisarModo(true); });
+  window.addEventListener('resize', p3MedirPestanas);
+})();
+function p3AvisarModo(on) {
+  const f = document.getElementById('iframePlanta3d');
+  if (P3_PROPIA && f && f.contentWindow) { try { f.contentWindow.postMessage({ type:'vspt-planta3d-modo', on: !!on }, '*'); } catch(e){} }
+}
+// Alto de las pestañas achicadas: la planta ocupa el resto de la ventana
+function p3MedirPestanas() {
+  const n = document.querySelector('.tab-nav');
+  if (P3_PROPIA && n && document.body.classList.contains('modo-planta3d')) document.body.style.setProperty('--p3-tabs', n.offsetHeight + 'px');
+}
+
 const CACHE_KEY = 'vspt_opinona_v6';
 const CACHE_KPI_KEY = 'vspt_kpi_planta_v1';
 let kpiData = [];          // filas de KPI_PLANTA_MENSUAL
@@ -745,6 +786,14 @@ window.addEventListener('message', (e) => {
   if (e.data.type === 'vspt-mant-completa' && fm && e.source === fm.contentWindow) {
     fm.classList.toggle('iframe-completa', !!e.data.on);
     document.body.style.overflow = e.data.on ? 'hidden' : '';
+  }
+  // Planta 3D de v15 (en Google lo atiende el 09): pantalla completa y el botón de tema de la planta
+  const f3 = document.getElementById('iframePlanta3d');
+  if (P3_PROPIA && f3 && e.source === f3.contentWindow) {
+    if (e.data.type === 'vspt-planta3d-completa') {
+      f3.classList.toggle('iframe-completa', !!e.data.on);
+      document.body.style.overflow = e.data.on ? 'hidden' : '';
+    } else if (e.data.type === 'vspt-planta3d-tema') toggleTheme();
   }
 });
 // Se resuelve cuando el detalle (OPINONA) terminó de cargar o de fallar.
@@ -2067,6 +2116,10 @@ function changeTab(id) {
   if (activeTab === 'planta3d') document.body.classList.add('sin-membrete');
   activeTab = id;
   document.body.classList.toggle('modo-diario', id === 'diario');
+  // Planta 3D de v15 (Netlify): el plano a pantalla completa bajo las pestañas
+  document.body.classList.toggle('modo-planta3d', id === 'planta3d');
+  if (id === 'planta3d') { p3MedirPestanas(); setTimeout(p3MedirPestanas, 420); }   // al terminar de achicarse
+  p3AvisarModo(id === 'planta3d');
   document.documentElement.style.setProperty('--tab-color', THEME_COLOR[id] || '#F9C13F');
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === id);
@@ -2079,7 +2132,8 @@ function changeTab(id) {
     calidad:   { iframeId:'iframeCalidad',   src:'Dashboard_calidad.html' },
     programas: { iframeId:'iframeProgramas', src:'Dashboard_programas.html' },
     personal:  { iframeId:'iframePersonal',  src:'Dashboard_personal.html' },
-    mantenimiento: { iframeId:'iframeMantenimiento', src:'Dashboard_mantenimiento.html' }
+    mantenimiento: { iframeId:'iframeMantenimiento', src:'Dashboard_mantenimiento.html' },
+    planta3d:      { iframeId:'iframePlanta3d',      src:'Dashboard_planta3d.html' }   // sólo la de v15 (Netlify)
   };
   // Aplicaciones no es una página embebida: es una grilla de accesos directos.
   // Comparte con las embebidas que no usa los filtros, así que oculta el panel.
@@ -2124,7 +2178,7 @@ function membreteSegunPestana() {
 }
 
 function render() {
-  if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal' || activeTab === 'mantenimiento' || activeTab === 'aplicaciones') return;
+  if (activeTab === 'calidad' || activeTab === 'programas' || activeTab === 'personal' || activeTab === 'mantenimiento' || activeTab === 'aplicaciones' || activeTab === 'planta3d') return;
   if (!rawData.length) return;
   // Año activo sin todos sus meses todavía (carga por mes): KPI de la hoja mensual,
   // nunca totales parciales. El Reporte Diario va por día y usa lo que hay.
@@ -4712,7 +4766,7 @@ function toggleTheme() {
 }
 
 function broadcastTheme() {
-  ['iframeProgramas','iframeCalidad','iframePersonal','iframeMantenimiento'].forEach(id => {
+  ['iframeProgramas','iframeCalidad','iframePersonal','iframeMantenimiento','iframePlanta3d'].forEach(id => {
     const f = document.getElementById(id);
     if (f && f.contentWindow && f.src && f.src !== 'about:blank') {
       try { f.contentWindow.postMessage({ type:'vspt-theme', dark: isDark }, '*'); } catch(e){}
