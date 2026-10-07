@@ -291,6 +291,17 @@
   .estado-chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:800;letter-spacing:.04em}
   .estado-chip.abierta{background:var(--warn-bg);color:var(--warn)} .estado-chip.atrasada{background:var(--crit-bg);color:var(--crit)} .estado-chip.cerrada{background:var(--ok-bg);color:var(--ok)}
   .estado-chip.fdc{background:var(--crit);color:#fff}
+  /* fuentes de contaminación (7-oct): semáforo abierta (activa) → en tratamiento (contenida) → cerrada */
+  .estado-chip.fdc.tratamiento{background:var(--z-warn);color:#2a2000} .estado-chip.fdc.cerrada{background:var(--z-ok);color:#0b2a14}
+  .fdc-sem{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .fdc-sem button{display:inline-flex;align-items:center;gap:5px;background:none;border:0;padding:5px 9px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer}
+  .fdc-sem button+button{border-left:1px solid var(--border)}
+  .fdc-sem button i{width:9px;height:9px;border-radius:50%;flex:none}
+  .fdc-sem button.abierta i{background:var(--z-crit)} .fdc-sem button.tratamiento i{background:var(--z-warn)} .fdc-sem button.cerrada i{background:var(--z-ok)}
+  .fdc-sem button[aria-pressed="true"]{color:var(--text);background:var(--td-border)}
+  .fdc-sem button[aria-pressed="false"] i{opacity:.35}
+  .tj .fdc-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+  .p3-add{display:flex;gap:6px;align-items:center} .p3-add input{width:90px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:none;color:var(--text);font:inherit;font-size:12px}
   @media (max-width:820px){
     .p3,body.embebida .p3{height:auto;min-height:0;display:flex;flex-direction:column;align-items:stretch;overflow:visible;background:none;border:0}
     .p3 .p3-stage{position:relative;inset:auto;height:clamp(360px,60vh,620px);order:3;border-radius:14px;border:1px solid var(--border)}
@@ -319,7 +330,7 @@
     <div class="logo"><img src="assets/marca-secundaria.jpg" alt="VSPT" onerror="this.parentNode.style.display='none'"></div>
     <div>
       <div class="header-title">VSPT <span>· Planta 3D</span></div>
-      <div class="header-sub" id="hdrSub">OPINONA, fallas, limpieza, zonas 5S y tarjetas sobre el plano</div>
+      <div class="header-sub" id="hdrSub">OPINONA, fallas, limpieza, zonas 5S, tarjetas y fuentes de contaminación sobre el plano</div>
     </div>
   </div>
   <div class="header-right">
@@ -334,7 +345,11 @@
 /* Planta 3D (oct-2026): el plano de Mantenimiento como tablero de la planta. Por ahora sólo en el
    tablero servido por Google (la pestaña la agrega 09_TABLERO_GOOGLE.gs, antes de "Planta").
    Capas: OPINONA por línea, fallas por equipo (Pareto), limpieza (OTIF por zona 5S), zonas 5S con sus
-   responsables, tarjetas 5S (FDC), lubricación, OT de la semana y horas de uso.
+   responsables, tarjetas 5S, fuentes de contaminación (FDC), lubricación, OT de la semana y horas de uso.
+   - Fuentes de contaminación (7-oct, API 2026-10-07a): cada FDC es una tarjeta 5S con semáforo abierta
+     (activa, rojo) → en tratamiento (contenida, amarillo) → cerrada (verde). Llegan en ?tabla=planta3d
+     (campo fdc, sin pedido nuevo) y se cambian desde la tarjeta (POST planta3d_fdc). Con una API anterior
+     sólo se ven las FDC de la planilla del Pilar 5S y avisa al querer cambiar el semáforo.
    Diseño (v5, 5-oct): el plano ocupa todo el cuadro y la información flota encima en tarjetas.
    - Limpieza, zonas y tarjetas: ?tabla=planta3d, planta3d_otif, planta3d_tarjetas y planta3d_fotos
      (10_PLANTA3D.gs), recién al elegir una de esas capas. Nombres y fotos llegan sólo por la API.
@@ -503,7 +518,7 @@ const P3_CELU = matchMedia('(max-width: 700px)').matches || (matchMedia('(pointe
 let p3 = { capa: 'opi', periodo: 'mes', mto: 'todas', linea: 'all', vista: P3_CELU ? 'top' : '3d', nombres: false,
   marcha: (() => { try { const g = localStorage.getItem('vspt_p3_marcha'); return g ? g === '1' : !P3_CELU && !matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })(),
   editar: false, sel: null, hover: null, mov: {}, fija: false,
-  zsel: null, zhover: null, tsel: null, mes: null, tfiltro: 'todas', tfdc: false, ubicar: null, dibujo: null };   // capas 5S
+  zsel: null, zhover: null, tsel: null, mes: null, tfiltro: 'todas', tfdc: false, fsem: ['abierta', 'tratamiento', 'cerrada'], ubicar: null, dibujo: null };   // capas 5S
 const p3Es2D = () => !!p3SinGL || (p3.vista === 'top' && P3_CELU);
 
 const p3Css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
@@ -1814,7 +1829,7 @@ const p3Inicio = () => { if (p3Es2D()) p2Encuadre(); else if (P3) p3Encuadre(); 
 // Toque en el plano (3D o 2D). En Limpieza y Zonas manda la zona; si no, el equipo. Algo elegido: la cámara
 // va hacia ahí. Afuera de todo: nada elegido y vuelta a la vista de inicio. Ubicando equipos no se mueve.
 function p3TocarEn(id, pt) {
-  if (p3Es5S() && p3.capa !== 'tarjetas') {
+  if (p3Es5S() && !p5ConPines()) {
     const z = pt && p5ZonaEn(pt.x, pt.y);
     if (z) { if (p3.zsel === z.zona) { p5ElegirZona(null); return p3Inicio(); } p5ElegirZona(z.zona); return p5EnfocarZona(z.zona); }
   }
@@ -1910,7 +1925,7 @@ function p3Punteros() {
     }
     if (ev.pointerType === 'touch') return;
     const id = p3Tocar(ev);
-    if (p3Es5S() && p3.capa !== 'tarjetas') {
+    if (p3Es5S() && !p5ConPines()) {
       const pt = p3PuntoPiso(), z = pt && p5ZonaEn(pt.x, pt.y), zk = z ? z.zona : null;
       if (zk !== p3.zhover) { p3.zhover = zk; p3ZonasColor(); }
       el.style.cursor = p3.ubicar || p3.dibujo ? 'crosshair' : (zk || id) ? 'pointer' : '';
@@ -2075,7 +2090,7 @@ function p2Dibujar() {
   if (p3Es5S() || p3.zsel) for (const zn of p5Zonas()) {
     if (!zn.rect || (!p3Es5S() && zn.zona !== p3.zsel)) continue;
     const [sx0, sy0] = p2Pant(zn.rect[0], zn.rect[3]), [sx1, sy1] = p2Pant(zn.rect[2], zn.rect[1]), col = p3Css(p5ColorZona(zn));
-    const vis = p5ZonaVisible(zn), sel = zn.zona === p3.zsel, k = p3.capa === 'tarjetas' ? 0.5 : 1;
+    const vis = p5ZonaVisible(zn), sel = zn.zona === p3.zsel, k = p5ConPines() ? 0.5 : 1;
     c.globalAlpha = (vis ? (sel ? 0.42 : zn.zona === p3.zhover ? 0.33 : 0.22) : 0.04) * k; c.fillStyle = col; c.fillRect(sx0, sy0, sx1 - sx0, sy1 - sy0);
     c.globalAlpha = (vis ? 1 : 0.15) * k; c.lineWidth = sel ? 3 : 1.6; c.strokeStyle = sel ? T.foco : col; c.strokeRect(sx0, sy0, sx1 - sx0, sy1 - sy0);
   }
@@ -2167,8 +2182,8 @@ function p2Punteros() {
     if (!dedos.has(ev.pointerId)) {   // mouse sin apretar: resalta lo que tiene debajo
       if (ev.pointerType !== 'mouse') return;
       const [mx, my] = aqui(ev), id = p2Tocar(mx, my);
-      if (p3Es5S() && p3.capa !== 'tarjetas') { const [wx, wy] = p2Mundo(mx, my), z = p5ZonaEn(wx, wy), zk = z ? z.zona : null; if (zk !== p3.zhover) { p3.zhover = zk; p2Pedir(); } cv.style.cursor = p3.ubicar || p3.dibujo ? 'crosshair' : (zk || id) ? 'pointer' : ''; }
-      if (id !== p3.hover) { p3.hover = id; if (!p3Es5S() || p3.capa === 'tarjetas') cv.style.cursor = p3.ubicar || p3.dibujo ? 'crosshair' : id ? (p3.editar && !P3_CINTAS[id] ? 'grab' : 'pointer') : ''; p2Pedir(); }
+      if (p3Es5S() && !p5ConPines()) { const [wx, wy] = p2Mundo(mx, my), z = p5ZonaEn(wx, wy), zk = z ? z.zona : null; if (zk !== p3.zhover) { p3.zhover = zk; p2Pedir(); } cv.style.cursor = p3.ubicar || p3.dibujo ? 'crosshair' : (zk || id) ? 'pointer' : ''; }
+      if (id !== p3.hover) { p3.hover = id; if (!p3Es5S() || p5ConPines()) cv.style.cursor = p3.ubicar || p3.dibujo ? 'crosshair' : id ? (p3.editar && !P3_CINTAS[id] ? 'grab' : 'pointer') : ''; p2Pedir(); }
       return;
     }
     const antes = dedos.get(ev.pointerId), ahora = aqui(ev); dedos.set(ev.pointerId, ahora);
@@ -2440,10 +2455,13 @@ function p3LineasEtiq() {
 }
 
 // ───────────── capas, panel y barra ─────────────
-const P3_CAPAS = [['opi', 'OPINONA'], ['fallas', 'Fallas'], ['limpieza', 'Limpieza'], ['zonas', 'Zonas 5S'], ['tarjetas', 'Tarjetas 5S'], ['lub', 'Lubricación'], ['ot', 'OT semana'], ['uso', 'Horas de uso']];
+const P3_CAPAS = [['opi', 'OPINONA'], ['fallas', 'Fallas'], ['limpieza', 'Limpieza'], ['zonas', 'Zonas 5S'], ['tarjetas', 'Tarjetas 5S'], ['fdc', 'Contaminación'], ['lub', 'Lubricación'], ['ot', 'OT semana'], ['uso', 'Horas de uso']];
 const P3_MTO = [['todas', 'Todas'], ['MTO', 'MTO'], ['OP', 'OP']];
+// Semáforo de las fuentes de contaminación: [texto, tono de la leyenda, aclaración]
+const P5_FDC_ORDEN = ['abierta', 'tratamiento', 'cerrada'];
+const P5_FDC = { abierta: ['Abierta', 'vencido', 'activa'], tratamiento: ['En tratamiento', 'proximo', 'contenida'], cerrada: ['Cerrada', 'ok', 'resuelta'] };
 const p3UsaOpinona = () => p3.capa === 'opi' || p3.capa === 'fallas';
-function guardarEstado() { try { localStorage.setItem(ESTADO_KEY, JSON.stringify({ capa: p3.capa, periodo: p3.periodo, mto: p3.mto, mes: p3.mes, tfiltro: p3.tfiltro, tfdc: p3.tfdc })); } catch (e) {} }
+function guardarEstado() { try { localStorage.setItem(ESTADO_KEY, JSON.stringify({ capa: p3.capa, periodo: p3.periodo, mto: p3.mto, mes: p3.mes, tfiltro: p3.tfiltro, tfdc: p3.tfdc, fsem: p3.fsem })); } catch (e) {} }
 (function leerEstado() {
   let g = null; try { g = JSON.parse(localStorage.getItem(ESTADO_KEY)); } catch (e) {}
   if (!g) return;
@@ -2453,6 +2471,7 @@ function guardarEstado() { try { localStorage.setItem(ESTADO_KEY, JSON.stringify
   if (/^\d{4}-\d{2}$/.test(g.mes || '')) p3.mes = g.mes;
   if (g.tfiltro === 'abiertas' || g.tfiltro === 'todas') p3.tfiltro = g.tfiltro;
   p3.tfdc = g.tfdc === true;
+  if (Array.isArray(g.fsem)) p3.fsem = P5_FDC_ORDEN.filter(k => g.fsem.includes(k));
 })();
 const estadoTxt = () => `Equipos al ${fday(D && D.uso_hasta)}` + (OPI.estado === 'ok' ? ` · OPINONA al ${fday(OPI.ultimo)}` : '');
 // Cambió la capa, el período o el filtro: colores, leyenda, etiquetas y panel.
@@ -2503,8 +2522,8 @@ function renderPlanta() {
   $$('[data-p3c]').forEach(b => b.onclick = () => {
     p3.capa = b.dataset.p3c; $$('[data-p3c]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     if (!p3Es5S()) { p3.zsel = null; p3.tsel = null; p3.ubicar = null; p3.dibujo = null; }
-    if (p3.capa !== 'tarjetas') p3.tsel = null;
-    if (p3.capa === 'tarjetas') { p3.zsel = null; p3.dibujo = null; }
+    p3.tsel = null;   // los pines de Tarjetas y de Contaminación no son los mismos
+    if (p5ConPines()) { p3.zsel = null; p3.dibujo = null; }
     p3.zhover = null; guardarEstado(); refrescarCapa();
   });
   $('#p3Zin').onclick = () => p3Zoom(1.35);
@@ -2551,7 +2570,7 @@ const p3Ayuda = () => (p3Es2D()
   ? 'Desplazá con un dedo o el mouse y acercá con dos dedos o la rueda. Tocá un equipo para ver su detalle; doble toque para acercarte.'
   : (p3.vista === 'top'
     ? 'Desplazá con un dedo o el botón izquierdo y acercá con dos dedos o la rueda.'
-    : 'Girá con un dedo o el botón izquierdo, desplazá con dos dedos o el botón derecho y acercá con la rueda.') + (p3Es5S() ? ' Tocá una zona o un pin y la vista va hacia ahí.' : ' Tocá un equipo y la vista lo centra y lo acerca.') + ' Fuera de todo o con Esc, vuelve a la vista de inicio (📌 la fija).');
+    : 'Girá con un dedo o el botón izquierdo, desplazá con dos dedos o el botón derecho y acercá con la rueda.') + (p3Es5S() ? ' Tocá una zona o un pin y la vista va hacia ahí.' + (p3.capa === 'fdc' ? ' El semáforo de cada fuente de contaminación se cambia en su tarjeta.' : '') : ' Tocá un equipo y la vista lo centra y lo acerca.') + ' Fuera de todo o con Esc, vuelve a la vista de inicio (📌 la fija).');
 
 function p3Leyenda() {
   const el = $('#p3legend'); if (!el || !D) return;
@@ -2722,8 +2741,10 @@ function p3Panel() {
 //   ?tabla=planta3d_fotos     caras de los responsables, de a pocas; quedan guardadas en el navegador (96 px)
 // Los nombres y las fotos no están en este archivo (el repo es público): llegan por la API, con login.
 const P5 = { base: null, otif: null, tarj: null, tarjetas: [], pidiendo: {}, error: {}, fotos: {}, fotoV: {}, pidiendoFotos: false, baseVer: 0, tarjVer: 0 };
-const P5_CAPAS = new Set(['limpieza', 'zonas', 'tarjetas']);
+const P5_CAPAS = new Set(['limpieza', 'zonas', 'tarjetas', 'fdc']);
 const p3Es5S = () => P5_CAPAS.has(p3.capa);
+const p5ConPines = () => p3.capa === 'tarjetas' || p3.capa === 'fdc';   // tarjetas o fuentes de contaminación: mandan los pines
+const p5ModoFdc = () => p3.capa === 'fdc' || (p3.capa === 'tarjetas' && p3.tfdc);   // pines con el semáforo de las FDC
 const P5_FOTOS_KEY = 'vspt_p3_fotos_v1';      // {clave: [versión, dataURL de 96 px]}
 const p5Clave = n => normNombre(n);           // = p3Norm_ de la API
 async function cargar5S(pieza) {               // 'base' · 'otif' · 'tarj'
@@ -2872,9 +2893,15 @@ function p5Ubicadas() {
   const clave = P5.tarjVer + '|' + P5.baseVer + '|' + IX._ver;
   if (p5TMemo && p5TMemo.clave === clave) return p5TMemo.ts;
   const marcas = {}; ((P5.base && P5.base.marcas) || []).forEach(m => { marcas[String(m.tarjeta)] = m; });
+  const fdcs = {}; ((P5.base && P5.base.fdc) || []).forEach(f => { fdcs[String(f.tarjeta)] = f; });
   const zs = p5Zonas();
   const ts = P5.tarjetas.map(t => {
     const m = marcas[String(t.n)], d = p5DondeTexto(t);
+    // FDC: lo que se cargó en el tablero (P3_FDC) o, si no, la anomalía de la planilla. Sin semáforo cargado,
+    // abierta (o cerrada si la tarjeta está cerrada).
+    const f = fdcs[String(t.n)], esFdc = f ? !!f.fdc : !!t.fdc;
+    const fdc = { fdc: esFdc ? 1 : 0, fdcPlanilla: !!t.fdc, fdcFila: f || null,
+                  fdcEstado: esFdc ? ((f && f.estado) || (t.estado === 'cerrada' ? 'cerrada' : 'abierta')) : null };
     let pos = null, zona = null;
     if (d && d.zona) { const z = zs.find(q => q.zona === d.zona); zona = d.zona; if (z && z.rect) pos = { x: z.cx, y: z.cy, origen: 'texto', donde: z.nombre }; }
     else if (d) {
@@ -2883,18 +2910,18 @@ function p5Ubicadas() {
       if (o) { const c = P3_CINTAS[String(o.e.equipo_sap)], p = c ? { x: c[0][0][0], y: c[0][0][1] } : o.p; pos = { x: p.x, y: p.y, origen: 'texto', donde: cap(sinF(o.e.nombre)) + ' ' + d.linea }; }
     }
     if (m) { pos = { x: m.x, y: m.y, origen: 'marca', quien: m.quien, cuando: m.cuando }; const z = p5ZonaEn(m.x, m.y); if (z) zona = z.zona; }
-    return Object.assign({}, t, { pos, zona });
+    return Object.assign({}, t, fdc, { pos, zona });
   });
   p5TMemo = { clave, ts };
   return ts;
 }
 const P5_ESTADO = { abierta: 'Abierta', atrasada: 'Atrasada', cerrada: 'Cerrada' };
-const p5TarjVisible = t => (p3.tfiltro === 'todas' || t.estado !== 'cerrada') && (!p3.tfdc || t.fdc) &&
+const p5TarjVisible = t => (p5ModoFdc() ? t.fdc && p3.fsem.includes(t.fdcEstado) : (p3.tfiltro === 'todas' || t.estado !== 'cerrada')) &&
   (p3.linea === 'all' || !t.zona || (p5Zona(t.zona) || {}).linea === p3.linea || !(p5Zona(t.zona) || {}).linea);
 // Pines: las tarjetas a la vista agrupadas por lugar (las del mismo equipo, un pin con la cantidad).
 let p5PMemo = null;
 function p5Pines() {
-  const clave = [P5.tarjVer, P5.baseVer, IX._ver, p3.tfiltro, p3.tfdc, p3.linea].join('|');
+  const clave = [P5.tarjVer, P5.baseVer, IX._ver, p3.tfiltro, p3.tfdc, p3.linea, p3.capa, p3.fsem.join()].join('|');
   if (p5PMemo && p5PMemo.clave === clave) return p5PMemo.ps;
   const grupos = new Map();
   p5Ubicadas().filter(p5TarjVisible).forEach(t => {
@@ -2906,6 +2933,7 @@ function p5Pines() {
     g.x = g.ts.reduce((s, t) => s + t.pos.x, 0) / g.ts.length; g.y = g.ts.reduce((s, t) => s + t.pos.y, 0) / g.ts.length;
     g.fdc = g.ts.filter(t => t.fdc).length; g.abiertas = g.ts.filter(t => t.estado !== 'cerrada').length;
     g.marcadas = g.ts.filter(t => t.pos.origen === 'marca').length;
+    g.sem = P5_FDC_ORDEN.find(k => g.ts.some(t => t.fdcEstado === k)) || null;   // el peor semáforo del lugar
     return g;
   });
   p5PMemo = { clave, ps };
@@ -2913,8 +2941,8 @@ function p5Pines() {
 }
 const p5Pin = k => p5Pines().find(p => p.key === k) || null;
 function p5HtmlPin(g, col) {
-  const color = g.fdc ? col.fdc : col.otra;
-  const cls = 'pin ' + (g.abiertas ? 'abierta' : 'cerrada') + (g.marcadas ? '' : ' texto');
+  const sem = p5ModoFdc() && g.sem, color = sem ? col[sem] : g.fdc ? col.fdc : col.otra;
+  const cls = 'pin ' + (sem ? (sem === 'abierta' ? 'abierta' : '') : g.abiertas ? 'abierta' : 'cerrada') + (g.marcadas ? '' : ' texto');
   return [cls, `<svg viewBox="0 0 30 38" aria-hidden="true" style="color:${color}"><path class="cab" d="M15 36.5C15 36.5 3 23.5 3 14.5A12 12 0 0 1 27 14.5C27 23.5 15 36.5 15 36.5Z" fill="${color}" stroke="#fff" stroke-width="2"/></svg><b>${g.ts.length}</b>`];
 }
 
@@ -3069,7 +3097,7 @@ function p3ZonasColor() {
   for (const [k, m] of S.zonaMesh) {
     const z = p5Zona(k); if (!z) continue;
     const col = new S.T.Color(p3Css(p5ColorZona(z))), vis = p5ZonaVisible(z), sel = p3.zsel === k, hov = p3.zhover === k;
-    const t = p3.capa === 'tarjetas' ? 0.5 : 1;
+    const t = p5ConPines() ? 0.5 : 1;
     m.losa.material.color.copy(col); m.losa.material.opacity = (!vis ? 0.04 : sel ? 0.46 : hov ? 0.36 : 0.24) * t;
     m.borde.material.color.copy(sel ? foco : col); m.borde.material.opacity = (vis ? 0.95 : 0.15) * t;
   }
@@ -3085,8 +3113,8 @@ function p5HtmlZona(z, grande) {
 function p5Etiquetas(mapa, cont, proy) {
   const quiero = new Map();
   if (D && P5.base && (p3Es5S() || p3.zsel)) {
-    const col = { fdc: p3Css('--z-crit'), otra: p3Css('--z-warn') };
-    if (p3.capa === 'tarjetas') p5Pines().forEach(g => { const [cls, html] = p5HtmlPin(g, col); quiero.set('t:' + g.key, { x: g.x, y: g.y, h: 0.3, cls, html, sel: p3.tsel === g.key }); });
+    const col = { fdc: p3Css('--z-crit'), otra: p3Css('--z-warn'), abierta: p3Css('--z-crit'), tratamiento: p3Css('--z-warn'), cerrada: p3Css('--z-ok') };
+    if (p5ConPines()) p5Pines().forEach(g => { const [cls, html] = p5HtmlPin(g, col); quiero.set('t:' + g.key, { x: g.x, y: g.y, h: 0.3, cls, html, sel: p3.tsel === g.key }); });
     else p5Zonas().forEach(z => {
       if (!z.rect || !p5ZonaVisible(z) || (!p3Es5S() && p3.zsel !== z.zona)) return;
       const grande = p3.zsel === z.zona || p3.zhover === z.zona;
@@ -3167,12 +3195,23 @@ function p3Kpis() {
       html = k('capas', 'Zonas 5S de Envasado', `${zs.length}`, `${zs.filter(z => z.rect).length} dibujadas en el plano`) + k('grupo', 'Responsables', `${resp.length}`, 'operarios con zona a cargo')
         + k('foto', 'Con foto', `${conFoto}<small>de ${resp.length}</small>`, P5.base.editor ? 'tocá una cara para cambiarla' : 'las cambia un editor') + (P ? k('escoba', 'Limpieza (OTIF)', pct(P.otif), esc(p5MesTxt(mes)), p5Tono(P.otif)) : '');
     }
+  } else if (p3.capa === 'fdc') {
+    const ts = p5Ubicadas(); if (!ts.length) html = k('gota', 'Fuentes de contaminación', '—', esc(p5Aviso('tarj') || 'Sin tarjetas de Envasado'));
+    else {
+      const f = ts.filter(t => t.fdc && p5EnLinea(t));
+      const n = e => f.filter(t => t.fdcEstado === e).length, vis = f.filter(p5TarjVisible), sinPos = vis.filter(t => !t.pos).length;
+      html = k('alerta', 'Abiertas', `${n('abierta')}`, 'activas: sin contener', n('abierta') ? 'vencido' : 'ok')
+        + k('gota', 'En tratamiento', `${n('tratamiento')}`, 'contenidas, falta cerrarlas', n('tratamiento') ? 'proximo' : '')
+        + k('ok', 'Cerradas', `${n('cerrada')}`, `de ${f.length} fuentes de contaminación`, 'ok')
+        + k('pin', 'En el plano', `${vis.length - sinPos}<small>de ${vis.length}</small>`, `${sinPos} sin ubicar`);
+    }
   } else if (p3.capa === 'tarjetas') {
     const ts = p5Ubicadas(); if (!ts.length) html = k('tarjeta', 'Tarjetas 5S', '—', esc(p5Aviso('tarj') || 'Sin tarjetas de Envasado'));
     else {
       const R = P5.tarj.resumen || {}, vis = ts.filter(p5TarjVisible), sinPos = vis.filter(t => !t.pos).length;
       html = k('tarjeta', 'Abiertas', `${R.abiertas}`, `${R.atrasadas} atrasada${R.atrasadas === 1 ? '' : 's'} · de ${R.total} de Envasado`, R.atrasadas ? 'vencido' : R.abiertas ? 'proximo' : 'ok')
-        + k('gota', 'FDC abiertas', `${R.fdc_abiertas}`, `${R.fdc} fuentes de contaminación en la planilla`, R.fdc_abiertas ? 'vencido' : 'ok')
+        + (() => { const f = ts.filter(t => t.fdc), a = f.filter(t => t.fdcEstado === 'abierta').length;
+            return k('gota', 'FDC abiertas', `${a}`, `${f.filter(t => t.fdcEstado === 'tratamiento').length} en tratamiento · ${f.length} fuentes de contaminación`, a ? 'vencido' : 'ok', 'data-p3capa="fdc"'); })()
         + k('pin', 'En el plano', `${vis.length - sinPos}<small>de ${vis.length}</small>`, `${vis.filter(t => t.pos && t.pos.origen === 'marca').length} marcadas · ${sinPos} sin ubicar`)
         + k('reloj', 'Última tarjeta', fday(R.ultima), esc(P5.tarj.origen ? P5.tarj.origen.nombre.replace(/\.xls[xm]$/i, '') : ''));
     }
@@ -3191,6 +3230,7 @@ function p3Kpis() {
   }
   el.innerHTML = html;
   $$('[data-p3lin]', el).forEach(b => b.onclick = () => p3PonerLinea(p3.linea === b.dataset.p3lin ? 'all' : b.dataset.p3lin));
+  $$('[data-p3capa]', el).forEach(b => b.onclick = () => { const c = $(`[data-p3c="${b.dataset.p3capa}"]`); if (c) c.click(); });
 }
 
 // ── leyenda de las capas 5S (abajo a la izquierda) ──
@@ -3215,32 +3255,75 @@ function p5Leyenda(el) {
     if (!zs.length) { el.innerHTML = `<b class="small">Zonas 5S de Envasado</b><div class="small muted">${esc(p5Aviso('base'))}</div>`; return; }
     el.innerHTML = `<b class="small">Zonas 5S de Envasado · responsables de cada zona</b><div class="items">${it('l1', 'Línea 1', zs.filter(z => z.linea === 'L1').length)}${it('l2', 'Línea 2', zs.filter(z => z.linea === 'L2').length)}${it('l3', 'Línea 3', zs.filter(z => z.linea === 'L3').length)}${it('sf', 'Set up y filtración', zs.filter(z => !z.linea).length)}</div>
       <div class="small muted">${zs.filter(z => !z.rect).length ? `Sin dibujar en el plano: ${esc(zs.filter(z => !z.rect).map(z => z.zona).join(', '))}${P5.base.editor ? ' (un editor la dibuja desde su panel)' : ''}` : 'Todas dibujadas en el plano'}</div>`;
+  } else if (p3.capa === 'fdc') {
+    if (!P5.tarj || !P5.base) { el.innerHTML = `<b class="small">Fuentes de contaminación</b><div class="small muted">${esc(p5Aviso('tarj') || p5Aviso('base'))}</div>`; return; }
+    el.innerHTML = `<b class="small">Fuentes de contaminación · cada una es una tarjeta 5S</b>
+      ${p5Semaforo()}
+      <div class="small muted">Rojo: activa · amarillo: contenida, en tratamiento · verde: cerrada. Tocá un estado para mostrarlo u ocultarlo; el semáforo se cambia en la tarjeta.${p5FdcSinApi() ? ' <b>Para cambiarlo hace falta publicar la API nueva.</b>' : ''}</div>`;
+    p5BotonesSemaforo(el);
   } else {
     if (!P5.tarj || !P5.base) { el.innerHTML = `<b class="small">Tarjetas 5S</b><div class="small muted">${esc(p5Aviso('tarj') || p5Aviso('base'))}</div>`; return; }
     const ps = p5Pines(), ts = p5Ubicadas().filter(p5TarjVisible);
     el.innerHTML = `<b class="small">Tarjetas 5S de Envasado · cada pin, las de un lugar</b>
       <div class="row" style="gap:8px"><div class="seg" role="group" aria-label="Qué tarjetas">${[['abiertas', 'Abiertas'], ['todas', 'Todas']].map(([k2, t]) => `<button data-p5tf="${k2}" aria-pressed="${p3.tfiltro === k2}">${t}</button>`).join('')}</div>
         <button class="btn sm" id="p5Fdc" aria-pressed="${p3.tfdc}">Sólo FDC</button></div>
-      <div class="items">${it('vencido', 'Con FDC', ps.filter(g => g.fdc).length)}${it('proximo', 'Otras anomalías', ps.filter(g => !g.fdc).length)}<span class="small muted">${ts.length} tarjeta${ts.length === 1 ? '' : 's'} · pin tenue: cerradas · borde punteado: ubicada por el texto</span></div>`;
+      ${p3.tfdc ? p5Semaforo() + `<span class="small muted">${ts.length} fuente${ts.length === 1 ? '' : 's'} de contaminación · borde punteado: ubicada por el texto</span>`
+        : `<div class="items">${it('vencido', 'Con FDC', ps.filter(g => g.fdc).length)}${it('proximo', 'Otras anomalías', ps.filter(g => !g.fdc).length)}<span class="small muted">${ts.length} tarjeta${ts.length === 1 ? '' : 's'} · pin tenue: cerradas · borde punteado: ubicada por el texto</span></div>`}`;
+    p5BotonesSemaforo(el);
     $$('[data-p5tf]', el).forEach(b => b.onclick = () => { p3.tfiltro = b.dataset.p5tf; guardarEstado(); p5Refrescar(); });
     $('#p5Fdc', el).onclick = () => { p3.tfdc = !p3.tfdc; guardarEstado(); p5Refrescar(); };
   }
+}
+
+// Filtro del semáforo de las FDC (capa Contaminación y Tarjetas con "Sólo FDC"): cada estado con su cantidad.
+const p5EnLinea = t => p3.linea === 'all' || !t.zona || !(p5Zona(t.zona) || {}).linea || p5Zona(t.zona).linea === p3.linea;
+function p5Semaforo() {
+  const n = {}; p5Ubicadas().filter(t => t.fdc && p5EnLinea(t)).forEach(t => { n[t.fdcEstado] = (n[t.fdcEstado] || 0) + 1; });
+  return `<div class="fdc-sem" role="group" aria-label="Semáforo de las fuentes de contaminación">${P5_FDC_ORDEN.map(k =>
+    `<button type="button" class="${k}" data-p5sem="${k}" aria-pressed="${p3.fsem.includes(k)}" title="${P5_FDC[k][2]}"><i></i>${P5_FDC[k][0]} <b class="tnum">${n[k] || 0}</b></button>`).join('')}</div>`;
+}
+function p5BotonesSemaforo(el) {
+  $$('[data-p5sem]', el).forEach(b => b.onclick = () => {
+    const k = b.dataset.p5sem;
+    p3.fsem = p3.fsem.includes(k) ? p3.fsem.filter(x => x !== k) : P5_FDC_ORDEN.filter(x => x === k || p3.fsem.includes(x));
+    p3.tsel = null; guardarEstado(); p5Refrescar();
+  });
+}
+// Con una API anterior a la 2026-10-07a no llega el campo fdc: se ven las FDC de la planilla, sin semáforo editable.
+const P5_FDC_API = 'Para cambiar el semáforo hace falta publicar la API nueva (2026-10-07a).';
+const p5FdcSinApi = () => !!P5.base && !Array.isArray(P5.base.fdc);
+async function p5GuardarFdc(n, cambios) {
+  if (p5FdcSinApi()) { toast(P5_FDC_API, true); return; }
+  try {
+    const j = await post(Object.assign({ accion: 'planta3d_fdc', tarjeta: n }, cambios));
+    P5.base.fdc = j.fdc; P5.baseVer++;
+    toast('fdc' in cambios ? (cambios.fdc ? `Tarjeta N° ${n}: fuente de contaminación abierta` : `Tarjeta N° ${n}: ya no es fuente de contaminación`)
+      : `Tarjeta N° ${n}: ${P5_FDC[cambios.estado][0].toLowerCase()}`);
+  } catch (e) { toast(/desconocida/.test(e.message) ? P5_FDC_API : e.message, true); }
+  p5Refrescar();
 }
 
 // ── panel (a la derecha) de las capas 5S ──
 function p5HtmlTarjeta(t) {
   const fecha = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') ? fday(s) + ' ' + s.slice(2, 4) : esc(s || '—');
   const marca = t.pos && t.pos.origen === 'marca';
-  return `<div class="tj"><div class="row"><b class="tnum">N° ${esc(t.n)}</b><span class="estado-chip ${t.estado}">${P5_ESTADO[t.estado] || esc(t.estado)}</span>${t.fdc ? '<span class="estado-chip fdc">FDC</span>' : ''}${t.zona ? `<span class="chip">${esc(t.zona)}</span>` : ''}<span class="grow"></span><span class="small muted">${fecha(t.inicio)}</span></div>
+  const f = t.fdcFila, cambio = f && f.quien ? ` · cambió ${esc(f.quien.split('@')[0])}${f.cuando ? ' el ' + esc(f.cuando.slice(8, 10) + '/' + f.cuando.slice(5, 7)) : ''}` : '';
+  const sem = t.fdc ? `<div class="fdc-row"><span class="small"><b>Fuente de contaminación</b></span><div class="fdc-sem" role="group" aria-label="Semáforo de la FDC N° ${esc(t.n)}">${P5_FDC_ORDEN.map(k =>
+      `<button type="button" class="${k}" data-fdcest="${esc(t.n)}|${k}" aria-pressed="${t.fdcEstado === k}" title="${P5_FDC[k][2]}"><i></i>${P5_FDC[k][0]}</button>`).join('')}</div>
+      <span class="small muted">${f && f.estado ? cambio.slice(3) : 'sin cargar: según la tarjeta' + cambio}</span>${t.fdcPlanilla ? '' : `<button class="btn sm" data-fdc="${esc(t.n)}|0">No es FDC</button>`}</div>`
+    : `<div class="fdc-row"><button class="btn sm" data-fdc="${esc(t.n)}|1">Es fuente de contaminación</button>${f && f.fdc === false ? `<span class="small muted">sacada de las FDC${cambio}</span>` : ''}</div>`;
+  return `<div class="tj"><div class="row"><b class="tnum">N° ${esc(t.n)}</b><span class="estado-chip ${t.estado}">${P5_ESTADO[t.estado] || esc(t.estado)}</span>${t.fdc ? `<span class="estado-chip fdc ${t.fdcEstado}" title="Fuente de contaminación: ${P5_FDC[t.fdcEstado][0].toLowerCase()}">FDC · ${P5_FDC[t.fdcEstado][0]}</span>` : ''}${t.zona ? `<span class="chip">${esc(t.zona)}</span>` : ''}<span class="grow"></span><span class="small muted">${fecha(t.inicio)}</span></div>
     <div class="prob">${esc(t.problema)}</div>
     <div class="small muted">${esc(t.anomalia)}${t.accion ? ' · ' + esc(t.accion) : ''}</div>
     <div class="small muted">Emitió ${esc(t.emisor || '—')} · resuelve ${esc(t.responsable || '—')}${t.compromiso ? ' · compromiso ' + fecha(t.compromiso) : ''}${t.cierre ? ' · cerrada ' + fecha(t.cierre) : ''}</div>
     <div class="row"><span class="small muted grow">${t.pos ? (marca ? `Marcada en el plano${t.pos.quien ? ' por ' + esc(t.pos.quien.split('@')[0]) : ''}` : 'Ubicada por el texto: ' + esc(t.pos.donde)) : 'Sin ubicar en el plano'}</span>
-      <button class="btn sm" data-ubicar="${esc(t.n)}">${marca ? 'Mover' : 'Ubicar'}</button>${marca ? `<button class="btn sm" data-quitar="${esc(t.n)}">Quitar</button>` : ''}</div></div>`;
+      <button class="btn sm" data-ubicar="${esc(t.n)}">${marca ? 'Mover' : 'Ubicar'}</button>${marca ? `<button class="btn sm" data-quitar="${esc(t.n)}">Quitar</button>` : ''}</div>${sem}</div>`;
 }
 function p5BotonesTarjetas(el) {
   $$('[data-ubicar]', el).forEach(b => b.onclick = () => { p3.ubicar = b.dataset.ubicar; p3.dibujo = null; p5Modo(); toast('Tocá el plano donde está la tarjeta N° ' + b.dataset.ubicar); });
   $$('[data-quitar]', el).forEach(b => b.onclick = () => p5Marcar(b.dataset.quitar, null));
+  $$('[data-fdcest]', el).forEach(b => b.onclick = () => { const [n, e] = b.dataset.fdcest.split('|'); if (b.getAttribute('aria-pressed') !== 'true') p5GuardarFdc(n, { estado: e }); });
+  $$('[data-fdc]', el).forEach(b => b.onclick = () => { const [n, v] = b.dataset.fdc.split('|'); p5GuardarFdc(n, v === '1' ? { fdc: true, estado: 'abierta' } : { fdc: false }); });
 }
 function p5MesesZona(Z) {
   if (!Z) return '';
@@ -3292,14 +3375,38 @@ function p5Panel(el) {
   if (p3.tsel) {
     const g = p5Pin(p3.tsel);
     if (g) {
-      el.innerHTML = `<div class="row"><span class="tag">Tarjetas 5S · ${g.ts.length} en este lugar</span></div>
-        <h2>${esc(g.ts[0].pos.origen === 'marca' ? 'Marcadas en el plano' : g.ts[0].pos.donde)}</h2><div class="sub">${g.fdc} FDC · ${g.abiertas} abierta${g.abiertas === 1 ? '' : 's'}</div>
+      el.innerHTML = `<div class="row"><span class="tag">${p3.capa === 'fdc' ? 'Fuentes de contaminación' : 'Tarjetas 5S'} · ${g.ts.length} en este lugar</span></div>
+        <h2>${esc(g.ts[0].pos.origen === 'marca' ? 'Marcadas en el plano' : g.ts[0].pos.donde)}</h2><div class="sub">${p5ModoFdc() ? P5_FDC_ORDEN.map(k => [k, g.ts.filter(t => t.fdcEstado === k).length]).filter(x => x[1]).map(([k, c]) => `${c} ${P5_FDC[k][0].toLowerCase()}`).join(' · ') : `${g.fdc} FDC · ${g.abiertas} abierta${g.abiertas === 1 ? '' : 's'}`}</div>
         ${g.ts.slice().sort((a, b) => (a.estado === 'cerrada') - (b.estado === 'cerrada') || String(b.inicio).localeCompare(String(a.inicio))).map(p5HtmlTarjeta).join('')}
         <div class="row"><button class="btn sm" id="p5Cerrar">Cerrar</button></div>`;
       p5BotonesTarjetas(el); $('#p5Cerrar', el).onclick = () => { p5ElegirPin(null); p3Inicio(); };
       return;
     }
     p3.tsel = null;
+  }
+  if (p3.capa === 'fdc') {
+    if (!P5.tarj || !P5.base) { el.innerHTML = `<h2>Fuentes de contaminación</h2><div class="hint">${esc(p5Aviso('tarj') || p5Aviso('base'))}</div>`; return; }
+    const ts = p5Ubicadas().filter(p5TarjVisible), sinPos = ts.filter(t => !t.pos);
+    const orden = (a, b) => String(b.inicio).localeCompare(String(a.inicio));
+    const grupo = k => { const g = ts.filter(t => t.fdcEstado === k && t.pos).sort(orden), max = k === 'cerrada' ? 6 : 30;
+      return g.length ? `<div class="p3-sec"><span class="dot ${P5_FDC[k][1]}"></span> ${P5_FDC[k][0]} (${g.length})</div>${g.slice(0, max).map(p5HtmlTarjeta).join('')}${g.length > max ? `<div class="small muted">y ${g.length - max} más</div>` : ''}` : ''; };
+    el.innerHTML = `<div class="row"><span class="tag">Fuentes de contaminación · Envasado</span></div><h2>Semáforo de las FDC</h2>
+      <div class="sub">Cada una es una tarjeta 5S · ${esc((P5.tarj.origen && P5.tarj.origen.nombre) || '')}</div>
+      <div class="p3-add"><input id="p5FdcN" inputmode="numeric" placeholder="N° tarjeta" aria-label="Número de tarjeta 5S"><button class="btn sm" id="p5FdcAdd">Agregar FDC</button></div>
+      <div class="small muted">Agregar: la tarjeta pasa a ser fuente de contaminación (abierta). Después ubicala en el plano.</div>
+      ${P5_FDC_ORDEN.map(grupo).join('') || (sinPos.length ? '' : '<div class="small muted">No hay fuentes de contaminación con ese filtro.</div>')}
+      ${sinPos.length ? `<div class="p3-sec">Sin ubicar en el plano (${sinPos.length})</div><div class="small muted">Ubicalas tocando "Ubicar".</div>${sinPos.sort(orden).slice(0, 12).map(p5HtmlTarjeta).join('')}${sinPos.length > 12 ? `<div class="small muted">y ${sinPos.length - 12} más</div>` : ''}` : ''}
+      <div class="small muted">Tocá un pin para ver sus fuentes de contaminación.</div>`;
+    p5BotonesTarjetas(el);
+    const inp = $('#p5FdcN', el), agregar = () => {
+      const n = String(inp.value || '').trim(), t = p5Ubicadas().find(x => String(x.n) === n);
+      if (!/^\d{1,6}$/.test(n)) return toast('Escribí el número de la tarjeta 5S.', true);
+      if (!t) return toast(`La tarjeta N° ${n} no está entre las de Envasado de la planilla del Pilar 5S.`, true);
+      if (t.fdc) return toast(`La tarjeta N° ${n} ya es fuente de contaminación (${P5_FDC[t.fdcEstado][0].toLowerCase()}).`, true);
+      p5GuardarFdc(n, { fdc: true, estado: 'abierta' });
+    };
+    $('#p5FdcAdd', el).onclick = agregar; inp.onkeydown = ev => { if (ev.key === 'Enter') agregar(); };
+    return;
   }
   if (p3.capa === 'tarjetas') {
     if (!P5.tarj) { el.innerHTML = `<h2>Tarjetas 5S</h2><div class="hint">${esc(p5Aviso('tarj'))}</div>`; return; }

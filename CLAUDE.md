@@ -96,3 +96,7 @@ Reglas para el HTML:
 13. **Los cambios del HTML se prueban primero en Google** (`…E3fK/exec?rama=<rama>`, ver el
     `CLAUDE.md` del repo Dashboard): commits de la rama con `[skip netlify]`; el merge a `main` es
     el deploy de Netlify.
+14. **Fuentes de contaminación (7-oct, API 2026-10-07a, capa "Contaminación" de Planta 3D).** Vienen en el
+    mismo `?tabla=planta3d` (campo `fdc`): no hay pedido nuevo. El semáforo (abierta / en tratamiento /
+    cerrada) se cambia por POST `planta3d_fdc`, sin reintento. Con una API anterior se ven las FDC de la
+    planilla y avisa que falta publicar la API.
