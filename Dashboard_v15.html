@@ -3809,7 +3809,7 @@ function renderDiario() {
         <div id="chart-diario-donut"></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;min-height:0;">
-        <div class="chart-card" style="flex:1;min-height:0;overflow:auto;">
+        <div class="chart-card" style="flex:1 1 auto;min-height:0;overflow:auto;">
           <div class="chart-title">Paradas Externas <span class="hint">del día</span></div>
           <table class="table-obj">
             <thead><tr><th>Tipo de parada</th><th>Min</th><th>%</th></tr></thead>
@@ -3818,7 +3818,7 @@ function renderDiario() {
             </tbody>
           </table>
         </div>
-        <div class="chart-card" style="flex:1;min-height:0;overflow:auto;">
+        <div class="chart-card" style="flex:0 0 auto;">   <!-- tamaño natural: se ve entero, sin barra (pedido 8-oct) -->
           <div class="chart-title">Tiempos de Cambio <span class="hint">del día</span></div>
           <table class="table-obj">
             <thead><tr><th>Tipo de cambio</th><th>Min</th><th>Cant.</th><th>Prom.</th></tr></thead>
@@ -4280,28 +4280,34 @@ async function openModalProduccion(lineId, opts) {
   const totalH   = rows.reduce((a, r) => a + getVarTiempo(r), 0);
   const totalCaj = rows.reduce((a, r) => a + getCajas(r), 0);
   const catColor = CAT_COLORS[CATS.PRODUCCION] || '#98A040';
+  // Eficiencia = Var. % de OPINONA (velocidad real ÷ nominal). La del total, pesada por horas.
+  const conEf = rows.filter(r => getVarPct(r) > 0);
+  const hEf = conEf.reduce((a, r) => a + getVarTiempo(r), 0);
+  const efTotal = hEf > 0 ? conEf.reduce((a, r) => a + getVarPct(r) * getVarTiempo(r), 0) / hEf : null;
+  const efColor = v => v < 0.5 ? 'var(--vspt-crimson)' : v < 0.7 ? 'var(--vspt-amber)' : catColor;
 
   let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:20px;">
     <div>
       <h2 style="font-size:18px;font-weight:800;color:${catColor};text-transform:uppercase;">Tiempo de Producción</h2>
       <div style="color:var(--muted);font-size:12px;margin-top:4px;text-transform:capitalize;">${(opts && opts.subtitulo) || ((lineId || 'Planta') + ' · todos los registros del período · ordenados de mayor a menor horas')}</div>
-      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">${totalH.toFixed(2)} h · ${totalCaj.toLocaleString('es-AR')} cajas · ${rows.length} órdenes</div>
+      <div style="font-size:13px;color:var(--text);margin-top:8px;font-weight:700;">${totalH.toFixed(2)} h · ${totalCaj.toLocaleString('es-AR')} cajas · ${rows.length} órdenes${efTotal != null ? ` · eficiencia <span style="color:${efColor(efTotal)};">${(efTotal * 100).toFixed(1)}%</span>` : ''}</div>
     </div>
     <button class="close-btn" onclick="document.getElementById('detail-modal').style.display='none'">&times;</button>
   </div>
   <div style="overflow:auto;max-height:62vh;">
   <table style="font-size:11px;"><thead><tr>
-    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Horas</th>
+    <th>Fecha</th><th>Línea</th><th>Turno</th><th>Horas</th><th title="Var. % de OPINONA: velocidad real ÷ nominal">Eficiencia</th>
     <th>OP</th><th style="width:18%;">Artículo</th>
     <th>Tipo Etiq.</th><th>Formato</th>
     <th>Cajas</th><th>C9L</th><th>Litros</th><th>Botellas</th>
   </tr></thead><tbody>`;
 
   if (rows.length === 0) {
-    html += `<tr><td colspan="12" style="text-align:center;padding:24px;opacity:.6;">Sin registros en el período seleccionado</td></tr>`;
+    html += `<tr><td colspan="13" style="text-align:center;padding:24px;opacity:.6;">Sin registros en el período seleccionado</td></tr>`;
   } else {
     rows.forEach(r => {
       const f   = getFecha(r);
+      const ef  = getVarPct(r);
       const fs  = f ? f.toLocaleDateString('es-AR') : '—';
       const op  = String(get(r,'Id. Producción','Id. Produccion','id_produccion','OP','op')||'').trim();
       const pln = planLookup?.[op];
@@ -4319,6 +4325,7 @@ async function openModalProduccion(lineId, opts) {
         <td><strong>${getLinea(r)||'—'}</strong></td>
         <td>${get(r,'Turno','Turno ','turno')||'—'}</td>
         <td style="font-weight:700;color:${catColor};">${getVarTiempo(r).toFixed(2)} h</td>
+        <td style="font-weight:700;text-align:right;color:${ef > 0 ? efColor(ef) : 'var(--muted)'};">${ef > 0 ? (ef * 100).toFixed(1) + '%' : '—'}</td>
         <td style="font-family:monospace;font-size:10px;">${op||'—'}</td>
         <td style="white-space:normal;">${articulo}</td>
         <td>${getTipoEti(r)||'—'}</td>
