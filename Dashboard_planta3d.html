@@ -2897,6 +2897,25 @@ function p5EquipoDe(L, sec) {
   const re = P5_EQ_PRINCIPAL[sec];
   return (re && cand.find(o => re.test(String(o.e.nombre || '').toUpperCase()))) || cand[0] || null;
 }
+// Planilla 2026 (22-oct): columnas Zona ("1C") y EQUIPO ENVASADO. Si están, ubican la tarjeta antes que el texto
+// del problema: el equipo (por N° SAP, código F o nombre + línea, con la línea de la zona si no la dice) y, si no
+// se encuentra, el centro de la zona dibujada.
+function p5DondePlanilla(t, zs) {
+  const zc = String(t.zona_p || '').toUpperCase().match(/\b([123][A-H])\b/), z = zc ? zs.find(q => q.zona === zc[1]) : null;
+  const txt = String(t.equipo || '').trim();
+  if (txt) {
+    const up = normNombre(txt).toUpperCase(), num = txt.replace(/\D/g, '');
+    let e = (num.length >= 6 && D.equipos.find(q => String(q.equipo_sap) === num)) ||
+            D.equipos.find(q => q.codigo_f && new RegExp('\\b' + String(q.codigo_f).toUpperCase() + '\\b').test(up)) || null;
+    if (!e) { const d = p5DondeTexto({ problema: txt + (z && z.linea && !/\bL\s?[123]\b|LINEA\s?[123]/.test(up) ? ' ' + z.linea : '') }); if (d && d.linea) { const o = p5EquipoDe(d.linea, d.sector); if (o) e = o.e; } }
+    if (e) {
+      const c = P3_CINTAS[String(e.equipo_sap)], p = c ? { x: c[0][0][0], y: c[0][0][1] } : p3Pos(e);
+      if (p && (c || !p3EnEspera(p))) return { pos: { x: p.x, y: p.y, origen: 'planilla', donde: cap(sinF(e.nombre)) + ' ' + eqLinea(e) }, zona: z ? z.zona : null };
+    }
+  }
+  if (z && z.rect) return { pos: { x: z.cx, y: z.cy, origen: 'planilla', donde: 'Zona ' + z.zona + ' · ' + z.nombre }, zona: z.zona };
+  return z ? { pos: null, zona: z.zona } : null;
+}
 let p5TMemo = null;
 function p5Ubicadas() {
   if (!D || !P5.tarjetas.length) return [];
@@ -2919,6 +2938,8 @@ function p5Ubicadas() {
       zona = z ? z.zona : null;
       if (o) { const c = P3_CINTAS[String(o.e.equipo_sap)], p = c ? { x: c[0][0][0], y: c[0][0][1] } : o.p; pos = { x: p.x, y: p.y, origen: 'texto', donde: cap(sinF(o.e.nombre)) + ' ' + d.linea }; }
     }
+    const dp = p5DondePlanilla(t, zs);
+    if (dp) { if (dp.pos) pos = dp.pos; if (dp.zona) zona = dp.zona; }
     if (m) { pos = { x: m.x, y: m.y, origen: 'marca', quien: m.quien, cuando: m.cuando }; const z = p5ZonaEn(m.x, m.y); if (z) zona = z.zona; }
     return Object.assign({}, t, fdc, { pos, zona });
   });
@@ -3277,8 +3298,8 @@ function p5Leyenda(el) {
     el.innerHTML = `<b class="small">Tarjetas 5S de Envasado · cada pin, las de un lugar</b>
       <div class="row" style="gap:8px"><div class="seg" role="group" aria-label="Qué tarjetas">${[['abiertas', 'Abiertas'], ['todas', 'Todas']].map(([k2, t]) => `<button data-p5tf="${k2}" aria-pressed="${p3.tfiltro === k2}">${t}</button>`).join('')}</div>
         <button class="btn sm" id="p5Fdc" aria-pressed="${p3.tfdc}">Sólo FDC</button></div>
-      ${p3.tfdc ? p5Semaforo() + `<span class="small muted">${ts.length} fuente${ts.length === 1 ? '' : 's'} de contaminación · borde punteado: ubicada por el texto</span>`
-        : `<div class="items">${it('vencido', 'Con FDC', ps.filter(g => g.fdc).length)}${it('proximo', 'Otras anomalías', ps.filter(g => !g.fdc).length)}<span class="small muted">${ts.length} tarjeta${ts.length === 1 ? '' : 's'} · pin tenue: cerradas · borde punteado: ubicada por el texto</span></div>`}`;
+      ${p3.tfdc ? p5Semaforo() + `<span class="small muted">${ts.length} fuente${ts.length === 1 ? '' : 's'} de contaminación · borde punteado: sin marcar a mano</span>`
+        : `<div class="items">${it('vencido', 'Con FDC', ps.filter(g => g.fdc).length)}${it('proximo', 'Otras anomalías', ps.filter(g => !g.fdc).length)}<span class="small muted">${ts.length} tarjeta${ts.length === 1 ? '' : 's'} · pin tenue: cerradas · borde punteado: sin marcar a mano (por la planilla o el texto)</span></div>`}`;
     p5BotonesSemaforo(el);
     $$('[data-p5tf]', el).forEach(b => b.onclick = () => { p3.tfiltro = b.dataset.p5tf; guardarEstado(); p5Refrescar(); });
     $('#p5Fdc', el).onclick = () => { p3.tfdc = !p3.tfdc; guardarEstado(); p5Refrescar(); };
@@ -3435,7 +3456,7 @@ function p5HtmlTarjeta(t) {
     <div class="prob">${esc(t.problema)}</div>
     <div class="small muted">${esc(t.anomalia)}${t.accion ? ' · ' + esc(t.accion) : ''}</div>
     <div class="small muted">Emitió ${esc(t.emisor || '—')} · resuelve ${esc(t.responsable || '—')}${t.compromiso ? ' · compromiso ' + fecha(t.compromiso) : ''}${t.cierre ? ' · cerrada ' + fecha(t.cierre) : ''}</div>
-    <div class="row"><span class="small muted grow">${t.pos ? (marca ? `Marcada en el plano${t.pos.quien ? ' por ' + esc(t.pos.quien.split('@')[0]) : ''}` : 'Ubicada por el texto: ' + esc(t.pos.donde)) : 'Sin ubicar en el plano'}</span>
+    <div class="row"><span class="small muted grow">${t.pos ? (marca ? `Marcada en el plano${t.pos.quien ? ' por ' + esc(t.pos.quien.split('@')[0]) : ''}` : (t.pos.origen === 'planilla' ? 'Ubicada por la planilla: ' : 'Ubicada por el texto: ') + esc(t.pos.donde)) : 'Sin ubicar en el plano'}</span>
       <button class="btn sm" data-ubicar="${esc(t.n)}">${marca ? 'Mover' : 'Ubicar'}</button>${marca ? `<button class="btn sm" data-quitar="${esc(t.n)}">Quitar</button>` : ''}</div>${sem}</div>`;
 }
 function p5BotonesTarjetas(el) {
