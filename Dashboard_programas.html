@@ -192,6 +192,7 @@ tbody tr:hover{background:var(--tr-hover)}
 tr.dragging{opacity:0.35;background:var(--tr-hover)}
 tr.drag-over{outline:2px dashed var(--vspt-amber);outline-offset:-2px;background:rgba(248,192,64,0.08)}
 .alist-row.drag-over{outline:2px dashed var(--vspt-amber);background:rgba(248,192,64,0.08)}
+.actividad-row td{font-style:italic;color:var(--muted);background:rgba(148,163,184,0.08)}
 </style>
 <style id="vsptBot-css">
 #vsptBot{position:fixed;right:18px;bottom:18px;z-index:9000;font-family:'Montserrat',system-ui,sans-serif}
@@ -387,6 +388,7 @@ const parseFecha = v => {
   return isNaN(d) ? null : d;
 };
 const fmtFecha = d => d ? d.toLocaleDateString('es-AR') : '—';
+const fmtDia = d => d.toLocaleDateString('es-AR', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
 const fmtNum = (n, d=0) => n.toLocaleString('es-AR', {maximumFractionDigits:d, minimumFractionDigits:d});
 
 // Normalizar turno a TM/TT/TN
@@ -887,6 +889,9 @@ function render() {
     L3: lineaData.L3.rows.reduce((a,r)=>a+r.litros,0)
   };
 
+  // Programas sin FECHA: sin día no hay horario (oct-2026 el PLAN llegó sin FECHA)
+  const sinFecha = lineas.reduce((a,L)=>a+lineaData[L].rows.filter(r=>!r.fecha).length,0);
+
   // Filtro descriptivo
   const filtroLabels = [];
   const fPer = document.getElementById('f-periodo').value;
@@ -944,6 +949,12 @@ function render() {
         <div class="kpi-sub" style="margin-top:8px">Filas en hoja PLAN tras filtros</div>
       </div>
     </div>
+
+    ${sinFecha ? `
+      <div style="margin:0 0 14px;padding:10px 14px;border-left:3px solid var(--vspt-crimson);background:rgba(216,24,64,0.08);font-size:12px;font-weight:600">
+        ${sinFecha} programa${sinFecha!==1?'s':''} sin FECHA en el PLAN: quedan agrupados en "Sin fecha en el plan" y su horario no es confiable.
+        Revisar la hoja PLAN_ARCHIVOS de la DB y volver a correr actualizarPlan.
+      </div>` : ''}
 
     ${lineas.map(L => renderLinea(L, lineaData[L], lineaColors[L])).join('')}
 
@@ -1011,9 +1022,9 @@ const COLS_EXTRA = [
 ].map(([h,l]) => ({ key:'x:'+h, label:l, align:'', cell:r=>`<td>${_planVal(r,h)}</td>` }));
 
 const COLS_PLAN = [
-  { key:'vel', label:'Vel. Nom.', align:'center', cell:(r,c)=>`<td class="center"><select class="vel-select" data-bots="${r.botsProg}" style="width:68px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" onchange="recalcTiempo(this,'${c.L}')">${c.velOpts.map(v=>`<option value="${v}" ${v===c.velSel?'selected':''}>${v}</option>`).join('')}</select></td>` },
-  { key:'tiempo', label:'Tiempo est.', align:'right', cell:(r,c)=>`<td class="right tiempo-cell">${c.tiempoDisplay}</td>` },
-  { key:'tpocamb', label:'Tpo Camb', align:'center', cell:(r,c)=>`<td class="center"><input type="number" class="tc-input" id="${c.inputId}" value="${c.defCamb}" min="0" max="999" style="width:52px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" oninput="recalcHorarios('${c.L}')"></td>` },
+  { key:'vel', label:'Vel. Nom.', align:'center', cell:(r,c)=>c.actividad ? `<td class="center muted" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase">Actividad</td>` : `<td class="center"><select class="vel-select" data-bots="${r.botsProg}" style="width:68px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" onchange="recalcTiempo(this,'${c.L}')">${c.velOpts.map(v=>`<option value="${v}" ${v===c.velSel?'selected':''}>${v}</option>`).join('')}</select></td>` },
+  { key:'tiempo', label:'Tiempo est.', align:'right', cell:(r,c)=>`<td class="right tiempo-cell">${c.actividad ? '—' : c.tiempoDisplay}</td>` },
+  { key:'tpocamb', label:'Tpo Camb', align:'center', cell:(r,c)=>c.actividad ? `<td class="center muted">—</td>` : `<td class="center"><input type="number" class="tc-input" id="${c.inputId}" value="${c.defCamb}" min="0" max="999" style="width:52px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" oninput="recalcHorarios('${c.L}')"></td>` },
   { key:'horario', label:'Horario', align:'right', cell:(r,c)=>`<td class="right horario-cell">—</td>` }
 ];
 
@@ -1394,8 +1405,10 @@ function asistenteVoz(){
   catch(e){ setAsistStatus('No pude iniciar el micrófono.', true); _asistRec=null; if(btn) btn.innerHTML="<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Dictar por voz' style='display:block'><path d='M12 19v3'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/><rect x='9' y='2' width='6' height='13' rx='3'/></svg>"; }
 }
 
+const TURNO_ORDEN = { TM:1, TT:2, TN:3 };
 function renderLinea(L, D, color) {
-  const rows = D.rows.sort((a,b) => (a.fecha||0) - (b.fecha||0));
+  const rows = D.rows.sort((a,b) => (a.fecha||0) - (b.fecha||0) ||
+    (TURNO_ORDEN[a.turno]||9) - (TURNO_ORDEN[b.turno]||9));
   const colDefs = buildColDefs();
   const totalL = rows.reduce((a,r)=>a+r.litros,0);
   const totalC = rows.reduce((a,r)=>a+(r.cajas||0),0);
@@ -1464,7 +1477,7 @@ function renderLinea(L, D, color) {
             color:#93c5fd;
             font-size:10px;font-weight:700;letter-spacing:0.14em;
             text-transform:uppercase;padding:7px 14px;text-align:left">
-             Alistamiento &nbsp;·&nbsp; ${fmtFecha(r.fecha)}
+             Alistamiento &nbsp;·&nbsp; ${r.fecha ? fmtDia(r.fecha) : 'SIN FECHA EN EL PLAN'}
             &nbsp;·&nbsp; Inicio: ${minToHHMM(inicioMin)}
             &nbsp;·&nbsp; Tiempo est.: 30min
             &nbsp;·&nbsp; Horario: ${minToHHMM(alistFin)}
@@ -1472,6 +1485,20 @@ function renderLinea(L, D, color) {
         </tr>`;
 
       
+    }
+
+    // Fila sin OP (actividad, p. ej. "ACTIVIDAD DIA MUNDIAL DE SALUD MENTAL"): no lleva
+    // velocidad ni tiempo de cambio y no corre el horario; se ve como dato del plan.
+    if (!r.op) {
+      const ctxAct = { L, actividad:true };
+      tableRows += `
+      <tr class="actividad-row" data-linea="${L}" data-dia="${fk}" data-rowid="${r.rid}" data-tiempo=""
+          data-bots="0" data-op="" draggable="true"
+          ondragstart="onDragStart(event,this)" ondragend="onDragEnd(this)"
+          ondragover="onRowDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onRowDrop(event,this)">
+        ${colDefs.map(c => c.cell(r, ctxAct)).join('')}
+      </tr>`;
+      return;
     }
 
     // Fila OP
