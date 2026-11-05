@@ -194,7 +194,8 @@ tr.drag-over{outline:2px dashed var(--vspt-amber);outline-offset:-2px;background
 .alist-row.drag-over{outline:2px dashed var(--vspt-amber);background:rgba(248,192,64,0.08)}
 .bots-input{width:74px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:right}
 .bots-input.mod{border-color:var(--vspt-amber);background:rgba(248,192,64,0.18);font-weight:700}
-.cj-eq{font-size:9px;color:var(--muted);margin-top:2px}
+.cajas-input{width:62px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:right}
+.cajas-input.mod{border-color:var(--vspt-amber);background:rgba(248,192,64,0.18);font-weight:700}
 .cierre-row td{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:7px 14px;text-align:left;border-left:3px solid var(--vspt-olive);background:rgba(152,160,64,0.12)}
 .cierre-row.justo td{border-left-color:var(--vspt-amber);background:rgba(248,192,64,0.14)}
 .cierre-row.excede td{border-left-color:var(--vspt-crimson);background:rgba(216,24,64,0.12)}
@@ -1079,7 +1080,10 @@ const COLS_EXTRA = [
 ].map(([h,l]) => ({ key:'x:'+h, label:l, align:'', cell:r=>`<td>${_planVal(r,h)}</td>` }));
 
 const COLS_PLAN = [
-  { key:'botsProg', label:'Botellas (Prog.)', align:'right', cell:(r,c)=>c.actividad ? `<td class="right muted">—</td>` : `<td class="right"><input type="number" class="bots-input${c.bots!==r.botsProg?' mod':''}" value="${c.bots}" min="0" step="1" data-orig="${r.botsProg}" data-uxc="${c.uxc||''}" title="Plan: ${fmtNum(r.botsProg)} botellas. Cambiala para simular un saldo: se recalculan el tiempo y los horarios." oninput="onBotsInput(this,'${c.L}')"><div class="cj-eq">${cajasEq(c.bots, c.uxc)}</div></td>` },
+  { key:'cajasProg', label:'Cajas (Prog.)', align:'right', cell:(r,c)=>c.actividad ? `<td class="right muted">—</td>`
+      : !c.uxc ? `<td class="right muted" title="El PLAN no trae unidades por caja: cambiá las botellas">—</td>`
+      : `<td class="right"><input type="number" class="cajas-input${c.bots!==r.botsProg?' mod':''}" value="${Math.round(c.bots / c.uxc)}" min="0" step="1" data-uxc="${c.uxc}" title="Plan: ${fmtNum(Math.round(r.botsProg / c.uxc))} cajas de ${c.uxc}. Cambiala para simular un saldo: se recalculan las botellas, el tiempo y los horarios." oninput="onCajasInput(this,'${c.L}')"></td>` },
+  { key:'botsProg', label:'Botellas (Prog.)', align:'right', cell:(r,c)=>c.actividad ? `<td class="right muted">—</td>` : `<td class="right"><input type="number" class="bots-input${c.bots!==r.botsProg?' mod':''}" value="${c.bots}" min="0" step="1" data-orig="${r.botsProg}" data-uxc="${c.uxc||''}" title="Plan: ${fmtNum(r.botsProg)} botellas. Cambiala para simular un saldo: se recalculan el tiempo y los horarios." oninput="onBotsInput(this,'${c.L}')"></td>` },
   { key:'vel', label:'Vel. Nom.', align:'center', cell:(r,c)=>c.actividad ? `<td class="center muted" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase">Actividad</td>` : `<td class="center"><select class="vel-select" data-bots="${r.botsProg}" style="width:68px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" onchange="recalcTiempo(this,'${c.L}')">${c.velOpts.map(v=>`<option value="${v}" ${v===c.velSel?'selected':''}>${v}</option>`).join('')}</select></td>` },
   { key:'tiempo', label:'Tiempo est.', align:'right', cell:(r,c)=>`<td class="right tiempo-cell">${c.actividad ? '—' : c.tiempoDisplay}</td>` },
   { key:'tpocamb', label:'Tpo Camb', align:'center', cell:(r,c)=>c.actividad ? `<td class="center muted">—</td>` : `<td class="center"><input type="number" class="tc-input" id="${c.inputId}" value="${c.defCamb}" min="0" max="999" style="width:52px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" oninput="onCambInput(this,'${c.L}')"></td>` },
@@ -1119,7 +1123,7 @@ function abrirSelectorColumnas(){
         <div style="font-size:14px;font-weight:800;letter-spacing:.04em">Columnas de la tabla</div>
         <button onclick="cerrarSelectorColumnas()" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">OP y las columnas de planificación (Botellas (Prog.), Vel. Nom., Tiempo est., Tpo Camb, Horario) son fijas.</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">OP y las columnas de planificación (Cajas (Prog.), Botellas (Prog.), Vel. Nom., Tiempo est., Tpo Camb, Horario) son fijas.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
         <div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:6px">Columnas</div>${COLS_INFO.map(mkChk).join('')}</div>
         <div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:6px">Columnas de la hoja Plan</div>${COLS_EXTRA.map(mkChk).join('')}</div>
@@ -1629,13 +1633,23 @@ function recalcFila(tr, L) {
 }
 function onBotsInput(inp, L) {
   const tr = inp.closest('tr');
-  if (!tr) return;
-  const v = Math.max(0, parseFloat(inp.value) || 0);
-  tr.dataset.bots = v;
-  guardarEdit(tr, 'bots', v === parseFloat(inp.dataset.orig) ? undefined : v);
-  inp.classList.toggle('mod', v !== parseFloat(inp.dataset.orig));
-  const eq = inp.parentNode.querySelector('.cj-eq');
-  if (eq) eq.textContent = cajasEq(v, parseFloat(inp.dataset.uxc));
+  if (tr) ponerBotellas(tr, Math.max(0, parseFloat(inp.value) || 0), L, inp);
+}
+// Cajas × unidades por caja = botellas
+function onCajasInput(inp, L) {
+  const tr = inp.closest('tr');
+  const uxc = parseFloat(inp.dataset.uxc) || 0;
+  if (tr && uxc > 0) ponerBotellas(tr, Math.max(0, parseFloat(inp.value) || 0) * uxc, L, inp);
+}
+// Botellas simuladas de la fila: actualiza la otra casilla (cajas o botellas), marca lo cambiado y recalcula
+function ponerBotellas(tr, bots, L, origen) {
+  const bInp = tr.querySelector('.bots-input'), cInp = tr.querySelector('.cajas-input');
+  const orig = bInp ? parseFloat(bInp.dataset.orig) : bots;
+  tr.dataset.bots = bots;
+  guardarEdit(tr, 'bots', bots === orig ? undefined : bots);
+  if (bInp && bInp !== origen) bInp.value = bots;
+  if (cInp && cInp !== origen) cInp.value = Math.round(bots / (parseFloat(cInp.dataset.uxc) || 1));
+  [bInp, cInp].forEach(i => { if (i) i.classList.toggle('mod', bots !== orig); });
   recalcFila(tr, L);
 }
 function onCambInput(inp, L) {
@@ -1925,7 +1939,7 @@ function unidadesPorCaja(r) {
   const m = String(get(r,'Unidades x caja','unidades_x_caja')||'').toUpperCase().match(/X\s*(\d{1,2})(?!\d)/);
   return m ? +m[1] : null;
 }
-const cajasEq = (bots, uxc) => uxc > 0 ? '= ' + fmtNum(Math.round(bots / uxc)) + ' cj' : '';
+
 // =========================================================
 // EXPORTAR (CSV / Portapapeles)
 // =========================================================
