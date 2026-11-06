@@ -192,6 +192,29 @@ tbody tr:hover{background:var(--tr-hover)}
 tr.dragging{opacity:0.35;background:var(--tr-hover)}
 tr.drag-over{outline:2px dashed var(--vspt-amber);outline-offset:-2px;background:rgba(248,192,64,0.08)}
 .alist-row.drag-over{outline:2px dashed var(--vspt-amber);background:rgba(248,192,64,0.08)}
+.bots-input{width:74px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:right}
+.bots-input.mod{border-color:var(--vspt-amber);background:rgba(248,192,64,0.18);font-weight:700}
+.cajas-input{width:62px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:right}
+.cajas-input.mod{border-color:var(--vspt-amber);background:rgba(248,192,64,0.18);font-weight:700}
+.cierre-row td{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:7px 14px;text-align:left;border-left:3px solid var(--vspt-olive);background:rgba(152,160,64,0.12)}
+.cierre-row.justo td{border-left-color:var(--vspt-amber);background:rgba(248,192,64,0.14)}
+.cierre-row.excede td{border-left-color:var(--vspt-crimson);background:rgba(216,24,64,0.12)}
+#cap-panel{position:fixed;left:16px;bottom:16px;z-index:900;width:340px;max-width:calc(100vw - 32px);background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.25);font-size:11px}
+#cap-panel .cap-head{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;cursor:pointer;font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:10px;border-bottom:1px solid var(--border)}
+#cap-panel.cerrado .cap-body{display:none}
+#cap-panel.cerrado .cap-head{border-bottom:none}
+#cap-panel .cap-body{padding:10px 12px;max-height:60vh;overflow:auto}
+#cap-panel .cap-sub{font-size:10px;color:var(--muted);margin-bottom:6px}
+#cap-panel .cap-tbl{width:100%;border-collapse:collapse}
+#cap-panel .cap-tbl th{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:3px 4px;text-align:left}
+#cap-panel .cap-tbl td{padding:4px;border-top:1px solid var(--border)}
+#cap-panel .cap-res{width:58px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 4px;font-size:11px;text-align:center;font-family:inherit}
+#cap-panel .cap-turno{display:flex;gap:6px;align-items:center;margin:3px 0}
+#cap-panel .cap-turno span{width:26px;font-weight:700}
+#cap-panel .cap-turno input{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 4px;font-size:11px;font-family:inherit}
+#cap-panel .cap-pie{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;color:var(--muted)}
+.cap-ok{color:var(--vspt-olive);font-weight:800}.cap-justo{color:var(--vspt-orange);font-weight:800}.cap-excede{color:var(--vspt-crimson);font-weight:800}
+.actividad-row td{font-style:italic;color:var(--muted);background:rgba(148,163,184,0.08)}
 </style>
 <style id="vsptBot-css">
 #vsptBot{position:fixed;right:18px;bottom:18px;z-index:9000;font-family:'Montserrat',system-ui,sans-serif}
@@ -351,6 +374,7 @@ let planData = [];
 let opinonaData = [];
 let velNomData = [];
 let formatoByOP = {};  // OP → formato (lookup desde OPINONA)
+let formatoInferido = {}; // "B|codigo botella" o "S|sku" → formato más usado (OP aún no hechas)
 let velNomLookup = {}; // "SKU||LINEA||TipoEtiq" → NOMINAL (bph)
 let planRowMap = {};   // "L1|OP123" → raw planData row (para export)
 let planRowFull = {};  // rid único → fila original completa (44 cols del PLAN)
@@ -387,6 +411,7 @@ const parseFecha = v => {
   return isNaN(d) ? null : d;
 };
 const fmtFecha = d => d ? d.toLocaleDateString('es-AR') : '—';
+const fmtDia = d => d.toLocaleDateString('es-AR', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
 const fmtNum = (n, d=0) => n.toLocaleString('es-AR', {maximumFractionDigits:d, minimumFractionDigits:d});
 
 // Normalizar turno a TM/TT/TN
@@ -608,6 +633,33 @@ function buildFormatoLookup() {
     const fmt = get(r,'Formato_1','Formato','FORMATO','formato');
     if (op && fmt && !formatoByOP[op]) formatoByOP[op] = fmt;
   });
+  // Las OP de la semana que viene todavía no están en OPINONA: su formato (tipo de botella,
+  // como lo carga el OPINONA: "Ancha 6x750", "Cilindrica 12x750"…) sale del más usado por
+  // las OP ya hechas con la misma botella (CODIGO BOTELLA) o, si no, con el mismo SKU.
+  const cuenta = {};
+  const sumar = (k, fmt) => { if (!k) return; const c = cuenta[k] = cuenta[k] || {}; c[fmt] = (c[fmt]||0) + 1; };
+  planData.forEach(r => {
+    const op = String(get(r,'ORDEN SAP','Orden SAP','orden_sap')||'').trim();
+    const fmt = formatoByOP[op];
+    if (!fmt) return;
+    sumar('B|' + String(get(r,'CODIGO BOTELLA','codigo_botella')||'').trim(), fmt);
+    sumar('S|' + String(get(r,'CODIGO CCU','Codigo CCU','codigo_ccu')||'').trim(), fmt);
+  });
+  formatoInferido = {};
+  Object.keys(cuenta).forEach(k => {
+    if (/^[BS]\|-?$/.test(k)) return;
+    formatoInferido[k] = Object.entries(cuenta[k]).sort((a,b) => b[1]-a[1])[0][0];
+  });
+}
+// { txt, origen }: origen '' (la OP en OPINONA), 'botella', 'sku' o 'plan' (texto del PLAN)
+function formatoDe(op, r) {
+  if (formatoByOP[op]) return { txt: formatoByOP[op], origen: '' };
+  const cb = String(get(r,'CODIGO BOTELLA','codigo_botella')||'').trim();
+  const sku = String(get(r,'CODIGO CCU','Codigo CCU','codigo_ccu')||'').trim();
+  if (cb && formatoInferido['B|' + cb]) return { txt: formatoInferido['B|' + cb], origen: 'botella' };
+  if (sku && formatoInferido['S|' + sku]) return { txt: formatoInferido['S|' + sku], origen: 'sku' };
+  const d = derivarFormato(r);
+  return { txt: d || '—', origen: d ? 'plan' : '' };
 }
 
 // Normaliza Tipo Etiquetado / OPERACION para que coincidan como key del lookup.
@@ -808,7 +860,7 @@ function calcOPI(rows) {
 
   // OPI verdadero (vs Tiempo con Personal)
   const opi = tConPersonal > 0 ? (tTeorico / tConPersonal) * 100 : 0;
-  return { tot, tConPersonal, tTeorico, opi };
+  return { tot, tConPersonal, tTeorico, opi, tPor };
 }
 
 // =========================================================
@@ -847,7 +899,8 @@ function render() {
     const fecha = parseFecha(get(r,'FECHA','Fecha','fecha'));
     const op = String(get(r,'ORDEN SAP','Orden SAP','orden_sap','OP','Id. Producción')||'').trim();
     const articulo = get(r,'ARTICULO','Articulo','articulo') || '—';
-    const formato = formatoByOP[op] || derivarFormato(r) || '—';
+    const fmtInfo = formatoDe(op, r);
+    const formato = fmtInfo.txt, formatoOrigen = fmtInfo.origen;
     const _cajasRaw = get(r,'FINAL CAJAS','Final Cajas','final_cajas');
     const cajas = (_cajasRaw !== null && _cajasRaw !== '' && num(_cajasRaw) > 0) ? num(_cajasRaw) : null;
     const _botRaw = get(r,'FINAL BOTELLAS','Final Botellas','final_botellas');
@@ -867,7 +920,7 @@ function render() {
     const tipoOpRaw = get(r,'OPERACION','Operacion','operacion') || '';
     const semana = get(r,'Semana','semana','SEMANA') || '';
     const rid = ++__rid;
-    lineaData[L].rows.push({ rid, op, articulo, formato, destino, fecha, turno, litros, cajas, botellas, botsProg, tiempoMin, nominal, tipoOpRaw, semana, sku });
+    lineaData[L].rows.push({ rid, op, articulo, formato, formatoOrigen, destino, fecha, turno, litros, cajas, botellas, botsProg, tiempoMin, nominal, tipoOpRaw, semana, sku });
     planRowMap[L + '|' + op] = r;
     planRowFull[rid] = r;
 
@@ -886,6 +939,9 @@ function render() {
     L2: lineaData.L2.rows.reduce((a,r)=>a+r.litros,0),
     L3: lineaData.L3.rows.reduce((a,r)=>a+r.litros,0)
   };
+
+  // Programas sin FECHA: sin día no hay horario (oct-2026 el PLAN llegó sin FECHA)
+  const sinFecha = lineas.reduce((a,L)=>a+lineaData[L].rows.filter(r=>!r.fecha).length,0);
 
   // Filtro descriptivo
   const filtroLabels = [];
@@ -945,6 +1001,12 @@ function render() {
       </div>
     </div>
 
+    ${sinFecha ? `
+      <div style="margin:0 0 14px;padding:10px 14px;border-left:3px solid var(--vspt-crimson);background:rgba(216,24,64,0.08);font-size:12px;font-weight:600">
+        ${sinFecha} programa${sinFecha!==1?'s':''} sin FECHA en el PLAN: quedan agrupados en "Sin fecha en el plan" y su horario no es confiable.
+        Revisar la hoja PLAN_ARCHIVOS de la DB y volver a correr actualizarPlan.
+      </div>` : ''}
+
     ${lineas.map(L => renderLinea(L, lineaData[L], lineaColors[L])).join('')}
 
     ${totalProg === 0 ? `
@@ -955,8 +1017,11 @@ function render() {
       </div>` : ''}
   `;
   document.getElementById('content').innerHTML = html;
+  calcFallas3m();
+  capResumen = {};
   // Calcular horarios iniciales con valores default de Tpo Camb
   ['L1','L2','L3'].forEach(L => recalcHorarios(L));
+  renderCapPanel();
 }
 
 // Formatea minutos totales → "HH:MM"
@@ -989,17 +1054,21 @@ function _planVal(r, header){
   return s;
 }
 
+const FORMATO_ORIGEN = {
+  botella: 'La OP todavía no está en OPINONA: formato de las OP ya hechas con la misma botella',
+  sku:     'La OP todavía no está en OPINONA: formato de las OP ya hechas con el mismo SKU',
+  plan:    'Sin OP hecha con esta botella ni este SKU: unidades por caja y código de botella del PLAN'
+};
 const COLS_INFO = [
   { key:'articulo', label:'Artículo',         align:'',       cell:r=>`<td>${r.articulo}</td>` },
-  { key:'formato',  label:'Formato',          align:'',       cell:r=>`<td>${r.formato}</td>` },
+  { key:'formato',  label:'Formato',          align:'',       cell:r=>r.formatoOrigen ? `<td title="${FORMATO_ORIGEN[r.formatoOrigen]}"><span class="muted">≈</span> ${r.formato}</td>` : `<td>${r.formato}</td>` },
   { key:'tipo',     label:'Tipo',             align:'center', cell:r=>`<td class="center">${tipoOpChip(r.tipoOpRaw)}</td>` },
   { key:'destino',  label:'Destino',          align:'',       cell:r=>`<td>${r.destino}</td>` },
   { key:'fecha',    label:'Fecha',            align:'',       cell:r=>`<td>${fmtFecha(r.fecha)}</td>` },
   { key:'turno',    label:'Turno',            align:'center', cell:r=>`<td class="center">${turnoChip(r.turno)}</td>` },
   { key:'litros',   label:'Litros (FINAL)',   align:'right',  cell:r=>`<td class="right bold">${fmtNum(r.litros)}</td>` },
   { key:'cajas',    label:'Cajas (FINAL)',    align:'right',  cell:r=>`<td class="right">${r.cajas!==null?fmtNum(r.cajas):'—'}</td>` },
-  { key:'botellas', label:'Botellas (FINAL)', align:'right',  cell:r=>`<td class="right">${r.botellas!==null?fmtNum(r.botellas):'—'}</td>` },
-  { key:'botsProg', label:'Botellas (Prog.)', align:'right',  cell:r=>`<td class="right">${fmtNum(r.botsProg)}</td>` }
+  { key:'botellas', label:'Botellas (FINAL)', align:'right',  cell:r=>`<td class="right">${r.botellas!==null?fmtNum(r.botellas):'—'}</td>` }
 ];
 
 const COLS_EXTRA = [
@@ -1011,9 +1080,13 @@ const COLS_EXTRA = [
 ].map(([h,l]) => ({ key:'x:'+h, label:l, align:'', cell:r=>`<td>${_planVal(r,h)}</td>` }));
 
 const COLS_PLAN = [
-  { key:'vel', label:'Vel. Nom.', align:'center', cell:(r,c)=>`<td class="center"><select class="vel-select" data-bots="${r.botsProg}" style="width:68px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" onchange="recalcTiempo(this,'${c.L}')">${c.velOpts.map(v=>`<option value="${v}" ${v===c.velSel?'selected':''}>${v}</option>`).join('')}</select></td>` },
-  { key:'tiempo', label:'Tiempo est.', align:'right', cell:(r,c)=>`<td class="right tiempo-cell">${c.tiempoDisplay}</td>` },
-  { key:'tpocamb', label:'Tpo Camb', align:'center', cell:(r,c)=>`<td class="center"><input type="number" class="tc-input" id="${c.inputId}" value="${c.defCamb}" min="0" max="999" style="width:52px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" oninput="recalcHorarios('${c.L}')"></td>` },
+  { key:'cajasProg', label:'Cajas (Prog.)', align:'right', cell:(r,c)=>c.actividad ? `<td class="right muted">—</td>`
+      : !c.uxc ? `<td class="right muted" title="El PLAN no trae unidades por caja: cambiá las botellas">—</td>`
+      : `<td class="right"><input type="number" class="cajas-input${c.bots!==r.botsProg?' mod':''}" value="${Math.round(c.bots / c.uxc)}" min="0" step="1" data-uxc="${c.uxc}" title="Plan: ${fmtNum(Math.round(r.botsProg / c.uxc))} cajas de ${c.uxc}. Cambiala para simular un saldo: se recalculan las botellas, el tiempo y los horarios." oninput="onCajasInput(this,'${c.L}')"></td>` },
+  { key:'botsProg', label:'Botellas (Prog.)', align:'right', cell:(r,c)=>c.actividad ? `<td class="right muted">—</td>` : `<td class="right"><input type="number" class="bots-input${c.bots!==r.botsProg?' mod':''}" value="${c.bots}" min="0" step="1" data-orig="${r.botsProg}" data-uxc="${c.uxc||''}" title="Plan: ${fmtNum(r.botsProg)} botellas. Cambiala para simular un saldo: se recalculan el tiempo y los horarios." oninput="onBotsInput(this,'${c.L}')"></td>` },
+  { key:'vel', label:'Vel. Nom.', align:'center', cell:(r,c)=>c.actividad ? `<td class="center muted" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase">Actividad</td>` : `<td class="center"><select class="vel-select" data-bots="${r.botsProg}" style="width:68px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" onchange="recalcTiempo(this,'${c.L}')">${c.velOpts.map(v=>`<option value="${v}" ${v===c.velSel?'selected':''}>${v}</option>`).join('')}</select></td>` },
+  { key:'tiempo', label:'Tiempo est.', align:'right', cell:(r,c)=>`<td class="right tiempo-cell">${c.actividad ? '—' : c.tiempoDisplay}</td>` },
+  { key:'tpocamb', label:'Tpo Camb', align:'center', cell:(r,c)=>c.actividad ? `<td class="center muted">—</td>` : `<td class="center"><input type="number" class="tc-input" id="${c.inputId}" value="${c.defCamb}" min="0" max="999" style="width:52px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:center" oninput="onCambInput(this,'${c.L}')"></td>` },
   { key:'horario', label:'Horario', align:'right', cell:(r,c)=>`<td class="right horario-cell">—</td>` }
 ];
 
@@ -1050,7 +1123,7 @@ function abrirSelectorColumnas(){
         <div style="font-size:14px;font-weight:800;letter-spacing:.04em">Columnas de la tabla</div>
         <button onclick="cerrarSelectorColumnas()" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">OP y las columnas de planificación (Vel. Nom., Tiempo est., Tpo Camb, Horario) son fijas.</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">OP y las columnas de planificación (Cajas (Prog.), Botellas (Prog.), Vel. Nom., Tiempo est., Tpo Camb, Horario) son fijas.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
         <div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:6px">Columnas</div>${COLS_INFO.map(mkChk).join('')}</div>
         <div><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:6px">Columnas de la hoja Plan</div>${COLS_EXTRA.map(mkChk).join('')}</div>
@@ -1394,8 +1467,10 @@ function asistenteVoz(){
   catch(e){ setAsistStatus('No pude iniciar el micrófono.', true); _asistRec=null; if(btn) btn.innerHTML="<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' role='img' aria-label='Dictar por voz' style='display:block'><path d='M12 19v3'/><path d='M19 10v2a7 7 0 0 1-14 0v-2'/><rect x='9' y='2' width='6' height='13' rx='3'/></svg>"; }
 }
 
+const TURNO_ORDEN = { TM:1, TT:2, TN:3 };
 function renderLinea(L, D, color) {
-  const rows = D.rows.sort((a,b) => (a.fecha||0) - (b.fecha||0));
+  const rows = D.rows.sort((a,b) => (a.fecha||0) - (b.fecha||0) ||
+    (TURNO_ORDEN[a.turno]||9) - (TURNO_ORDEN[b.turno]||9));
   const colDefs = buildColDefs();
   const totalL = rows.reduce((a,r)=>a+r.litros,0);
   const totalC = rows.reduce((a,r)=>a+(r.cajas||0),0);
@@ -1449,9 +1524,7 @@ function renderLinea(L, D, color) {
     // Cambio de día → fila de alistamiento
     if (fk !== diaActual) {
       diaActual = fk;
-      const tSet      = turnosPorDia[fk];
-      const hayTM     = tSet.has('TM') || tSet.has('S/D');
-      const inicioMin = (!hayTM && tSet.has('TT')) ? 14*60 : 5*60;
+      const inicioMin = ventanaDia(turnosPorDia[fk]).ini;
       const alistFin  = inicioMin + ALIST_MIN;
 
       tableRows += `
@@ -1464,32 +1537,54 @@ function renderLinea(L, D, color) {
             color:#93c5fd;
             font-size:10px;font-weight:700;letter-spacing:0.14em;
             text-transform:uppercase;padding:7px 14px;text-align:left">
-             Alistamiento &nbsp;·&nbsp; ${fmtFecha(r.fecha)}
-            &nbsp;·&nbsp; Inicio: ${minToHHMM(inicioMin)}
+             Alistamiento &nbsp;·&nbsp; ${r.fecha ? fmtDia(r.fecha) : 'SIN FECHA EN EL PLAN'}
+            &nbsp;·&nbsp; Inicio: <span class="alist-ini">${minToHHMM(inicioMin)}</span>
             &nbsp;·&nbsp; Tiempo est.: 30min
-            &nbsp;·&nbsp; Horario: ${minToHHMM(alistFin)}
+            &nbsp;·&nbsp; Horario: <span class="alist-fin">${minToHHMM(alistFin)}</span>
           </td>
         </tr>`;
 
       
     }
 
-    // Fila OP
-    const tiempoDisplay = r.tiempoMin !== null ? fmtTiempo(r.tiempoMin) : '—';
+    // Fila sin OP (actividad, p. ej. "ACTIVIDAD DIA MUNDIAL DE SALUD MENTAL"): no lleva
+    // velocidad ni tiempo de cambio y no corre el horario; se ve como dato del plan.
+    if (!r.op) {
+      const ctxAct = { L, actividad:true };
+      tableRows += `
+      <tr class="actividad-row" data-linea="${L}" data-dia="${fk}" data-turno="${r.turno}" data-rowid="${r.rid}" data-tiempo=""
+          data-bots="0" data-op="" draggable="true"
+          ondragstart="onDragStart(event,this)" ondragend="onDragEnd(this)"
+          ondragover="onRowDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onRowDrop(event,this)">
+        ${colDefs.map(c => c.cell(r, ctxAct)).join('')}
+      </tr>`;
+      return;
+    }
+
+    // Fila OP. Lo que se tocó a mano (botellas, velocidad, tiempo de cambio) queda en
+    // simEdits y vuelve a aparecer al cambiar un filtro.
+    const key = `${L}|${r.op}|${fk}|${r.botsProg}`;
+    const ed = simEdits[key] || {};
     const inputId = `tc_${L}_${opIdx++}`;
     const esPrimeraOp = !primeraOpDia[fk];
     if (esPrimeraOp) primeraOpDia[fk] = true;
-    const defCamb = esPrimeraOp ? 0 : DEF_CAMB;
+    const defCamb = ed.camb !== undefined ? ed.camb : (esPrimeraOp ? 0 : DEF_CAMB);
 
     const velOpts = [6000,5500,5000,4500,3200,2500,2000,1000];
     const velDefault = r.nominal > 0 ? r.nominal : 0;
-    const velSel = velOpts.includes(velDefault) ? velDefault
+    const velSel = ed.vel !== undefined ? ed.vel : velOpts.includes(velDefault) ? velDefault
                  : velOpts.reduce((a,b) => Math.abs(b-velDefault)<Math.abs(a-velDefault)?b:a, velOpts[0]);
+    const bots = ed.bots !== undefined ? ed.bots : r.botsProg;
+    // Con algo tocado a mano, el tiempo sale de lo elegido; si no, como siempre (nominal de la tabla)
+    const tiempoMin = (ed.bots !== undefined || ed.vel !== undefined)
+      ? (velSel > 0 && bots > 0 ? bots / velSel * 60 : null) : r.tiempoMin;
+    const tiempoDisplay = tiempoMin !== null ? fmtTiempo(tiempoMin) : '—';
+    const uxc = unidadesPorCaja(planRowFull[r.rid] || {});
 
-    const ctx = { L, velOpts, velSel, inputId, defCamb, tiempoDisplay };
+    const ctx = { L, velOpts, velSel, inputId, defCamb, tiempoDisplay, bots, uxc };
     tableRows += `
-      <tr data-linea="${L}" data-dia="${fk}" data-rowid="${r.rid}" data-tiempo="${r.tiempoMin !== null ? r.tiempoMin : ''}"
-          data-bots="${r.botsProg}" data-op="${r.op}" draggable="true"
+      <tr data-linea="${L}" data-dia="${fk}" data-turno="${r.turno}" data-key="${key}" data-rowid="${r.rid}" data-tiempo="${tiempoMin !== null ? tiempoMin : ''}"
+          data-bots="${bots}" data-op="${r.op}" draggable="true"
           ondragstart="onDragStart(event,this)" ondragend="onDragEnd(this)"
           ondragover="onRowDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onRowDrop(event,this)">
         ${colDefs.map(c => c.cell(r, ctx)).join('')}
@@ -1520,15 +1615,46 @@ function renderLinea(L, D, color) {
     </div>`;
 }
 function recalcTiempo(selectEl, L) {
-  const vel = parseFloat(selectEl.value) || 0;
-  const bots = parseFloat(selectEl.dataset.bots) || 0;
-  const tiempoMin = vel > 0 && bots > 0 ? (bots / vel) * 60 : null;
   const tr = selectEl.closest('tr');
-  if (tr) {
-    tr.dataset.tiempo = tiempoMin !== null ? tiempoMin : '';
-    const tiempoCell = tr.querySelector('.tiempo-cell');
-    if (tiempoCell) tiempoCell.textContent = tiempoMin !== null ? fmtTiempo(tiempoMin) : '—';
-  }
+  if (!tr) return;
+  guardarEdit(tr, 'vel', parseFloat(selectEl.value) || 0);
+  recalcFila(tr, L);
+}
+// Tiempo de la fila = botellas (las del plan o las simuladas) ÷ velocidad elegida
+function recalcFila(tr, L) {
+  const sel = tr.querySelector('.vel-select');
+  const vel = sel ? (parseFloat(sel.value) || 0) : 0;
+  const bots = parseFloat(tr.dataset.bots) || 0;
+  const tiempoMin = vel > 0 && bots > 0 ? (bots / vel) * 60 : null;
+  tr.dataset.tiempo = tiempoMin !== null ? tiempoMin : '';
+  const tiempoCell = tr.querySelector('.tiempo-cell');
+  if (tiempoCell) tiempoCell.textContent = tiempoMin !== null ? fmtTiempo(tiempoMin) : '—';
+  recalcHorarios(L);
+}
+function onBotsInput(inp, L) {
+  const tr = inp.closest('tr');
+  if (tr) ponerBotellas(tr, Math.max(0, parseFloat(inp.value) || 0), L, inp);
+}
+// Cajas × unidades por caja = botellas
+function onCajasInput(inp, L) {
+  const tr = inp.closest('tr');
+  const uxc = parseFloat(inp.dataset.uxc) || 0;
+  if (tr && uxc > 0) ponerBotellas(tr, Math.max(0, parseFloat(inp.value) || 0) * uxc, L, inp);
+}
+// Botellas simuladas de la fila: actualiza la otra casilla (cajas o botellas), marca lo cambiado y recalcula
+function ponerBotellas(tr, bots, L, origen) {
+  const bInp = tr.querySelector('.bots-input'), cInp = tr.querySelector('.cajas-input');
+  const orig = bInp ? parseFloat(bInp.dataset.orig) : bots;
+  tr.dataset.bots = bots;
+  guardarEdit(tr, 'bots', bots === orig ? undefined : bots);
+  if (bInp && bInp !== origen) bInp.value = bots;
+  if (cInp && cInp !== origen) cInp.value = Math.round(bots / (parseFloat(cInp.dataset.uxc) || 1));
+  [bInp, cInp].forEach(i => { if (i) i.classList.toggle('mod', bots !== orig); });
+  recalcFila(tr, L);
+}
+function onCambInput(inp, L) {
+  const tr = inp.closest('tr');
+  if (tr) guardarEdit(tr, 'camb', parseFloat(inp.value) || 0);
   recalcHorarios(L);
 }
 // ── Recalcula columna Horario para una línea tras cambio en Tpo Camb ──────
@@ -1542,8 +1668,8 @@ function recalcHorarios(L) {
   const C_TM        = 11 * 60; // 11:00
   const C_TT        = 19 * 60; // 19:00
 
-  // Limpiar comedores previos
-  Array.from(tbody.querySelectorAll('.comedor-row')).forEach(tr => tr.remove());
+  // Limpiar comedores y cierres previos
+  Array.from(tbody.querySelectorAll('.comedor-row, .cierre-row')).forEach(tr => tr.remove());
 
   let cursorMin = 0;
   let diaActual = null;
@@ -1555,6 +1681,11 @@ function recalcHorarios(L) {
 
   const filas = Array.from(tbody.rows);
 
+  // Turnos de cada día (definen el horario disponible) y lo que se va midiendo
+  const turnosDia = {};
+  filas.forEach(tr => { if (tr.dataset.dia && tr.dataset.turno) (turnosDia[tr.dataset.dia] = turnosDia[tr.dataset.dia] || new Set()).add(tr.dataset.turno); });
+  const medida = {};   // fk → { ini, comedores } (comedores cruzados por una OP)
+  capResumen[L] = {};
   const insertarComedor = (cMin, despuesDeTr) => {
     const cFin = cMin + COMEDOR_MIN;
     const cRow = document.createElement('tr');
@@ -1573,12 +1704,13 @@ function recalcHorarios(L) {
     despuesDeTr.after(cRow);
   };
 
-  // Al cerrar un día: insertar comedores que no se cruzaron
-  const cerrarDia = (fk) => {
+  // Al cerrar un día: insertar comedores que no se cruzaron y la fila de cierre
+  const cerrarDia = (fk, antesDe) => {
     if (!fk) return;
     const ins = comedoresInsertados[fk] || new Set();
     const ultima = ultimaOpDia[fk];
     if (!ultima) return;
+    insertarCierre(L, fk, cursorMin, medida[fk], turnosDia[fk], antesDe, tbody, COLS);
 
     // Comedor TM: siempre si no fue insertado
     if (!ins.has(0)) {
@@ -1600,16 +1732,21 @@ function recalcHorarios(L) {
   filas.forEach((tr, idx) => {
     if (tr.classList.contains('alist-row')) {
       // Cerrar día anterior
-      cerrarDia(diaActual);
+      cerrarDia(diaActual, tr);
 
-      const inicioMin = parseFloat(tr.dataset.inicio);
-      cursorMin = (isFinite(inicioMin) ? inicioMin : 5*60) + ALIST_MIN;
       diaActual = tr.dataset.diaAlist;
+      const inicioMin = ventanaDia(turnosDia[diaActual]).ini;
+      tr.dataset.inicio = inicioMin;
+      const sIni = tr.querySelector('.alist-ini'), sFin = tr.querySelector('.alist-fin');
+      if (sIni) sIni.textContent = minToHHMM(inicioMin);
+      if (sFin) sFin.textContent = minToHHMM(inicioMin + ALIST_MIN);
+      cursorMin = inicioMin + ALIST_MIN;
+      medida[diaActual] = { ini: inicioMin, comedores: 0 };
       comedoresInsertados[diaActual] = new Set();
       return;
     }
 
-    if (tr.classList.contains('comedor-row')) return;
+    if (tr.classList.contains('comedor-row') || tr.classList.contains('cierre-row')) return;
     if (!tr.dataset.linea) return;
 
     const fk        = tr.dataset.dia || diaActual;
@@ -1630,12 +1767,14 @@ function recalcHorarios(L) {
     // ¿La OP cruza comedor TM?
     if (finOP !== null && !comedoresInsertados[fk].has(0) && cursorMin < C_TM && finOP > C_TM) {
       finOP += COMEDOR_MIN;
+      if (medida[fk]) medida[fk].comedores++;
       comedoresInsertados[fk].add(0);
       insertarComedor(C_TM, tr);
     }
     // ¿La OP cruza comedor TT?
     if (finOP !== null && !comedoresInsertados[fk].has(1) && cursorMin < C_TT && finOP > C_TT) {
       finOP += COMEDOR_MIN;
+      if (medida[fk]) medida[fk].comedores++;
       comedoresInsertados[fk].add(1);
       insertarComedor(C_TT, tr);
     }
@@ -1651,8 +1790,156 @@ function recalcHorarios(L) {
   });
 
   // Cerrar último día
-  cerrarDia(diaActual);
+  cerrarDia(diaActual, null);
+  renderCapPanel();
 }
+
+// =========================================================
+// CAPACIDAD: horario de los turnos, reserva por fallas y cierre de cada día
+// =========================================================
+const CAP_KEY = 'vspt_prog_capacidad_v1';
+const CAP_DEF = { turnos: { TM:['05:00','14:00'], TT:['14:00','23:00'], TN:['23:00','05:00'] },
+                  reserva: { L1:'', L2:'', L3:'' }, abierto: true };
+let capCfg = (function(){
+  try {
+    const s = JSON.parse(localStorage.getItem(CAP_KEY) || 'null');
+    if (s && s.turnos) return { turnos: Object.assign({}, CAP_DEF.turnos, s.turnos),
+                                reserva: Object.assign({}, CAP_DEF.reserva, s.reserva || {}),
+                                abierto: s.abierto !== false };
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(CAP_DEF));
+})();
+function guardarCap(){ try { localStorage.setItem(CAP_KEY, JSON.stringify(capCfg)); } catch(e){} }
+let simEdits = {};          // data-key de la fila → { bots, vel, camb } tocados a mano
+let capResumen = {};        // L → fk → { disp, usado, libre, reserva, estado }
+let fallas3m = { L1:null, L2:null, L3:null, meses:'' };
+
+function guardarEdit(tr, campo, valor) {
+  const k = tr.dataset.key;
+  if (!k) return;
+  const e = simEdits[k] = simEdits[k] || {};
+  if (valor === undefined) delete e[campo]; else e[campo] = valor;
+  if (!Object.keys(e).length) delete simEdits[k];
+}
+function restablecerSimulacion() { simEdits = {}; render(); }
+
+const hhmmAMin = t => { const m = String(t||'').match(/^(\d{1,2}):(\d{2})/); return m ? (+m[1])*60 + (+m[2]) : null; };
+// Ventana del día según sus turnos: desde el inicio del primero hasta el fin del último.
+// S/D cuenta como TM. TN termina al día siguiente (fin + 24 h).
+function ventanaDia(turnos) {
+  const ts = Array.from(turnos || []).map(t => t === 'S/D' ? 'TM' : t).filter(t => capCfg.turnos[t]);
+  if (!ts.length) ts.push('TM');
+  const orden = ['TM','TT','TN'].filter(t => ts.includes(t));
+  const tramo = t => { let a = hhmmAMin(capCfg.turnos[t][0]), b = hhmmAMin(capCfg.turnos[t][1]);
+                       if (a === null) a = 0; if (b === null) b = a; if (b <= a) b += 24*60; return [a, b]; };
+  const ini = tramo(orden[0])[0];
+  let fin = tramo(orden[orden.length-1])[1];
+  if (fin < ini) fin += 24*60;
+  return { ini, fin, turnos: orden };
+}
+function reservaPct(L) {
+  const manual = parseFloat(String(capCfg.reserva[L]||'').replace(',', '.'));
+  if (isFinite(manual) && manual >= 0) return manual;
+  return fallas3m[L];
+}
+
+// Fila de cierre: disponible = horario de los turnos del día menos sus comedores;
+// usado = desde el inicio hasta el fin de la última OP, sin los comedores que cruzó.
+function insertarCierre(L, fk, finMin, med, turnos, antesDe, tbody, COLS) {
+  if (!med) return;
+  const v = ventanaDia(turnos);
+  const COMEDOR = 45;
+  const disp  = (v.fin - v.ini) - COMEDOR * v.turnos.length;
+  const usado = (finMin - med.ini) - COMEDOR * med.comedores;
+  const libre = disp - usado;
+  const pct   = reservaPct(L);
+  const reserva = pct !== null && pct !== undefined ? disp * pct / 100 : null;
+  const estado = libre < 0 ? 'excede' : (reserva !== null && libre < reserva ? 'justo' : 'ok');
+  capResumen[L][fk] = { disp, usado, libre, reserva, estado };
+  const h = m => fmtTiempo(Math.abs(m)) .replace('—','0min');
+  const txtReserva = reserva === null ? 'reserva por fallas: cargando OPINONA…'
+    : `reserva fallas ${pct.toFixed(1).replace('.',',')}% = ${h(reserva)}`;
+  const veredicto = estado === 'excede' ? `faltan ${h(-libre)}: horas extra`
+    : estado === 'justo' ? `faltan ${h(reserva - libre)} para la reserva`
+    : reserva !== null ? `sobran ${h(libre - reserva)} después de la reserva` : '';
+  const tr = document.createElement('tr');
+  tr.className = 'cierre-row ' + estado;
+  tr.innerHTML = `<td colspan="${COLS}">
+      Cierre del día &nbsp;·&nbsp; Fin plan: ${minToHHMM(finMin)} (turnos ${v.turnos.join('+')} hasta ${minToHHMM(v.fin)})
+      &nbsp;·&nbsp; Disponible ${h(disp)} &nbsp;·&nbsp; Plan ${h(usado)}
+      &nbsp;·&nbsp; Libre ${libre < 0 ? '−' : ''}${h(libre)} (${disp > 0 ? Math.round(libre / disp * 100) : 0}%)
+      &nbsp;·&nbsp; ${txtReserva}${veredicto ? ' &nbsp;→&nbsp; <strong>' + veredicto + '</strong>' : ''}
+    </td>`;
+  if (antesDe) tbody.insertBefore(tr, antesDe); else tbody.appendChild(tr);
+}
+
+// % de fallas de equipo de los últimos 3 meses cerrados, sobre el tiempo con personal (base del OPI)
+function calcFallas3m() {
+  const hoy = new Date();
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth() - 3, 1);
+  const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  fallas3m = { L1:null, L2:null, L3:null,
+               meses: [0,1,2].map(i => MES[(desde.getMonth() + i) % 12]).join(', ') + ' ' + new Date(hasta - 1).getFullYear() };
+  if (!opinonaData.length) return;
+  const rows = opinonaData.filter(r => { const f = parseFecha(get(r,'Fecha','fecha','FECHA')); return f && f >= desde && f < hasta; });
+  ['L1','L2','L3'].forEach(L => {
+    const o = calcOPI(rows.filter(r => getLinea(r) === L));
+    fallas3m[L] = o.tConPersonal > 0 ? o.tPor[CATS.FALLA] / o.tConPersonal * 100 : null;
+  });
+}
+
+function renderCapPanel() {
+  let el = document.getElementById('cap-panel');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'cap-panel';
+    document.body.appendChild(el);
+  }
+  el.classList.toggle('cerrado', !capCfg.abierto);
+  const pctTxt = v => v === null || v === undefined ? '—' : v.toFixed(1).replace('.', ',') + '%';
+  const filasL = ['L1','L2','L3'].map(L => {
+    const dias = Object.values(capResumen[L] || {});
+    const n = e => dias.filter(d => d.estado === e).length;
+    return `<tr>
+      <td><strong>${L}</strong></td>
+      <td class="right">${opinonaData.length ? pctTxt(fallas3m[L]) : '…'}</td>
+      <td class="center"><input class="cap-res" data-l="${L}" value="${capCfg.reserva[L]||''}" placeholder="${opinonaData.length ? pctTxt(fallas3m[L]) : ''}" title="Vacío = el promedio de 3 meses. Escribí otro % para planificar con ese." onchange="capReserva(this)"></td>
+      <td class="center">${dias.length ? `<span class="cap-ok">${n('ok')}</span> · <span class="cap-justo">${n('justo')}</span> · <span class="cap-excede">${n('excede')}</span>` : '—'}</td>
+    </tr>`;
+  }).join('');
+  const turnoIn = t => `<div class="cap-turno"><span>${t}</span>
+      <input type="time" value="${capCfg.turnos[t][0]}" onchange="capTurno('${t}',0,this.value)">
+      <input type="time" value="${capCfg.turnos[t][1]}" onchange="capTurno('${t}',1,this.value)"></div>`;
+  const nEdits = Object.keys(simEdits).length;
+  el.innerHTML = `
+    <div class="cap-head" onclick="capToggle()">
+      <span>Capacidad · reserva por fallas</span><span>${capCfg.abierto ? '▾' : '▴'}</span>
+    </div>
+    <div class="cap-body">
+      <div class="cap-sub">Fallas de equipo ÷ tiempo con personal · ${fallas3m.meses}</div>
+      <table class="cap-tbl">
+        <thead><tr><th>Línea</th><th class="right">Fallas 3 m</th><th class="center">Reserva</th><th class="center">Días <span class="cap-ok">ok</span> · <span class="cap-justo">justos</span> · <span class="cap-excede">HE</span></th></tr></thead>
+        <tbody>${filasL}</tbody>
+      </table>
+      <div class="cap-sub" style="margin-top:10px">Horario de los turnos (inicio · fin)</div>
+      ${['TM','TT','TN'].map(turnoIn).join('')}
+      <div class="cap-pie">
+        <span>${nEdits ? nEdits + ' fila' + (nEdits !== 1 ? 's' : '') + ' con cambios a mano' : 'Sin cambios a mano'}</span>
+        <button class="btn-light" onclick="restablecerSimulacion()" ${nEdits ? '' : 'disabled'}>Restablecer</button>
+      </div>
+    </div>`;
+}
+function capToggle(){ capCfg.abierto = !capCfg.abierto; guardarCap(); renderCapPanel(); }
+function capReserva(inp){ capCfg.reserva[inp.dataset.l] = inp.value.trim(); guardarCap(); ['L1','L2','L3'].forEach(recalcHorarios); }
+function capTurno(t, i, v){ if (!v) return; capCfg.turnos[t][i] = v; guardarCap(); ['L1','L2','L3'].forEach(recalcHorarios); }
+
+// Unidades por caja: "VNR750CCX6-CO" → 6
+function unidadesPorCaja(r) {
+  const m = String(get(r,'Unidades x caja','unidades_x_caja')||'').toUpperCase().match(/X\s*(\d{1,2})(?!\d)/);
+  return m ? +m[1] : null;
+}
+
 // =========================================================
 // EXPORTAR (CSV / Portapapeles)
 // =========================================================
