@@ -194,6 +194,10 @@ tr.drag-over{outline:2px dashed var(--vspt-amber);outline-offset:-2px;background
 .alist-row.drag-over{outline:2px dashed var(--vspt-amber);background:rgba(248,192,64,0.08)}
 .bots-input{width:74px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:right}
 .bots-input.mod{border-color:var(--vspt-amber);background:rgba(248,192,64,0.18);font-weight:700}
+.split-nota{font-size:9px;color:var(--muted);margin-top:2px;white-space:nowrap}
+.cont-row td{background:rgba(127,127,127,0.06);color:var(--muted);font-style:italic}
+.cont-row .t-chip{opacity:.7}
+.t-chip.est{border-style:dashed;font-style:italic;white-space:nowrap}
 .cajas-input{width:62px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 5px;font-size:11px;font-family:inherit;text-align:right}
 .cajas-input.mod{border-color:var(--vspt-amber);background:rgba(248,192,64,0.18);font-weight:700}
 .cierre-row td{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:7px 14px;text-align:left;border-left:3px solid var(--vspt-olive);background:rgba(152,160,64,0.12)}
@@ -1065,7 +1069,7 @@ const COLS_INFO = [
   { key:'tipo',     label:'Tipo',             align:'center', cell:r=>`<td class="center">${tipoOpChip(r.tipoOpRaw)}</td>` },
   { key:'destino',  label:'Destino',          align:'',       cell:r=>`<td>${r.destino}</td>` },
   { key:'fecha',    label:'Fecha',            align:'',       cell:r=>`<td>${fmtFecha(r.fecha)}</td>` },
-  { key:'turno',    label:'Turno',            align:'center', cell:r=>`<td class="center">${turnoChip(r.turno)}</td>` },
+  { key:'turno',    label:'Turno',            align:'center', cell:r=>`<td class="center turno-cell">${turnoChip(r.turno)}</td>` },
   { key:'litros',   label:'Litros (FINAL)',   align:'right',  cell:r=>`<td class="right bold">${fmtNum(r.litros)}</td>` },
   { key:'cajas',    label:'Cajas (FINAL)',    align:'right',  cell:r=>`<td class="right">${r.cajas!==null?fmtNum(r.cajas):'—'}</td>` },
   { key:'botellas', label:'Botellas (FINAL)', align:'right',  cell:r=>`<td class="right">${r.botellas!==null?fmtNum(r.botellas):'—'}</td>` }
@@ -1667,9 +1671,10 @@ function recalcHorarios(L) {
   const COLS        = window.__PROG_COLS || 15;
   const C_TM        = 11 * 60; // 11:00
   const C_TT        = 19 * 60; // 19:00
+  const COMEDORES   = [C_TM, C_TT];
 
-  // Limpiar comedores y cierres previos
-  Array.from(tbody.querySelectorAll('.comedor-row, .cierre-row')).forEach(tr => tr.remove());
+  // Limpiar comedores, continuaciones y cierres previos
+  Array.from(tbody.querySelectorAll('.comedor-row, .cont-row, .cierre-row')).forEach(tr => tr.remove());
 
   let cursorMin = 0;
   let diaActual = null;
@@ -1684,7 +1689,8 @@ function recalcHorarios(L) {
   // Turnos de cada día (definen el horario disponible) y lo que se va midiendo
   const turnosDia = {};
   filas.forEach(tr => { if (tr.dataset.dia && tr.dataset.turno) (turnosDia[tr.dataset.dia] = turnosDia[tr.dataset.dia] || new Set()).add(tr.dataset.turno); });
-  const medida = {};   // fk → { ini, comedores } (comedores cruzados por una OP)
+  const medida = {};   // fk → { ini, comedores } (comedores que corrieron el horario)
+  const turnosEst = {}; // fk → turnos estimados por hora para las filas S/D del PLAN
   capResumen[L] = {};
   const insertarComedor = (cMin, despuesDeTr) => {
     const cFin = cMin + COMEDOR_MIN;
@@ -1710,10 +1716,13 @@ function recalcHorarios(L) {
     const ins = comedoresInsertados[fk] || new Set();
     const ultima = ultimaOpDia[fk];
     if (!ultima) return;
-    insertarCierre(L, fk, cursorMin, medida[fk], turnosDia[fk], antesDe, tbody, COLS);
+    // Turnos del día: los del PLAN y, para las filas S/D, los estimados por la hora de inicio
+    const tur = new Set(Array.from(turnosDia[fk] || []).filter(t => t !== 'S/D' || !(turnosEst[fk] && turnosEst[fk].size)));
+    (turnosEst[fk] || new Set()).forEach(t => tur.add(t));
+    insertarCierre(L, fk, cursorMin, medida[fk], tur, antesDe, tbody, COLS);
 
-    // Comedor TM: siempre si no fue insertado
-    if (!ins.has(0)) {
+    // Comedor TM: siempre si no fue insertado (salvo que el día arranque después)
+    if (!ins.has(0) && !(medida[fk] && medida[fk].ini > C_TM)) {
       insertarComedor(C_TM, ultima);
       ins.add(0);
       // Si el cursor final del día supera 15:00, agregar TT también
@@ -1756,42 +1765,120 @@ function recalcHorarios(L) {
     const horCell   = tr.querySelector('.horario-cell');
 
     if (!comedoresInsertados[fk]) comedoresInsertados[fk] = new Set();
+    const ins = comedoresInsertados[fk];
 
     const esPrimera = !primeraOpDia[fk];
     if (esPrimera) primeraOpDia[fk] = true;
+
+    // Comedor que llega antes de arrancar esta OP (terminó la anterior o cae en el cambio):
+    // va antes de la fila y corre el horario
     const cambMin = inputEl ? (parseFloat(inputEl.value) || 0) : 0;
+    COMEDORES.forEach((C, j) => {
+      if (ins.has(j) || !tr.dataset.op || cursorMin + cambMin <= C) return;
+      if (C < (medida[fk] ? medida[fk].ini : 0)) return;
+      insertarComedor(C, tr.previousElementSibling);
+      ins.add(j);
+      if (medida[fk]) medida[fk].comedores++;
+      cursorMin = Math.max(cursorMin, C) + COMEDOR_MIN;
+    });
     cursorMin += cambMin;
 
-    let finOP = tiempoMin !== null && isFinite(tiempoMin) ? cursorMin + tiempoMin : null;
-
-    // ¿La OP cruza comedor TM?
-    if (finOP !== null && !comedoresInsertados[fk].has(0) && cursorMin < C_TM && finOP > C_TM) {
-      finOP += COMEDOR_MIN;
-      if (medida[fk]) medida[fk].comedores++;
-      comedoresInsertados[fk].add(0);
-      insertarComedor(C_TM, tr);
-    }
-    // ¿La OP cruza comedor TT?
-    if (finOP !== null && !comedoresInsertados[fk].has(1) && cursorMin < C_TT && finOP > C_TT) {
-      finOP += COMEDOR_MIN;
-      if (medida[fk]) medida[fk].comedores++;
-      comedoresInsertados[fk].add(1);
-      insertarComedor(C_TT, tr);
+    // Turno: el del PLAN; si es S/D, el estimado por la hora de inicio
+    const sd = tr.dataset.turno === 'S/D';
+    const conTN = (turnosDia[fk] || new Set()).has('TN');
+    if (sd) {
+      const est = turnoDeHora(cursorMin, conTN);
+      (turnosEst[fk] = turnosEst[fk] || new Set()).add(est);
+      chipEstimado(tr, est, cursorMin);
     }
 
-    if (finOP !== null) {
-      if (horCell) horCell.textContent = minToHHMM(finOP);
-      cursorMin = finOP;
-    } else {
+    const nota = tr.querySelector('.split-nota');
+    if (nota) nota.remove();
+    if (tiempoMin === null || !isFinite(tiempoMin)) {
       if (horCell) horCell.textContent = '—';
+      ultimaOpDia[fk] = tr;
+      return;
     }
 
-    ultimaOpDia[fk] = tr;
+    // La OP se parte en cada comedor que cruza: la fila muestra lo de antes del comedor y
+    // abajo del comedor sigue una fila de continuación con el resto (botellas, cajas, tiempo, fin)
+    const sel  = tr.querySelector('.vel-select');
+    const vel  = sel ? (parseFloat(sel.value) || 0) : 0;
+    const uxc  = parseFloat((tr.querySelector('.cajas-input') || {}).dataset?.uxc) || 0;
+    let ini = cursorMin, resto = tiempoMin, botsResto = parseFloat(tr.dataset.bots) || 0;
+    let ancla = tr, partes = 0;
+    COMEDORES.forEach((C, j) => {
+      if (ins.has(j) || !(ini < C && ini + resto > C)) return;
+      const p = C - ini;
+      const b = Math.min(botsResto, Math.round(p * vel / 60));
+      if (partes === 0) {
+        if (horCell) horCell.textContent = minToHHMM(C);
+        const bi = tr.querySelector('.bots-input');
+        if (bi) bi.insertAdjacentHTML('afterend', `<div class="split-nota">antes del comedor: ${fmtNum(b)} bot${uxc ? ' · ' + fmtNum(Math.round(b / uxc)) + ' cj' : ''}</div>`);
+      } else {
+        llenarContinuacion(ancla, b, p, C, uxc);
+      }
+      insertarComedor(C, ancla);
+      ins.add(j);
+      if (medida[fk]) medida[fk].comedores++;
+      resto -= p; botsResto -= b; ini = C + COMEDOR_MIN;
+      ancla = crearContinuacion(tr, ancla.nextElementSibling);
+      if (sd) chipEstimado(ancla, turnoDeHora(ini, conTN), ini);
+      partes++;
+    });
+    const finOP = ini + resto;
+    // El día cubre también el turno en que termina la OP (p. ej. arranca a la mañana y sigue a la tarde)
+    if (sd) turnosEst[fk].add(turnoDeHora(finOP - 1, conTN));
+    if (partes === 0) { if (horCell) horCell.textContent = minToHHMM(finOP); }
+    else llenarContinuacion(ancla, botsResto, resto, finOP, uxc);
+    cursorMin = finOP;
+    ultimaOpDia[fk] = ancla;
   });
 
   // Cerrar último día
   cerrarDia(diaActual, null);
   renderCapPanel();
+}
+
+// Fila de continuación de una OP partida por el comedor: copia de la fila sin casillas
+// editables (se editan en la fila de la OP); no es una OP para el arrastre ni la exportación.
+function crearContinuacion(tr, despuesDe) {
+  const c = tr.cloneNode(true);
+  c.className = 'cont-row';
+  ['data-linea','data-key','data-rowid','data-op','data-tiempo','data-bots','draggable',
+   'ondragstart','ondragend','ondragover','ondragleave','ondrop'].forEach(a => c.removeAttribute(a));
+  const op = c.cells[0];
+  if (op) op.innerHTML = `<span class="muted">↳</span> ${tr.dataset.op || ''}`;
+  c.querySelectorAll('.split-nota').forEach(n => n.remove());
+  const sel = c.querySelector('.vel-select');
+  if (sel) sel.parentNode.textContent = (tr.querySelector('.vel-select') || {}).value || '—';
+  const tc = c.querySelector('.tc-input');
+  if (tc) tc.parentNode.textContent = '—';
+  despuesDe.after(c);
+  return c;
+}
+function llenarContinuacion(c, bots, mins, finMin, uxc) {
+  const bi = c.querySelector('.bots-input'), ci = c.querySelector('.cajas-input');
+  if (bi) bi.parentNode.innerHTML = `${fmtNum(Math.round(bots))}<div class="split-nota">${c.dataset.parte || 'después del comedor'}</div>`;
+  else { const b = c.querySelector('.cont-bots'); if (b) b.firstChild.textContent = fmtNum(Math.round(bots)); }
+  if (ci) ci.parentNode.textContent = uxc ? fmtNum(Math.round(bots / uxc)) : '—';
+  const t = c.querySelector('.tiempo-cell'); if (t) t.textContent = fmtTiempo(mins);
+  const h = c.querySelector('.horario-cell'); if (h) h.textContent = minToHHMM(finMin);
+}
+// Turno según la hora (minutos desde las 0 del día), con el horario del panel de capacidad.
+// TN sólo si el PLAN tiene turno noche ese día: si no, lo que pasa del TT queda en TT (horas extra).
+function turnoDeHora(min, conTN) {
+  const m = min >= 24*60 ? 24*60 - 1 : ((min % 1440) + 1440) % 1440;
+  for (const t of conTN ? ['TM','TT','TN'] : ['TM','TT']) {
+    let a = hhmmAMin(capCfg.turnos[t][0]), b = hhmmAMin(capCfg.turnos[t][1]);
+    if (a === null || b === null) continue;
+    if (a < b ? (m >= a && m < b) : (m >= a || m < b)) return t;
+  }
+  return conTN ? 'TN' : (m < (hhmmAMin(capCfg.turnos.TM[0]) || 0) ? 'TM' : 'TT');
+}
+function chipEstimado(tr, t, desde) {
+  const tc = tr.querySelector('.turno-cell');
+  if (tc) tc.innerHTML = `<span class="t-chip ${t.toLowerCase()} est" title="Estimado por la hora (${minToHHMM(desde)}): el PLAN no trae turno">≈ ${t}</span>`;
 }
 
 // =========================================================
