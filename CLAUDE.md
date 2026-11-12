@@ -108,3 +108,7 @@ Reglas para el HTML:
     `<thead>` se ordena tocando el encabezado (manejador global; `data-nosort` la excluye; `data-sort`
     en la celda da el valor). El asistente recibe primero en el digest los registros que coinciden
     (`busParaIA`) con el total ya calculado: mismo POST `preguntar`, sin cambio de API.
+    12-nov: filtro lateral "Día de la semana" (`f-dia`, vale para todas las pestañas de OPINONA) y, en el
+    Buscador, "Por día de la semana" y "Detalle por fecha" (`busVolumenHTML`: días trabajados, cajas, C9L,
+    botellas, horas de producción y de paro). Las horas extra se traen sólo con el botón "+ Horas extra"
+    (`?tabla=he` por `pedirJson`, a demanda; son de toda la planta).

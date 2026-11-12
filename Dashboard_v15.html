@@ -373,6 +373,10 @@
   .bus-kpi small { font-size:11px; color:var(--muted); }
   .bus-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px; }
   .bus-grid .chart-card { margin-bottom:0; min-width:0; }
+  .bus-grid2 { display:grid; grid-template-columns:3fr 2fr; gap:12px; margin-bottom:12px; }
+  .bus-grid2 .chart-card { margin-bottom:0; min-width:0; }
+  .bus-grid2 .bus-t td:first-child { max-width:none; width:auto; }
+  @media (max-width:1100px) { .bus-grid2 { grid-template-columns:1fr; } }
   .bus-fac .chart-title small, #tab-buscador .chart-title small { font-weight:500; text-transform:none; letter-spacing:0; color:var(--muted); }
   .bus-scroll { overflow:auto; max-height:250px; }
   .bus-t { font-size:11px; }
@@ -536,6 +540,15 @@
         <select id="f-turno" class="ms-native" multiple></select>
         <button type="button" class="ms-btn" onclick="msOpen('f-turno', event)"><span class="ms-text placeholder" id="f-turno-text">Todos</span><span class="ms-caret">▼</span></button>
         <div class="ms-panel" id="f-turno-panel"></div>
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label">Día de la semana</label>
+      <div class="ms" id="ms-f-dia" data-fid="f-dia">
+        <select id="f-dia" class="ms-native" multiple></select>
+        <button type="button" class="ms-btn" onclick="msOpen('f-dia', event)"><span class="ms-text placeholder" id="f-dia-text">Todos</span><span class="ms-caret">▼</span></button>
+        <div class="ms-panel" id="f-dia-panel"></div>
       </div>
     </div>
 
@@ -1773,8 +1786,11 @@ function toggleSidebar() {
 }
 
 // ─── MULTI-SELECT (checkboxes) ───────────────────────────────────────────────
-const MS_IDS = ['f-turno','f-clasif','f-subclasif','f-tipoeti','f-formato'];
-const MS_PLACEHOLDER = { 'f-turno':'Todos','f-clasif':'Todas','f-subclasif':'Todas','f-tipoeti':'Todos','f-formato':'Todos' };
+const MS_IDS = ['f-turno','f-dia','f-clasif','f-subclasif','f-tipoeti','f-formato'];
+const DIAS_SEM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const DIAS_ORDEN = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const getDiaSem = r => { const d = getFecha(r); return d ? DIAS_SEM[d.getDay()] : ''; };
+const MS_PLACEHOLDER = { 'f-turno':'Todos','f-dia':'Todos','f-clasif':'Todas','f-subclasif':'Todas','f-tipoeti':'Todos','f-formato':'Todos' };
 
 function msSelected(id) {
   const sel = document.getElementById(id);
@@ -1881,6 +1897,7 @@ function setupFilters(conservar) {
 
   const turnos = [...new Set(dataYear.map(r => String(get(r,'Turno','Turno ','turno')||'').trim()).filter(Boolean))].sort();
   msPopulate('f-turno', turnos);
+  msPopulate('f-dia', DIAS_ORDEN);
 
   const clasifs = [...new Set(dataYear.map(r => getClasif1(r)).filter(Boolean))].sort();
   msPopulate('f-clasif', clasifs);
@@ -1919,6 +1936,7 @@ function applyFilters(baseData, sinTexto) {
   const fHas = document.getElementById('f-hasta').value;
   const fSem = document.getElementById('f-semana').value;
   const fTur = msSelected('f-turno');
+  const fDia = msSelected('f-dia');
   const fCla = msSelected('f-clasif');
   const fSub = msSelected('f-subclasif');
   const fMto = document.getElementById('f-mto').value;
@@ -1940,6 +1958,7 @@ function applyFilters(baseData, sinTexto) {
     }
     if (fSem && String(get(r,'Semana','semana')) !== String(fSem)) return false;
     if (fTur.length && !fTur.includes(String(get(r,'Turno','Turno ','turno')||'').trim())) return false;
+    if (fDia.length && !fDia.includes(getDiaSem(r))) return false;
     if (fCla.length && !fCla.includes(getClasif1(r))) return false;
     if (fSub.length && !fSub.includes(getClasif2(r))) return false;
     if (fMto && !getMTO(r).includes(fMto)) return false;
@@ -2086,7 +2105,8 @@ const BUS_FACETAS = [
   { id:'c1',     t:'Cómo se clasificó',         f: r => getClasif1(r) || '—' },
   { id:'c2',     t:'Sub-clasificación / equipo', f: r => getClasif2(r) || '—' },
   { id:'turno',  t:'Por turno',                 f: r => String(get(r,'Turno','Turno ','turno') || '').trim() || '—' },
-  { id:'mto',    t:'Origen (MTO / OP)',         f: r => getMTO(r) || '—' }
+  { id:'mto',    t:'Origen (MTO / OP)',         f: r => getMTO(r) || '—' },
+  { id:'dia',    t:'Día de la semana',          f: r => getDiaSem(r) || '—', propia:true }   // se dibuja en su propia tabla, con el volumen
 ];
 const BUS_STOP = new Set(('para pero como este esta estos estas desde hasta sobre entre cuando donde porque tiene tienen hace hacen falta falla fallas paro paros parada paradas ' +
   'linea maquina equipo debido durante luego antes despues todo toda todos todas otro otra otros otras cada mismo misma sino solo tambien menos mucho poco ' +
@@ -2206,9 +2226,11 @@ function renderBuscador() {
         <td data-sort="${o.h}">${busHoras(o.h)}</td><td>${o.n}</td><td data-sort="${o.h}">${tot ? (o.h / tot * 100).toFixed(0) : 0}%</td></tr>`).join('') +
       `</tbody></table></div></div>`;
   };
-  html += `<div class="bus-grid">${BUS_FACETAS.map(facetaHTML).join('')}
+  html += `<div class="bus-grid">${BUS_FACETAS.filter(F => !F.propia).map(facetaHTML).join('')}
       <div class="chart-card bus-fac"><div class="chart-title">Palabras frecuentes <small>(horas · tocá para sumar a la búsqueda)</small></div><div class="bus-chips bus-scroll" id="bus-palabras"></div></div>
     </div>`;
+
+  html += busVolumenHTML(lins, filtrar('dia'));
 
   html += `<div class="chart-card"><div class="chart-title" style="display:flex;align-items:center;gap:10px;">Evolución de las horas
       <span class="bus-segs" style="margin-left:auto;">${[['D','Día'],['W','Semana'],['M','Mes']].map(([v, t]) => `<button type="button" class="bus-seg${bus.vista === v ? ' on' : ''}" onclick="busSet('vista','${v}')">${t}</button>`).join('')}</span></div>
@@ -2273,6 +2295,53 @@ function renderBuscador() {
     tooltip: { shared:true, intersect:false, y:{ formatter: v => v.toFixed(2) + ' h' } },
     grid: { borderColor:getGridColor(), strokeDashArray:4 }
   });
+}
+
+// Días trabajados y volumen por día de la semana y por fecha. El volumen sale de los filtros de la
+// izquierda + las líneas elegidas (sin el texto buscado, que es de paros); las horas de paro, de la selección.
+function busVolumenHTML(lins, rowsParo) {
+  const diasSel = busSel('dia');
+  const todo = applyFilters(rawData, true).filter(r => !lins.length || lins.includes(getLinea(r)));
+  const porFecha = new Map();
+  const dia = (r, crear) => { const d = getFecha(r); if (!d) return null; const k = busFechaISO(d);
+    let o = porFecha.get(k); if (!o && crear) { o = { k, d, dia: DIAS_SEM[d.getDay()], cajas:0, c9l:0, bot:0, hProd:0, hParo:0, nParo:0, lin:new Set() }; porFecha.set(k, o); } return o; };
+  todo.forEach(r => { if (getClasif1(r) !== CATS.PRODUCCION && !getCajas(r)) return; const o = dia(r, true); if (!o) return;
+    o.cajas += getCajas(r); o.c9l += getC9L(r); o.bot += getUnidades(r); if (getClasif1(r) === CATS.PRODUCCION) o.hProd += getVarTiempo(r); if (getCajas(r) > 0) o.lin.add(getLinea(r)); });
+  rowsParo.forEach(r => { if (getClasif1(r) === CATS.PRODUCCION) return; const o = dia(r, true); if (o) { o.hParo += getVarTiempo(r); o.nParo++; } });
+  const fechas = [...porFecha.values()];
+  const he = bus.he, heDe = o => he ? (he.get(o.k) || 0) : 0;
+  const n0 = v => Math.round(v).toLocaleString('es-AR');
+  const sem = DIAS_ORDEN.map(nom => { const fs = fechas.filter(o => o.dia === nom), tr = fs.filter(o => o.cajas > 0);
+    return { nom, dias: tr.length, cajas: tr.reduce((a, o) => a + o.cajas, 0), c9l: tr.reduce((a, o) => a + o.c9l, 0), bot: tr.reduce((a, o) => a + o.bot, 0),
+      hProd: fs.reduce((a, o) => a + o.hProd, 0), hParo: fs.reduce((a, o) => a + o.hParo, 0), he: fs.reduce((a, o) => a + heDe(o), 0), diasHE: fs.filter(o => heDe(o) > 0).length }; });
+  const T = sem.reduce((a, x) => { Object.keys(x).forEach(k => { if (k !== 'nom') a[k] = (a[k] || 0) + x[k]; }); return a; }, {});
+  const colHE = he ? '<th title="Horas extra del día (hoja HE_DIARIO): son de toda la planta, no por línea">HE (h)</th><th>Días con HE</th>' : '';
+  const filaSem = (x, tot) => `<tr ${tot ? 'style="background:var(--tr-hover);"' : `onclick="busAlternar('dia','${x.nom}')" class="${diasSel.includes(x.nom) ? 'on' : diasSel.length ? 'off' : ''}" title="Ver sólo los ${x.nom.toLowerCase()} (se pueden elegir varios)"`}>
+      <td>${tot ? 'Total' : (diasSel.length ? (diasSel.includes(x.nom) ? '☑ ' : '☐ ') : '') + x.nom}</td><td>${x.dias}</td><td>${n0(x.cajas)}</td><td>${n0(x.c9l)}</td><td>${n0(x.bot)}</td>
+      <td>${x.dias ? n0(x.cajas / x.dias) : '—'}</td><td>${busHoras(x.hProd)}</td><td>${busHoras(x.hParo)}</td>${he ? `<td>${busHoras(x.he)}</td><td>${x.diasHE}</td>` : ''}</tr>`;
+  const lista = fechas.filter(o => !diasSel.length || diasSel.includes(o.dia)).sort((a, b) => b.k < a.k ? -1 : 1);
+  const trab = lista.filter(o => o.cajas > 0);
+  return `<div class="bus-grid2">
+    <div class="chart-card bus-fac"><div class="chart-title" style="align-items:center;">Por día de la semana <small>(días trabajados y volumen · tocá para elegir)</small>
+        <span style="flex:1"></span>${he ? '' : `<button type="button" class="bus-btn" style="padding:5px 9px;" onclick="busTraerHE(this)" title="Trae las horas extra por día (un pedido liviano a la API)">+ Horas extra</button>`}</div>
+      <div class="bus-scroll" style="max-height:320px;"><table class="table-obj bus-t"><thead><tr><th>Día</th><th title="Días con cajas producidas">Días trab.</th><th>Cajas</th><th>C9L</th><th>Botellas</th><th>Cajas / día</th><th>H. prod.</th><th title="Horas de paro de la selección actual">H. paro</th>${colHE}</tr></thead>
+      <tbody>${sem.map(x => filaSem(x)).join('')}${filaSem(Object.assign({ nom:'Total' }, T), true)}</tbody></table></div>
+      <div class="bus-ayuda">Volumen según los filtros de la izquierda y las líneas elegidas (no depende del texto buscado).${he ? ' Las horas extra son de toda la planta.' : ''}</div></div>
+    <div class="chart-card bus-fac"><div class="chart-title">Detalle por fecha <small>(${diasSel.length ? diasSel.join(' + ') + ' · ' : ''}${trab.length} días trabajados de ${lista.length})</small></div>
+      <div class="bus-scroll" style="max-height:340px;"><table class="table-obj bus-t bus-fechas"><thead><tr><th>Fecha</th><th>Día</th><th>Líneas</th><th>Cajas</th><th>C9L</th><th>H. prod.</th><th>H. paro</th>${he ? '<th>HE (h)</th>' : ''}</tr></thead>
+      <tbody>${lista.map(o => `<tr><td>${o.d.toLocaleDateString('es-AR')}</td><td>${o.dia}</td><td style="white-space:nowrap;">${[...o.lin].sort().join(' ') || '—'}</td><td>${n0(o.cajas)}</td><td>${n0(o.c9l)}</td><td>${busHoras(o.hProd)}</td><td>${busHoras(o.hParo)}</td>${he ? `<td>${heDe(o) ? busHoras(heDe(o)) : '—'}</td>` : ''}</tr>`).join('')}</tbody></table></div></div>
+  </div>`;
+}
+// Horas extra por día: a demanda (botón), un solo pedido liviano por pedirJson
+async function busTraerHE(btn) {
+  if (bus.he) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Trayendo…'; }
+  try {
+    const j = await pedirJson(API_URL + '?tabla=he');
+    const m = new Map();
+    (j.he || []).forEach(h => { const d = toDate(h.fecha); if (d) { const k = busFechaISO(d); m.set(k, (m.get(k) || 0) + (Number(h.he_horas) || 0)); } });
+    bus.he = m; renderBuscador();
+  } catch (e) { console.error(e); if (btn) { btn.disabled = false; btn.textContent = 'No se pudo · reintentar'; } }
 }
 
 function busCSV() {
@@ -2845,7 +2914,7 @@ function drawEvolutivoDesdeKPI(id, tabId, target, themeColor) {
 }
 
 function setFiltrosBloqueados(bloq) {
-  const ids = ['f-desde','f-hasta','f-semana','f-turno','f-clasif','f-subclasif','f-mto','f-tipoeti','f-formato','f-op','f-obs'];
+  const ids = ['f-desde','f-hasta','f-semana','f-turno','f-dia','f-clasif','f-subclasif','f-mto','f-tipoeti','f-formato','f-op','f-obs'];
   ids.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -5288,7 +5357,7 @@ function broadcastTheme() {
     for(const k in MESES){ if(new RegExp('\\b'+k+'\\b').test(t)){ f['f-periodo']=k.toUpperCase(); break; } }
     if(/anual|ytd|todo el an|todos los mes/.test(t)) f['f-periodo']='ALL';
     const fs=buscarFechas(t); if(fs.length){ f['f-desde']=fs[0]; f['f-hasta']=fs[1]||fs[0]; }
-    ['f-clasif','f-subclasif','f-tipoeti','f-formato','f-mto'].forEach(id=>{
+    ['f-dia','f-clasif','f-subclasif','f-tipoeti','f-formato','f-mto'].forEach(id=>{
       const sel=document.getElementById(id); if(!sel) return;
       let hit=false;
       for(const o of sel.options){ const ov=_n(o.value); if(ov && ov.length>2 && t.includes(ov)){ f[id]=o.value; hit=true; break; } }
@@ -5317,7 +5386,7 @@ function broadcastTheme() {
     st('Ese comando no aplica en esta vista (acá solo filtros y pestañas).', true);
   }
   const CTX='Página OPINONA (Dashboard general). Filtros disponibles (id → control): '+
-    'f-periodo (mes en MAYÚSCULA o ALL), f-semana (número), f-turno (TM/TT/TN), '+
+    'f-periodo (mes en MAYÚSCULA o ALL), f-semana (número), f-turno (TM/TT/TN), f-dia (Lunes…Domingo), '+
     'f-clasif, f-subclasif, f-tipoeti, f-formato, f-mto, f-op (texto), f-desde, f-hasta (AAAA-MM-DD). '+
     'Para filtros usá {"accion":"setfiltros","filtros":{"<id>":"<valor>"}}. '+
     'Para fechas {"accion":"fechas","desde":"AAAA-MM-DD","hasta":"AAAA-MM-DD"}. '+
