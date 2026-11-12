@@ -2095,7 +2095,7 @@ document.addEventListener('click', e => {
 // Cuantifica un tema (p. ej. "botella caída") sin importar cómo se clasificó: horas por línea,
 // clasificación, equipo, turno y origen; evolución; palabras que lo acompañan y los registros.
 const BUS_KEY = 'vspt_busquedas_v1';
-const bus = { prod:false, facetas:{}, vista:'W', todos:false, rows:[], fv:{} };   // facetas: { linea:['L2','L3'], c2:[…] } (varias a la vez)
+const bus = { metrica:'H', prod:false, facetas:{}, vista:'W', todos:false, rows:[], fv:{} };   // facetas: { linea:['L2','L3'], c2:[…] } (varias a la vez)
 const busSel = id => bus.facetas[id] || [];
 const busColorLinea = l => THEME_COLOR[String(l).toLowerCase()] || THEME_COLOR.planta;
 // Color del Buscador: el de la línea si hay una sola elegida; con varias o ninguna, el de Planta
@@ -2232,7 +2232,9 @@ function renderBuscador() {
 
   html += busVolumenHTML(lins, filtrar('dia'));
 
-  html += `<div class="chart-card"><div class="chart-title" style="display:flex;align-items:center;gap:10px;">Evolución de las horas
+  html += `<div class="chart-card"><div class="chart-title" style="display:flex;align-items:center;gap:10px;">Evolución
+      <span class="bus-segs">${[['H','Horas de paro'],['C','Cajas'],['HL','Hectolitros']].map(([v, t]) => `<button type="button" class="bus-seg${bus.metrica === v ? ' on' : ''}" onclick="busSet('metrica','${v}')">${t}</button>`).join('')}</span>
+      <small>${bus.metrica === 'H' ? 'de la selección actual' : 'producción de los filtros y líneas elegidas (no depende del texto) · HL = C9L × 9 / 100'}</small>
       <span class="bus-segs" style="margin-left:auto;">${[['D','Día'],['W','Semana'],['M','Mes']].map(([v, t]) => `<button type="button" class="bus-seg${bus.vista === v ? ' on' : ''}" onclick="busSet('vista','${v}')">${t}</button>`).join('')}</span></div>
       <div id="bus-chart"></div></div>`;
 
@@ -2272,13 +2274,19 @@ function renderBuscador() {
 
   // Evolución
   const serie = new Map();
-  rows.forEach(r => {
+  // Horas: los paros de la selección. Cajas y HL: la producción de los filtros, líneas y días elegidos.
+  const MET = { H:{ v:getVarTiempo, u:'h', dec:1 }, C:{ v:getCajas, u:'cajas', dec:0 }, HL:{ v: r => getC9L(r) * 9 / 100, u:'HL', dec:0 } }[bus.metrica] || { v:getVarTiempo, u:'h', dec:1 };
+  const fmtM = v => Number(v).toLocaleString('es-AR', { minimumFractionDigits: MET.dec, maximumFractionDigits: MET.dec });
+  const diasG = busSel('dia');
+  const fuente = bus.metrica === 'H' ? rows : applyFilters(rawData, true).filter(r => enLinea(r) && (!diasG.length || diasG.includes(getDiaSem(r))));
+  fuente.forEach(r => {
+    const hh = MET.v(r); if (!hh) return;
     const d = getFecha(r); if (!d) return;
     let k, lab, ts;
     if (bus.vista === 'D') { ts = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); lab = d.getDate() + '/' + (d.getMonth() + 1); }
     else if (bus.vista === 'M') { ts = new Date(d.getFullYear(), d.getMonth(), 1).getTime(); lab = MESES_ORDEN[d.getMonth()] ? MESES_ORDEN[d.getMonth()].slice(0, 3) : String(d.getMonth() + 1); }
     else { const l = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7)); ts = l.getTime(); lab = 'S' + (get(r,'Semana','semana') || '') ; }
-    k = ts; const o = serie.get(k) || { lab, h:0, n:0, L:{} }; const hh = getVarTiempo(r), ln = getLinea(r) || '—';
+    k = ts; const o = serie.get(k) || { lab, h:0, n:0, L:{} }; const ln = getLinea(r) || '—';
     o.h += hh; o.n++; o.L[ln] = (o.L[ln] || 0) + hh; serie.set(k, o);
   });
   const pts = [...serie.entries()].sort((a, b) => a[0] - b[0]).map(x => x[1]);
@@ -2288,11 +2296,11 @@ function renderBuscador() {
     chart: { type:'bar', stacked:true, height:240, toolbar:{show:false}, foreColor:getTextColor(), animations:{enabled:false} },
     legend: { show: lineasG.length > 1, position:'top', horizontalAlign:'right' },
     xaxis: { categories: pts.map(p => p.lab), labels:{ style:{fontSize:'10px'}, rotate:-45, hideOverlappingLabels:true }, tickAmount: Math.min(pts.length, 30) },
-    yaxis: { labels:{ formatter: v => v.toFixed(1) } },
+    yaxis: { labels:{ formatter: fmtM } },
     colors: lineasG.map(busColorLinea),
     plotOptions: { bar:{ borderRadius:3, columnWidth:'70%' } },
-    dataLabels: { enabled: lineasG.length === 1 && pts.length <= 20, formatter: v => v.toFixed(1), style:{ fontSize:'10px', colors:[getTextColor()] }, offsetY:-16 },
-    tooltip: { shared:true, intersect:false, y:{ formatter: v => v.toFixed(2) + ' h' } },
+    dataLabels: { enabled: lineasG.length === 1 && pts.length <= 20, formatter: fmtM, style:{ fontSize:'10px', colors:[getTextColor()] }, offsetY:-16 },
+    tooltip: { shared:true, intersect:false, y:{ formatter: v => fmtM(v) + ' ' + MET.u } },
     grid: { borderColor:getGridColor(), strokeDashArray:4 }
   });
 }
