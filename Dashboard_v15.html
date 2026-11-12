@@ -1058,6 +1058,22 @@ function unidadesPorCaja(r) {
   return cajas > 0 && unid > 0 ? Math.round(unid / cajas) : 0;
 }
 
+// cc de la botella desde el formato: "VNR750CCX6-TR" → 750, "Cónica 12x750" → 750,
+// "Botellon 1500" → 1500 (igual que _ccDeFormato_ del ETL). 0 si no se puede leer.
+function ccDeFormato(fm) {
+  const s = String(fm || '').toUpperCase();
+  const m = s.match(/(\d{3,4})\s*CC/) || s.match(/\d+\s*X\s*(\d{3,4})(?!\d)/) || s.match(/(?:^|\D)(\d{3,4})\s*$/);
+  const cc = m ? Number(m[1]) : 0;
+  return cc >= 100 && cc <= 5000 ? cc : 0;
+}
+
+// HL de una fila de semielaborado (LLENADO): botellas × cc ÷ 100.000. En LLENADO
+// las "cajas" ya son botellas; su C9L es 0 porque C9L es sólo producto terminado.
+function hlSemielaborado(r) {
+  const bot = getUnidades(r) || getCajas(r);
+  return bot > 0 ? bot * ccDeFormato(get(r,'Formato_1','FORMATO_1','formato_1')) / 100000 : 0;
+}
+
 // Horas de línea que se usaron para producir las cajas retenidas (PNC) a
 // velocidad nominal. Se descuentan del Tiempo Teórico: lo no conforme no es
 // producción válida. Por nominal y no por proporción de la fila porque un
@@ -2038,16 +2054,16 @@ function procesarMetricas(data) {
       if (fPnc && fPnc >= FECHA_CORTE_PNC) tPNC += horasPNC(r);
     }
 
-    if (c9l > 0) {
+    // C9L y Volumen Envasado: sólo producto terminado. El semielaborado (LLENADO)
+    // suma únicamente en el gráfico de HL por tipo, con botellas × cc (su C9L es 0).
+    if (!isSemielab && c9l > 0) {
       c9lTotal += c9l;
-      // Desglose por tipo etiquetado para HL (Vestido / Llenado / Llenado+Vestido / otros)
+      const hl = c9l * (window.HL_FACTOR ?? 0.09);
+      // Desglose por tipo etiquetado para HL (Vestido / Llenado+Vestido / otros)
       let tipoHL = 'OTROS';
-      if (te === 'LLENADO') tipoHL = 'LLENADO';
-      else if (te === 'VESTIDO') tipoHL = 'VESTIDO';
+      if (te === 'VESTIDO') tipoHL = 'VESTIDO';
       else if (te.includes('LLENADO') && te.includes('VESTIDO')) tipoHL = 'LLENADO+VESTIDO';
       else if (te) tipoHL = te;
-
-      const hl = c9l * (window.HL_FACTOR ?? 0.09);
       const f = getFecha(r);
       if (f) {
         const key = f.toISOString().slice(0,10);
@@ -2059,6 +2075,15 @@ function procesarMetricas(data) {
         hlPorFechaTipo[key][tipoHL] = (hlPorFechaTipo[key][tipoHL]||0) + hl;
       }
       hlPorTipo[tipoHL] = (hlPorTipo[tipoHL]||0) + hl;
+    } else if (isSemielab) {
+      const hl = hlSemielaborado(r);
+      const f = getFecha(r);
+      if (hl > 0 && f) {
+        const key = f.toISOString().slice(0,10);
+        if (!hlPorFechaTipo[key]) hlPorFechaTipo[key] = {};
+        hlPorFechaTipo[key].LLENADO = (hlPorFechaTipo[key].LLENADO||0) + hl;
+        hlPorTipo.LLENADO = (hlPorTipo.LLENADO||0) + hl;
+      }
     }
 
     if (cls === CATS.FALLA) {
@@ -2440,7 +2465,7 @@ function renderTab(tabId, data) {
     <div class="section-title">Volumen Envasado</div>
     <div class="chart-card full" style="margin-bottom:14px;">
       <div class="chart-title" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-        <span>${tabBadge} Hectolitros por Fecha <span class="hint">HL = C9L × 9 / 100 · Vestido + Llenado + Llenado+Vestido</span></span>
+        <span>${tabBadge} Hectolitros por Fecha <span class="hint">PT: HL = C9L × 9 / 100 · Llenado (semielaborado): botellas × cc · el total de Volumen Envasado es sólo PT</span></span>
         ${serieToolsHTML(`chart-${tabId}-hl`, 'D')}
       </div>
       <div id="chart-${tabId}-hl" style="height:260px;"></div>
