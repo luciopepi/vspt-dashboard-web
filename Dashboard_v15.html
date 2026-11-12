@@ -1038,7 +1038,13 @@ const getVarPct    = r => parseNum(get(r,'Var. %','Var.%','var_pct','Var_%','var
 const getCajas     = r => parseNum(get(r,'Cantidad cajas Producidas','Cantidad_cajas_Producidas','cajas'));
 const getPNI       = r => parseNum(get(r,'Pt. No conforme','Pt_No_conforme','pt_no_conforme','PNI'));
 const getC9L       = r => parseNum(get(r,'C9L','c9l'));
-const getTipoEti   = r => String(get(r,'Tipo Etiquetado','Tipo_Etiquetado','tipo_etiquetado')||'').toUpperCase().trim();
+// Nombres de AppSheet: el Excel de ene-ago 2025 decía "SOLO LLENADO" (semielaborado),
+// "SOLO VESTIDO" y "LLENADO + VESTIDO" (igual que _tipoEtiquetadoCanon_ del ETL).
+const getTipoEti   = r => {
+  const s = String(get(r,'Tipo Etiquetado','Tipo_Etiquetado','tipo_etiquetado')||'').toUpperCase().trim()
+    .replace(/\s*\+\s*/g, '+').replace(/\s+/g, ' ');
+  return s === 'SOLO LLENADO' ? 'LLENADO' : s === 'SOLO VESTIDO' ? 'VESTIDO' : s;
+};
 const getLinea     = r => String(get(r,'linea','Linea','LINEA')||'').toUpperCase().trim();
 const getMTO       = r => String(get(r,'MTO/OP','mto/op','MTO_OP','mto_op')||'').toUpperCase().trim().replace(':','');
 const getFecha     = r => toDate(get(r,'Fecha','fecha'));
