@@ -100,3 +100,15 @@ Reglas para el HTML:
     mismo `?tabla=planta3d` (campo `fdc`): no hay pedido nuevo. El semáforo (abierta / en tratamiento /
     cerrada) se cambia por POST `planta3d_fdc`, sin reintento. Con una API anterior se ven las FDC de la
     planilla y avisa que falta publicar la API.
+15. **Buscador, filtro de texto y orden de tablas (11-nov, sólo v15, sin pedidos nuevos).** "Buscar en
+    observaciones" (`f-obs`) filtra por texto en Observaciones + sub-clasificación (`txCompilar` /
+    `txCoincide`: espacio = Y, coma = O, `-palabra`, "frase"; sin acentos ni plurales) y vale para todas
+    las pestañas de OPINONA. La pestaña **Buscador** (`renderBuscador`) cuantifica lo filtrado por línea,
+    clasificación, equipo, turno y origen, con palabras frecuentes, evolución y CSV. Toda tabla con
+    `<thead>` se ordena tocando el encabezado (manejador global; `data-nosort` la excluye; `data-sort`
+    en la celda da el valor). El asistente recibe primero en el digest los registros que coinciden
+    (`busParaIA`) con el total ya calculado: mismo POST `preguntar`, sin cambio de API.
+    12-nov: filtro lateral "Día de la semana" (`f-dia`, vale para todas las pestañas de OPINONA) y, en el
+    Buscador, "Por día de la semana" y "Detalle por fecha" (`busVolumenHTML`: días trabajados, cajas, C9L,
+    botellas, horas de producción y de paro). Las horas extra se traen sólo con el botón "+ Horas extra"
+    (`?tabla=he` por `pedirJson`, a demanda; son de toda la planta).
